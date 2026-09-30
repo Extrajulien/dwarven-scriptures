@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>DEEP DELVE // TYPIST EXPEDITION</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface-container":"#201f1f","on-secondary-fixed":"#2e1500","background":"#131313","on-surface-variant":"#d1c5af","surface-dim":"#131313","on-background":"#e5e2e1","outline-variant":"#4e4635","surface":"#131313","on-surface":"#e5e2e1","primary":"#eec14b","tertiary-container":"#80ad70","on-secondary-fixed-variant":"#6d3a00","secondary-container":"#7a4100","tertiary-fixed-dim":"#a4d393","on-primary-fixed-variant":"#5a4300","on-tertiary":"#113809","outline":"#9a907c","on-tertiary-container":"#194010","surface-container-low":"#1c1b1b","primary-container":"#c59b27","secondary-fixed-dim":"#ffb77b","on-tertiary-fixed":"#022100","on-primary-fixed":"#251a00","primary-fixed":"#ffdf98","error-container":"#93000a","tertiary":"#a4d393","inverse-primary":"#775a00","on-secondary":"#4d2700","on-error-container":"#ffdad6","on-secondary-container":"#ffb270","surface-variant":"#353534","tertiary-fixed":"#c0f0ad","surface-container-highest":"#353534","on-tertiary-fixed-variant":"#28501e","surface-container-high":"#2a2a2a","error":"#ffb4ab","inverse-surface":"#e5e2e1","inverse-on-surface":"#313030","on-error":"#690005","surface-tint":"#eec14b","primary-fixed-dim":"#eec14b","secondary-fixed":"#ffdcc2","surface-container-lowest":"#0e0e0e","on-primary-container":"#473500","surface-bright":"#393939","secondary":"#ffb77b","on-primary":"#3e2e00"},borderRadius:{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},spacing:{"margin-desktop":"3rem","gutter":"1rem","margin":"1rem","margin-tablet":"2rem","space-lg":"1.5rem","space-xs":"0.25rem","gutter-desktop":"1.5rem","space-md":"1rem","space-xl":"2.5rem","space-sm":"0.5rem"},fontFamily:{"headline-xl-mobile":["Space Mono"],"headline-xl":["Space Mono"],"body-lg":["JetBrains Mono"],"label-md":["JetBrains Mono"],"label-sm":["JetBrains Mono"],"body-md":["JetBrains Mono"],"headline-lg-mobile":["Space Mono"],"body-sm":["JetBrains Mono"],"label-lg":["JetBrains Mono"],"headline-sm":["Space Mono"],"headline-md":["Space Mono"],"headline-lg":["Space Mono"]},fontSize:{"headline-xl-mobile":["28px",{"lineHeight":"36px","letterSpacing":"0.04em","fontWeight":"700"}],"headline-xl":["40px",{"lineHeight":"48px","letterSpacing":"0.05em","fontWeight":"700"}],"body-lg":["20px",{"lineHeight":"32px","letterSpacing":"0.01em","fontWeight":"500"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.1em","fontWeight":"600"}],"label-sm":["10px",{"lineHeight":"14px","letterSpacing":"0.12em","fontWeight":"500"}],"body-md":["16px",{"lineHeight":"26px","letterSpacing":"0","fontWeight":"400"}],"headline-lg-mobile":["22px",{"lineHeight":"30px","letterSpacing":"0.03em","fontWeight":"700"}],"body-sm":["13px",{"lineHeight":"20px","letterSpacing":"0","fontWeight":"400"}],"label-lg":["14px",{"lineHeight":"20px","letterSpacing":"0.08em","fontWeight":"600"}],"headline-sm":["18px",{"lineHeight":"26px","letterSpacing":"0.02em","fontWeight":"700"}],"headline-md":["22px",{"lineHeight":"30px","letterSpacing":"0.03em","fontWeight":"700"}],"headline-lg":["30px",{"lineHeight":"38px","letterSpacing":"0.03em","fontWeight":"700"}]}}}}</script></head><body class="bg-surface text-on-surface font-body-md text-body-md min-h-screen selection:bg-secondary-container selection:text-on-secondary-container"><header class="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest shadow-[0_2px_12px_rgba(0,0,0,0.6)]"><div class="h-20 w-full px-margin-desktop flex items-center justify-between gap-gutter"><div class="flex items-center gap-space-md"><img alt="Dwarf Fortress Delve Guild Emblem" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XQmbtlKexI37fizZI_sqSCW-SvNJY3cbFrkWMzQhjyHVmx01ONqMT0jQJ_xqU5FKqB8MGhyAwe2QOoih9ffCCss79bU8yBaS8SfYfNhkSPLfZQzwggROkNXMkC9fsiyJl2JmnEfH8F1ayC-RA5DYLwbiYmOTcueQZLLSj_8sJeV9bvp_Du7rA34rVYzMPpE8We-41ZHbk8A4XcrydgY8vKu64TNBfB7KkxHf2U2FXIs2Zw7HZXCPiUxM4"/><div class="flex flex-col"><div class="flex items-center gap-space-xs"><span class="font-headline-sm text-headline-sm uppercase text-primary">DEEP DELVE // TYPIST EXPEDITION</span><span class="font-body-sm text-body-sm text-on-surface-variant select-none">[ᛞᛖᛖᛈ ᛞᛖᛚᚡᛖ]</span></div><div class="flex items-center gap-space-sm mt-space-xs"><span class="font-label-sm text-label-sm uppercase bg-surface-container-high text-on-surface-variant px-space-xs py-0.5 rounded">[GUILD: IRONVEIN QUARRY - EXPEDITION #84]</span><span class="font-label-sm text-label-sm uppercase bg-secondary-container text-on-secondary-container px-space-xs py-0.5 rounded shadow-[0_0_8px_rgba(217,119,6,0.35)]">🔥 STREAK: 14 STONES</span></div></div></div><nav class="hidden xl:flex items-center gap-space-sm" data-active-classes="bg-surface-container text-primary font-bold"><a class="font-label-md text-label-md uppercase px-space-md py-space-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="race-cavern" href="#">Mine Race</a><a class="font-label-md text-label-md uppercase px-space-md py-space-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="quarry-leaderboard" href="#">Guild Ranks</a><a class="font-label-md text-label-md uppercase px-space-md py-space-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="dwarven-armory" href="#">Runeworks</a><a class="font-label-md text-label-md uppercase px-space-md py-space-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="expedition-archives" href="#">Ledgers</a></nav><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center gap-space-xs bg-surface-container-low px-space-sm py-space-xs rounded"><button class="font-label-sm text-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors" type="button">[LANG: ENG / FR]</button><span class="text-outline select-none">|</span><button class="font-label-sm text-label-sm uppercase text-on-surface-variant hover:text-secondary transition-colors" type="button">[VIEW: STEAM UI / ASCII MATRIX]</button></div><div class="flex items-center gap-space-sm bg-surface-container px-space-sm py-space-xs rounded"><div class="text-right hidden sm:block"><span class="block font-label-md text-label-md text-on-surface">Overseer Urist McTypist</span><span class="block font-label-sm text-label-sm text-primary">(Lvl 24 Stonewright)</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></div></header><main class="w-full pt-20 bg-surface min-h-[calc(100vh-3rem)] pb-12"><div class="flex flex-col w-full">
+<!-- Sub-Header Navigation & Chamber Breadcrumbs -->
+<div class="w-full bg-surface-container-lowest px-margin-desktop py-space-sm flex flex-wrap items-center justify-between gap-gutter shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+<div class="flex items-center gap-space-sm font-label-sm text-label-sm uppercase tracking-widest text-on-surface-variant">
+<span class="text-primary font-bold">ROOT</span>
+<span class="text-outline">/</span>
+<span class="hover:text-primary cursor-pointer transition-colors">GUILD_OVERSEERS</span>
+<span class="text-outline">/</span>
+<span class="text-secondary bg-surface-container px-space-xs py-0.5 rounded">[RECORD_ID: #OMT-9924-URIST]</span>
+<span class="text-outline select-none">|</span>
+<span class="text-tertiary flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-ping"></span>
+        TERMINAL SYNCHRONIZED [HOST: BASALT_CRAG_01]
+      </span>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm uppercase px-space-sm py-1 rounded transition-colors flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[14px] text-primary">download</span>
+        [EXPORT RUNIC TELEMETRY .ASCII]
+      </button>
+<button class="bg-primary hover:bg-primary-container text-on-primary font-label-sm text-label-sm uppercase px-space-md py-1 rounded font-bold transition-colors flex items-center gap-1 shadow-md">
+<span class="material-symbols-outlined text-[14px]">tune</span>
+        [REBIND TERMINAL SHORTCUTS]
+      </button>
+</div>
+</div>
+<!-- Primary Vault Frame -->
+<div class="w-full px-margin-desktop py-space-lg flex flex-col gap-space-lg">
+<!-- 1. OVERSEER BANNER & HERO DOSSIER -->
+<section class="w-full bg-surface-container-low rounded-lg p-space-lg relative overflow-hidden shadow-2xl">
+<!-- Decorative ASCII Backdrop Corner Marks -->
+<div class="absolute top-2 left-3 font-label-sm text-label-sm text-outline-variant select-none pointer-events-none">
+        ╔═[RECORD_VAULT // URIST_MCTYPIST]══════════════════════════════════════════════════════════════════════╗
+      </div>
+<div class="absolute bottom-2 right-3 font-label-sm text-label-sm text-outline-variant select-none pointer-events-none">
+        ╚═════════════════════════════════════════════════════════════════════════[ARCHIVE_STAMP: YEAR_1054]═╝
+      </div>
+<div class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop items-center pt-space-xs">
+<!-- Avatar Frame with Runic Stele Bevel -->
+<div class="lg:col-span-4 xl:col-span-3 flex flex-col items-center">
+<div class="relative p-2 bg-surface-container-lowest rounded-lg shadow-[0_0_20px_rgba(0,0,0,0.9)] group">
+<!-- Brass Corner Bolts -->
+<span class="absolute top-1 left-1 text-primary text-[10px] select-none font-bold">❖</span>
+<span class="absolute top-1 right-1 text-primary text-[10px] select-none font-bold">❖</span>
+<span class="absolute bottom-1 left-1 text-primary text-[10px] select-none font-bold">❖</span>
+<span class="absolute bottom-1 right-1 text-primary text-[10px] select-none font-bold">❖</span>
+<!-- Pixel Avatar -->
+<div class="w-56 h-56 sm:w-64 sm:h-64 rounded overflow-hidden bg-surface-container-highest relative">
+<img class="w-full h-full object-cover" data-alt="Detailed pixel art portrait of Overseer Urist McTypist, a rugged dwarven stonewright with braided fiery red beard adorned with engraved brass rings, wearing brass goggles with glowing amber lenses, heavy carved granite plate armor with pickaxe and anvil insignias, in a dark subterranean mossy cavern with emerald-tinted runic glow and ancient stone masonry in Dwarf Fortress aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhe6NBMG_f-0jLYn9R6jfByLVHCXMbGbC4f6xVF2qAKqT1WZPVC6ZxRy1acRG-VRbWPBz8trJwLmNlvEgl64p6OuTxU4r0_yxZGW23qTE5In4L-QKjqu1nF9ClJiS4J1tkY0lzJ0eMTCvPQ-nXLjPyRkhshVXRchahx_LkkveMnIUuA3t-KbaXb9TVBbgc6v5QkQeiw_Cstv2szWXiS3xNYrcFL0NfIdxhvtwpCi4U7ecpV2CnYLu3iQ"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest/80 via-transparent to-transparent"></div>
+<div class="absolute bottom-2 left-2 right-2 flex justify-between items-center text-label-sm font-label-sm uppercase px-2 py-0.5 bg-surface-container-lowest/90 rounded text-primary">
+<span>[LVL 24]</span>
+<span class="text-tertiary">RANK: ARTISAN</span>
+</div>
+</div>
+</div>
+<!-- Quick Class Badge -->
+<div class="mt-space-sm flex items-center gap-space-xs">
+<span class="bg-secondary-container text-on-secondary-container px-space-sm py-0.5 rounded font-label-sm text-label-sm uppercase font-bold tracking-wider">
+              ⛏ ROYAL CAVERN ENGRAVER
+            </span>
+</div>
+</div>
+<!-- Dossier Information & XP Terminal Gauge -->
+<div class="lg:col-span-8 xl:col-span-9 flex flex-col gap-space-md">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm pb-space-sm">
+<div>
+<div class="flex items-center gap-space-xs text-primary font-label-md text-label-md uppercase tracking-wider">
+<span class="material-symbols-outlined text-[16px]">shield_person</span>
+<span>DOSSIER // CITADEL OF GRANITE • EXPEDITION #84</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface uppercase tracking-wide mt-1">
+                OVERSEER URIST MCTYPIST
+              </h1>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-2 mt-0.5">
+<span class="text-secondary font-bold">CLAN OF THE OBSIDIAN QUILL</span>
+<span class="text-outline">▪</span>
+<span>Master Stonewright &amp; Chief Lexicographer</span>
+</p>
+</div>
+<!-- Profile Action Badges -->
+<div class="flex flex-wrap sm:flex-col gap-space-xs">
+<button class="bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-primary font-label-sm text-label-sm uppercase px-space-sm py-1.5 rounded transition-all text-left flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-primary">edit_note</span>
+                [EDIT INSCRIPTION]
+              </button>
+<button class="bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-secondary font-label-sm text-label-sm uppercase px-space-sm py-1.5 rounded transition-all text-left flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-secondary">workspace_premium</span>
+                [SWITCH GUILD TITLES]
+              </button>
+<button class="bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-tertiary font-label-sm text-label-sm uppercase px-space-sm py-1.5 rounded transition-all text-left flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-tertiary">auto_fix_high</span>
+                [INSPECT RUNES &amp; EMBLEM]
+              </button>
+</div>
+</div>
+<!-- XP Gauge / Level Progression Panel -->
+<div class="bg-surface-container-lowest p-space-md rounded-lg flex flex-col gap-space-xs">
+<div class="flex flex-wrap items-center justify-between text-label-sm font-label-sm uppercase gap-space-xs">
+<span class="text-on-surface font-semibold flex items-center gap-1.5">
+<span class="text-primary font-bold">▲ EXP PROGRESSION:</span>
+<span>LEVEL 24</span>
+<span class="text-outline">→</span>
+<span class="text-primary">LEVEL 25 [ADAMANTINE GRAND ARTISAN]</span>
+</span>
+<span class="text-primary font-mono font-bold tracking-wider">
+                8,420 / 10,000 XP <span class="text-on-surface-variant font-normal">(1,580 TO ADVANCE)</span>
+</span>
+</div>
+<!-- Terminal Segmented Gauge -->
+<div class="w-full bg-surface-container-high rounded p-1.5 flex items-center gap-2">
+<div class="flex-1 font-body-sm text-body-sm tracking-widest text-primary truncate select-none">
+<span class="text-primary">■■■■■■■■■■■■■■■■</span><span class="text-surface-variant">░░░░</span>
+</div>
+<span class="font-label-md text-label-md text-primary font-bold px-2 py-0.5 bg-surface-container-lowest rounded">
+                84.2%
+              </span>
+</div>
+<div class="flex flex-wrap items-center justify-between text-label-sm font-label-sm text-on-surface-variant pt-1">
+<span>ACTIVE GUILD BUFF: <strong class="text-tertiary">+12% EXPEDITION MINING SPEED</strong></span>
+<span>ESTIMATED ADVANCE: <strong class="text-on-surface">~4 PERFECT CHAMBERS</strong></span>
+</div>
+</div>
+<!-- Quick Status Flags -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-sm text-label-sm font-label-sm uppercase">
+<div class="bg-surface-container px-space-sm py-space-xs rounded flex flex-col">
+<span class="text-on-surface-variant">ALIGNMENT</span>
+<span class="text-on-surface font-bold">STALWART / MOUNTAIN</span>
+</div>
+<div class="bg-surface-container px-space-sm py-space-xs rounded flex flex-col">
+<span class="text-on-surface-variant">CURRENT FACTION</span>
+<span class="text-primary font-bold">IRONVEIN GUILD</span>
+</div>
+<div class="bg-surface-container px-space-sm py-space-xs rounded flex flex-col">
+<span class="text-on-surface-variant">DEPTH SPECIALTY</span>
+<span class="text-secondary font-bold">MAGMA CRAG (-480Z)</span>
+</div>
+<div class="bg-surface-container px-space-sm py-space-xs rounded flex flex-col">
+<span class="text-on-surface-variant">TERMINAL KIN</span>
+<span class="text-tertiary font-bold">DWARF FORTRESS UI</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 2. CORE MINING & TYPING METRICS GRID (4-CARD ASCII DASHBOARD) -->
+<section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-space-md">
+<!-- Card 1: Peak Speed -->
+<div class="bg-surface-container-low rounded-lg p-space-md flex flex-col justify-between shadow-lg relative overflow-hidden">
+<div class="absolute -right-6 -bottom-6 opacity-5 pointer-events-none text-primary">
+<span class="material-symbols-outlined text-[120px]">speed</span>
+</div>
+<div class="flex items-center justify-between text-label-sm font-label-sm uppercase text-on-surface-variant pb-space-xs">
+<span class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]">bolt</span>
+            PEAK CARVING SPEED
+          </span>
+<span class="bg-surface-container-high px-1.5 py-0.5 rounded text-on-surface-variant">[ALL-TIME]</span>
+</div>
+<div class="my-space-sm flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-primary font-bold tracking-tight">112</span>
+<span class="font-headline-sm text-headline-sm text-on-surface-variant uppercase">WPM</span>
+</div>
+<div class="pt-space-xs flex flex-col gap-1 text-label-sm font-label-sm">
+<div class="flex justify-between text-on-surface-variant">
+<span>CHAMBER APEX:</span>
+<span class="text-on-surface font-semibold">#8849 Adamantine Vein</span>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span>HISTORICAL MEDIAN:</span>
+<span class="text-tertiary font-semibold">84.6 WPM (+3.2% weekly)</span>
+</div>
+</div>
+</div>
+<!-- Card 2: Runic Accuracy -->
+<div class="bg-surface-container-low rounded-lg p-space-md flex flex-col justify-between shadow-lg relative overflow-hidden">
+<div class="absolute -right-6 -bottom-6 opacity-5 pointer-events-none text-tertiary">
+<span class="material-symbols-outlined text-[120px]">verified</span>
+</div>
+<div class="flex items-center justify-between text-label-sm font-label-sm uppercase text-on-surface-variant pb-space-xs">
+<span class="flex items-center gap-1 text-tertiary">
+<span class="material-symbols-outlined text-[16px]">task_alt</span>
+            RUNIC ACCURACY
+          </span>
+<span class="bg-surface-container-high px-1.5 py-0.5 rounded text-tertiary">[FAULTLESS]</span>
+</div>
+<div class="my-space-sm flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-tertiary font-bold tracking-tight">98.4</span>
+<span class="font-headline-sm text-headline-sm text-on-surface-variant uppercase">%</span>
+</div>
+<div class="pt-space-xs flex flex-col gap-1 text-label-sm font-label-sm">
+<div class="flex justify-between text-on-surface-variant">
+<span>FRACTURES AVERTED:</span>
+<span class="text-on-surface font-semibold">1,420 Cave-In Saves</span>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span>UNRECOVERED FAULTS:</span>
+<span class="text-error font-semibold">0.4% Overall Drift</span>
+</div>
+</div>
+</div>
+<!-- Card 3: Total Words / Stones Mined -->
+<div class="bg-surface-container-low rounded-lg p-space-md flex flex-col justify-between shadow-lg relative overflow-hidden">
+<div class="absolute -right-6 -bottom-6 opacity-5 pointer-events-none text-secondary">
+<span class="material-symbols-outlined text-[120px]">diamond</span>
+</div>
+<div class="flex items-center justify-between text-label-sm font-label-sm uppercase text-on-surface-variant pb-space-xs">
+<span class="flex items-center gap-1 text-secondary">
+<span class="material-symbols-outlined text-[16px]">landslide</span>
+            STONES EXCAVATED
+          </span>
+<span class="bg-surface-container-high px-1.5 py-0.5 rounded text-on-surface-variant">[VOLUME]</span>
+</div>
+<div class="my-space-sm flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-secondary font-bold tracking-tight">148,920</span>
+<span class="font-headline-sm text-headline-sm text-on-surface-variant uppercase">WORDS</span>
+</div>
+<div class="pt-space-xs flex flex-col gap-1 text-label-sm font-label-sm">
+<div class="flex justify-between text-on-surface-variant">
+<span>BEDROCK PENETRATION:</span>
+<span class="text-on-surface font-semibold">4.2 Subterranean KM</span>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span>EXPEDITIONS CONCLUDED:</span>
+<span class="text-secondary font-semibold">412 Tunnel Campaigns</span>
+</div>
+</div>
+</div>
+<!-- Card 4: Magma Forge Streak -->
+<div class="bg-surface-container-low rounded-lg p-space-md flex flex-col justify-between shadow-lg relative overflow-hidden">
+<div class="absolute -right-6 -bottom-6 opacity-5 pointer-events-none text-primary">
+<span class="material-symbols-outlined text-[120px]">local_fire_department</span>
+</div>
+<div class="flex items-center justify-between text-label-sm font-label-sm uppercase text-on-surface-variant pb-space-xs">
+<span class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]">local_fire_department</span>
+            MAGMA FORGE STREAK
+          </span>
+<span class="bg-secondary-container text-on-secondary-container px-1.5 py-0.5 rounded font-bold">[ACTIVE]</span>
+</div>
+<div class="my-space-sm flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-primary font-bold tracking-tight">14</span>
+<span class="font-headline-sm text-headline-sm text-on-surface-variant uppercase">RACES</span>
+</div>
+<div class="pt-space-xs flex flex-col gap-1 text-label-sm font-label-sm">
+<div class="flex justify-between text-on-surface-variant">
+<span>FORGE BONUS:</span>
+<span class="text-primary font-semibold">+15% Adamantine Yield</span>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span>STREAK RECORD:</span>
+<span class="text-on-surface font-semibold">22 Flawless Runs</span>
+</div>
+</div>
+</div>
+</section>
+<!-- 3. MAIN SECTION: SPLIT FORGE GEAR LOADOUT & HALL OF ENGRAVED FEATS -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-gutter-desktop">
+<!-- Column A: Equipped Forge Gear & Sound Profile (5 cols) -->
+<div class="xl:col-span-5 flex flex-col gap-space-md">
+<!-- Loadout Container -->
+<div class="bg-surface-container-low rounded-lg p-space-md flex flex-col gap-space-md shadow-xl">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-space-xs text-primary font-headline-sm text-headline-sm uppercase">
+<span class="material-symbols-outlined text-[20px]">handyman</span>
+<span>EQUIPPED FORGE LOADOUT</span>
+</div>
+<span class="font-label-sm text-label-sm uppercase bg-surface-container-high text-on-surface-variant px-space-xs py-0.5 rounded">
+              3/3 SLOTS SLOTTED
+            </span>
+</div>
+<!-- Item 1: Primary Weapon / Chisel -->
+<div class="bg-surface-container rounded-lg p-space-sm flex gap-space-sm items-start hover:bg-surface-container-high transition-colors cursor-pointer">
+<div class="w-12 h-12 rounded bg-surface-container-lowest flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[26px]">hardware</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md uppercase text-primary font-bold truncate">Ancestral Basalt Pick &amp; Quill</span>
+<span class="font-label-sm text-label-sm uppercase text-secondary bg-surface-container-lowest px-1.5 py-0.5 rounded">LVL 20</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                Runic mechanical stylus forged in the Great Hearth of Moria.
+              </p>
+<div class="flex flex-wrap gap-1 mt-1.5 font-label-sm text-label-sm">
+<span class="bg-surface-container-lowest text-tertiary px-1.5 py-0.5 rounded">-15ms Keystroke Latency</span>
+<span class="bg-surface-container-lowest text-primary px-1.5 py-0.5 rounded">+5 WPM Volcanic Cavern surge</span>
+</div>
+</div>
+</div>
+<!-- Item 2: Headgear -->
+<div class="bg-surface-container rounded-lg p-space-sm flex gap-space-sm items-start hover:bg-surface-container-high transition-colors cursor-pointer">
+<div class="w-12 h-12 rounded bg-surface-container-lowest flex items-center justify-center text-secondary flex-shrink-0">
+<span class="material-symbols-outlined text-[26px]">visibility</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md uppercase text-secondary font-bold truncate">Brass Magma-Vision Goggles</span>
+<span class="font-label-sm text-label-sm uppercase text-secondary bg-surface-container-lowest px-1.5 py-0.5 rounded">RELIC</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                Twin focal lenses tuned to register thermal fractures in stone walls.
+              </p>
+<div class="flex flex-wrap gap-1 mt-1.5 font-label-sm text-label-sm">
+<span class="bg-surface-container-lowest text-primary px-1.5 py-0.5 rounded">Highlights Misplaced Runes</span>
+<span class="bg-surface-container-lowest text-on-surface-variant px-1.5 py-0.5 rounded">Anti-Glare Smoke Filter</span>
+</div>
+</div>
+</div>
+<!-- Item 3: Armor -->
+<div class="bg-surface-container rounded-lg p-space-sm flex gap-space-sm items-start hover:bg-surface-container-high transition-colors cursor-pointer">
+<div class="w-12 h-12 rounded bg-surface-container-lowest flex items-center justify-center text-tertiary flex-shrink-0">
+<span class="material-symbols-outlined text-[26px]">shield</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md uppercase text-on-surface font-bold truncate">Granite Plate of the Engraver</span>
+<span class="font-label-sm text-label-sm uppercase text-secondary bg-surface-container-lowest px-1.5 py-0.5 rounded">CHISELED</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                Thick basalt slab reinforced with riveted bronze brackets.
+              </p>
+<div class="flex flex-wrap gap-1 mt-1.5 font-label-sm text-label-sm">
+<span class="bg-surface-container-lowest text-tertiary px-1.5 py-0.5 rounded">+1 Typo Fault Tolerance</span>
+<span class="bg-surface-container-lowest text-on-surface-variant px-1.5 py-0.5 rounded">Cave-In Shock Reduction</span>
+</div>
+</div>
+</div>
+<!-- Keystroke Acoustics Selector (Dwarven Switchboard) -->
+<div class="bg-surface-container-lowest p-space-md rounded-lg flex flex-col gap-space-sm">
+<div class="flex items-center justify-between text-label-sm font-label-sm uppercase text-on-surface-variant">
+<span class="text-primary font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">volume_up</span>
+                KEYSTROKE ACOUSTIC FORGE
+              </span>
+<span>AUDIO PROFILE</span>
+</div>
+<div class="grid grid-cols-1 gap-space-xs font-label-sm text-label-sm">
+<label class="flex items-center justify-between p-2 rounded bg-surface-container hover:bg-surface-container-high cursor-pointer transition-colors">
+<div class="flex items-center gap-2">
+<span class="text-primary font-bold">[X]</span>
+<span class="text-on-surface font-semibold">Deep Granite Clack</span>
+<span class="text-outline-variant text-[11px]">(Cherry MX Blue / Iron Strike)</span>
+</div>
+<span class="text-primary text-[11px] uppercase">SELECTED</span>
+</label>
+<label class="flex items-center justify-between p-2 rounded bg-surface-container/60 hover:bg-surface-container-high cursor-pointer transition-colors">
+<div class="flex items-center gap-2">
+<span class="text-outline">[ ]</span>
+<span class="text-on-surface-variant">Runic Basalt Thud</span>
+<span class="text-outline-variant text-[11px]">(Topre 55g / Damped Slate)</span>
+</div>
+<span class="text-outline-variant text-[11px] uppercase">READY</span>
+</label>
+<label class="flex items-center justify-between p-2 rounded bg-surface-container/60 hover:bg-surface-container-high cursor-pointer transition-colors">
+<div class="flex items-center gap-2">
+<span class="text-outline">[ ]</span>
+<span class="text-on-surface-variant">Magma Bubbles</span>
+<span class="text-outline-variant text-[11px]">(Silent Linear / Molten Flow)</span>
+</div>
+<span class="text-outline-variant text-[11px] uppercase">READY</span>
+</label>
+</div>
+</div>
+</div>
+<!-- Runic Artisan Quote Inscription Card -->
+<div class="bg-surface-container-low rounded-lg p-space-md shadow-lg flex items-start gap-space-sm relative">
+<span class="material-symbols-outlined text-secondary text-[32px] opacity-40 select-none">format_quote</span>
+<div class="flex flex-col">
+<p class="font-body-sm text-body-sm text-on-surface-variant italic leading-relaxed">
+              "Strike the granite true, young scribes. A cracked glyph at five hundred cubits down brings not merely shame, but two thousand tons of ceiling upon the clan."
+            </p>
+<span class="font-label-sm text-label-sm text-primary uppercase mt-space-xs font-bold">
+              — INSCRIBED UPON THE GREAT LINTEL OF FORTRESS BOATMURDERED
+            </span>
+</div>
+</div>
+</div>
+<!-- Column B: Hall of Feats & Medals (7 cols) -->
+<div class="xl:col-span-7 flex flex-col gap-space-md">
+<div class="bg-surface-container-low rounded-lg p-space-md flex flex-col gap-space-md shadow-xl flex-1">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-space-xs text-primary font-headline-sm text-headline-sm uppercase">
+<span class="material-symbols-outlined text-[20px]">military_tech</span>
+<span>HALL OF ENGRAVED FEATS &amp; RUNIC MEDALS</span>
+</div>
+<span class="font-label-sm text-label-sm uppercase bg-surface-container text-on-surface-variant px-space-xs py-0.5 rounded">
+              34 / 48 UNLOCKED
+            </span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-sm">
+<!-- Medal 1: Gold Feat -->
+<div class="bg-surface-container p-space-sm rounded-lg flex flex-col justify-between shadow-md relative overflow-hidden group hover:bg-surface-container-high transition-colors">
+<div class="flex items-start gap-space-sm">
+<div class="w-10 h-10 rounded bg-primary-container/20 text-primary flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[22px]">pets</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md uppercase text-primary font-bold truncate">Bane of the Beast</span>
+<span class="font-label-sm text-label-sm bg-primary/20 text-primary px-1.5 py-0.5 rounded font-bold">GOLD</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+                    Cleared a 120-word subterranean titan boss encounter at &gt;100 WPM with exactly 0 typo fractures.
+                  </p>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span class="text-tertiary">FEAT UNLOCKED</span>
+<span>OCT 14, 1053</span>
+</div>
+</div>
+<!-- Medal 2: Bronze Feat -->
+<div class="bg-surface-container p-space-sm rounded-lg flex flex-col justify-between shadow-md relative overflow-hidden group hover:bg-surface-container-high transition-colors">
+<div class="flex items-start gap-space-sm">
+<div class="w-10 h-10 rounded bg-secondary-container/30 text-secondary flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[22px]">timer</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md uppercase text-secondary font-bold truncate">Magma Marathon</span>
+<span class="font-label-sm text-label-sm bg-secondary/20 text-secondary px-1.5 py-0.5 rounded font-bold">BRONZE</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+                    Carved continuously for 60 consecutive minutes without fracturing the cavern magma seal.
+                  </p>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span class="text-tertiary">FEAT UNLOCKED</span>
+<span>DEC 02, 1053</span>
+</div>
+</div>
+<!-- Medal 3: Silver Feat -->
+<div class="bg-surface-container p-space-sm rounded-lg flex flex-col justify-between shadow-md relative overflow-hidden group hover:bg-surface-container-high transition-colors">
+<div class="flex items-start gap-space-sm">
+<div class="w-10 h-10 rounded bg-surface-container-highest text-on-surface flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[22px]">workspace_premium</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md uppercase text-on-surface font-bold truncate">Adamantine Rush</span>
+<span class="font-label-sm text-label-sm bg-on-surface/10 text-on-surface px-1.5 py-0.5 rounded font-bold">SILVER</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+                    Secured 1st place in 50 synchronous multiplayer quarry excavation sprints.
+                  </p>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span class="text-tertiary">FEAT UNLOCKED</span>
+<span>JAN 19, 1054</span>
+</div>
+</div>
+<!-- Medal 4: In-Progress Liturgy Feat -->
+<div class="bg-surface-container p-space-sm rounded-lg flex flex-col justify-between shadow-md relative overflow-hidden group hover:bg-surface-container-high transition-colors">
+<div class="flex items-start gap-space-sm">
+<div class="w-10 h-10 rounded bg-surface-container-lowest text-outline flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[22px]">menu_book</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md uppercase text-on-surface-variant font-bold truncate">Ancient Decryptor</span>
+<span class="font-label-sm text-label-sm bg-surface-container-lowest text-primary px-1.5 py-0.5 rounded font-mono">78.5%</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+                    Transcribe 10,000 words of archaic bilingual dwarven liturgy and mountain hymn verses.
+                  </p>
+</div>
+</div>
+<!-- In-progress bar -->
+<div class="mt-space-sm pt-space-xs flex flex-col gap-1">
+<div class="w-full bg-surface-container-lowest rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 78.5%;"></div>
+</div>
+<div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span class="text-primary font-mono">7,850 / 10,000 WORDS</span>
+<span>PROGRESSING</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Historic WPM Telemetry Chart Card -->
+<div class="bg-surface-container-lowest p-space-md rounded-lg flex flex-col gap-space-sm mt-auto">
+<div class="flex items-center justify-between text-label-sm font-label-sm uppercase text-on-surface-variant">
+<span class="text-primary font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">show_chart</span>
+                CARVING SPEED RUNIC DRIFT (LAST 10 EXPEDITIONS)
+              </span>
+<span>MEDIAN: 94 WPM</span>
+</div>
+<!-- Inline SVG Sparkline / Graph -->
+<div class="w-full h-20 flex items-center">
+<svg class="w-full h-full text-primary" fill="none" preserveaspectratio="none" stroke="currentColor" stroke-width="2" viewbox="0 0 400 80">
+<!-- Grid Lines -->
+<line opacity="0.1" stroke="#ffffff" stroke-dasharray="2 2" x1="0" x2="400" y1="20" y2="20"></line>
+<line opacity="0.1" stroke="#ffffff" stroke-dasharray="2 2" x1="0" x2="400" y1="40" y2="40"></line>
+<line opacity="0.1" stroke="#ffffff" stroke-dasharray="2 2" x1="0" x2="400" y1="60" y2="60"></line>
+<!-- Shaded Area Gradient -->
+<defs>
+<lineargradient id="primaryGlow" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#c59b27" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="#c59b27" stop-opacity="0.0"></stop>
+</lineargradient>
+</defs>
+<polygon fill="url(#primaryGlow)" points="0,55 40,50 80,62 120,42 160,45 200,30 240,38 280,22 320,28 360,15 400,20 400,80 0,80" stroke="none"></polygon>
+<!-- Telemetry Line -->
+<polyline points="0,55 40,50 80,62 120,42 160,45 200,30 240,38 280,22 320,28 360,15 400,20"></polyline>
+<!-- Node Points -->
+<circle cx="0" cy="55" fill="#c59b27" r="3"></circle>
+<circle cx="80" cy="62" fill="#c59b27" r="3"></circle>
+<circle cx="160" cy="45" fill="#c59b27" r="3"></circle>
+<circle cx="280" cy="22" fill="#c59b27" r="3"></circle>
+<circle cx="360" cy="15" fill="#ffb77b" r="4"></circle>
+<circle cx="400" cy="20" fill="#a4d393" r="3"></circle>
+</svg>
+</div>
+<div class="flex justify-between text-label-sm font-label-sm text-outline-variant font-mono">
+<span>EXP-75 [76 WPM]</span>
+<span>EXP-78 [88 WPM]</span>
+<span>EXP-81 [98 WPM]</span>
+<span class="text-secondary">EXP-83 [112 WPM APEX]</span>
+<span class="text-tertiary">EXP-84 [108 WPM]</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- 4. RECENT EXPEDITION DRIFT & LOGS (TERMINAL TABLE) -->
+<section class="w-full bg-surface-container-low rounded-lg p-space-md shadow-xl flex flex-col gap-space-sm">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between pb-space-xs gap-space-xs">
+<div class="flex items-center gap-space-xs text-primary font-headline-sm text-headline-sm uppercase">
+<span class="material-symbols-outlined text-[20px]">list_alt</span>
+<span>CHAMBER MINING LEDGER // RECENT EXPEDITIONS</span>
+</div>
+<div class="flex items-center gap-space-sm text-label-sm font-label-sm">
+<span class="text-on-surface-variant uppercase">FILTER LEDGER:</span>
+<button class="px-2 py-0.5 bg-primary text-on-primary font-bold rounded uppercase">[ALL DEPTHS]</button>
+<button class="px-2 py-0.5 bg-surface-container hover:bg-surface-container-high text-on-surface-variant rounded uppercase transition-colors">[MAGMA ONLY]</button>
+<button class="px-2 py-0.5 bg-surface-container hover:bg-surface-container-high text-on-surface-variant rounded uppercase transition-colors">[ADAMANTINE]</button>
+</div>
+</div>
+<!-- Monospace Table -->
+<div class="w-full overflow-x-auto">
+<table class="w-full text-left font-body-sm text-body-sm border-collapse">
+<thead>
+<tr class="bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+<th class="p-space-sm">CHAMBER ID</th>
+<th class="p-space-sm">DEPTH / BIOME</th>
+<th class="p-space-sm text-right">CARVING SPEED</th>
+<th class="p-space-sm text-right">ACCURACY</th>
+<th class="p-space-sm text-right">FAULTS</th>
+<th class="p-space-sm text-right">ORE YIELD</th>
+<th class="p-space-sm text-right">TIMESTAMP</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container transition-colors">
+<td class="p-space-sm font-mono font-bold text-primary">#EXP-84 (CURRENT)</td>
+<td class="p-space-sm text-secondary font-mono">-480Z Magma Crag</td>
+<td class="p-space-sm text-right font-mono font-bold text-on-surface">108 WPM</td>
+<td class="p-space-sm text-right font-mono text-tertiary">99.2%</td>
+<td class="p-space-sm text-right font-mono text-on-surface-variant">1</td>
+<td class="p-space-sm text-right font-mono text-secondary font-semibold">+420 Basalt Ore</td>
+<td class="p-space-sm text-right font-mono text-outline">12m ago</td>
+</tr>
+<!-- Row 2 -->
+<tr class="bg-surface-container-low/50 hover:bg-surface-container transition-colors">
+<td class="p-space-sm font-mono font-bold text-on-surface">#EXP-83 (APEX)</td>
+<td class="p-space-sm text-primary font-mono">-512Z Adamantine Vein</td>
+<td class="p-space-sm text-right font-mono font-bold text-primary">112 WPM 🔥</td>
+<td class="p-space-sm text-right font-mono text-tertiary">100.0%</td>
+<td class="p-space-sm text-right font-mono text-tertiary font-bold">0</td>
+<td class="p-space-sm text-right font-mono text-primary font-semibold">+890 Adamantine</td>
+<td class="p-space-sm text-right font-mono text-outline">1h ago</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container transition-colors">
+<td class="p-space-sm font-mono text-on-surface">#EXP-82</td>
+<td class="p-space-sm text-on-surface-variant font-mono">-320Z Granite Chasm</td>
+<td class="p-space-sm text-right font-mono text-on-surface">94 WPM</td>
+<td class="p-space-sm text-right font-mono text-tertiary">97.8%</td>
+<td class="p-space-sm text-right font-mono text-error">3</td>
+<td class="p-space-sm text-right font-mono text-on-surface-variant">+310 Granite Rubble</td>
+<td class="p-space-sm text-right font-mono text-outline">3h ago</td>
+</tr>
+<!-- Row 4 -->
+<tr class="bg-surface-container-low/50 hover:bg-surface-container transition-colors">
+<td class="p-space-sm font-mono text-on-surface">#EXP-81</td>
+<td class="p-space-sm text-on-surface-variant font-mono">-180Z Copper Seam</td>
+<td class="p-space-sm text-right font-mono text-on-surface">88 WPM</td>
+<td class="p-space-sm text-right font-mono text-tertiary">98.5%</td>
+<td class="p-space-sm text-right font-mono text-on-surface-variant">2</td>
+<td class="p-space-sm text-right font-mono text-on-secondary font-semibold">+240 Native Copper</td>
+<td class="p-space-sm text-right font-mono text-outline">5h ago</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-surface-container transition-colors">
+<td class="p-space-sm font-mono text-on-surface">#EXP-80</td>
+<td class="p-space-sm text-on-surface-variant font-mono">-040Z Surface Drift</td>
+<td class="p-space-sm text-right font-mono text-on-surface">82 WPM</td>
+<td class="p-space-sm text-right font-mono text-tertiary">99.0%</td>
+<td class="p-space-sm text-right font-mono text-on-surface-variant">1</td>
+<td class="p-space-sm text-right font-mono text-on-surface-variant">+150 Limestone</td>
+<td class="p-space-sm text-right font-mono text-outline">1d ago</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Ledger Footer Summary -->
+<div class="flex flex-wrap items-center justify-between text-label-sm font-label-sm text-on-surface-variant pt-space-xs">
+<span class="font-mono">SHOWING 5 OF 412 ARCHIVED CAMPAIGNS [ALL CERTIFIED BY OVERSEER URIST]</span>
+<div class="flex items-center gap-space-xs font-mono">
+<button class="px-2 py-0.5 bg-surface-container hover:bg-surface-container-high rounded text-on-surface uppercase">[PREV]</button>
+<span class="text-primary px-1">PAGE 1 / 83</span>
+<button class="px-2 py-0.5 bg-surface-container hover:bg-surface-container-high rounded text-on-surface uppercase">[NEXT]</button>
+</div>
+</div>
+</section>
+</div>
+</div></main><footer class="fixed bottom-0 left-0 right-0 h-12 z-40 bg-surface-container-lowest shadow-[0_-2px_10px_rgba(0,0,0,0.5)]"><div class="h-full w-full px-margin-desktop flex items-center justify-between font-label-sm text-label-sm uppercase text-on-surface-variant"><span class="">▪ DEPTH: -480 Z-LEVEL (MAGMA CRAG) ▪ ROOM: #EXP-84 (PUBLIC LANTERN) ▪ PROTOCOL: ASCII_SOCKET_v2</span><div class="flex items-center gap-space-md"><span class="">STATUS: [MINING SYNCHRONIZED]</span><span class="text-tertiary">● SYSTEM OPTIMAL: 112 WPM APEX</span><span class="text-on-surface select-none">▪</span></div></div></footer>
+</body></html>
