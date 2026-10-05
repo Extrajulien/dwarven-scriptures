@@ -23,6 +23,8 @@ function layerStyle(layer: ResolvedSpriteRef, scale: number): CSSProperties {
     imageRendering: 'pixelated',
     // Overlay layers must never intercept pointer events aimed at the cell.
     pointerEvents: 'none',
+    // Tint grayscale sprites (e.g. mineral veins) by multiplying a solid color.
+    ...(layer.tint ? { backgroundColor: layer.tint, backgroundBlendMode: 'multiply' as const } : {}),
   };
 }
 
@@ -32,7 +34,7 @@ function layersEqual(a: readonly ResolvedSpriteRef[], b: readonly ResolvedSprite
   for (let i = 0; i < a.length; i++) {
     const x = a[i];
     const y = b[i];
-    if (x.sheet !== y.sheet || x.gridX !== y.gridX || x.gridY !== y.gridY) return false;
+    if (x.sheet !== y.sheet || x.gridX !== y.gridX || x.gridY !== y.gridY || x.tint !== y.tint) return false;
   }
   return true;
 }

@@ -1,46 +1,48 @@
 import type { SheetKey, SpriteKey } from './spriteRegistry';
 import { resolveSprite } from './spriteRegistry';
 import {
-  CONNECTABLE,
-  CONNECTED_SETS,
   MASK,
-  resolveMaskOffset,
+  MINERALS,
+  VEIN_SHEET,
   WALL_CORNER,
   WALL_CORNER_OFFSETS,
   WALL_SHEET,
   wallBaseOffset,
-  type ConnectedFeature,
+  type MineralId,
 } from './autoTileRegistry';
 
 /**
  * Multi-layer grid cell. Layers render back-to-front:
- *   floor/surface -> veinOrFeature -> diggingState -> occupant.
+ *   floor/surface -> digging overlay -> occupant.
  *
  * Tile state is expressed with flags (not by matching exact sprite keys):
  *   isSolid (IS_SOLID) — any wall variant: natural stone, mineral vein, dirt, built wall.
  *   isAir   (IS_AIR)   — walkable/open space or unrevealed void.
- * `floor_type` is the tile's surface texture: the floor for air cells, and the
- * interior fill (rock top) for solid cells that are buried from air.
+ * `floor_type` is the floor texture rendered for air cells. `mineral` marks a
+ * solid cell as a mineral vein; its exposed face is the grayscale vein sheet
+ * tinted with the mineral's color.
  */
 export interface GridCell {
   isSolid: boolean;
   isAir: boolean;
   floor_type: SpriteKey;
-  veinOrFeature?: SpriteKey;
+  mineral?: MineralId;
   diggingState?: { frame: number };
   occupant?: { spriteKey: SpriteKey; animationState?: string };
 }
 
-/** A fully-resolved tile reference (sheet + cell), independent of SpriteKey. */
+/** A fully-resolved tile reference (sheet + cell + optional tint). */
 export interface ResolvedSpriteRef {
   sheet: SheetKey;
   gridX: number;
   gridY: number;
+  /** CSS color tint for grayscale sprites (multiply blend). */
+  tint?: string;
 }
 
 /** Solid wall tile (IS_SOLID). */
-export function solidTile(floor_type: SpriteKey): GridCell {
-  return { isSolid: true, isAir: false, floor_type };
+export function solidTile(floor_type: SpriteKey, mineral?: MineralId): GridCell {
+  return { isSolid: true, isAir: false, floor_type, mineral };
 }
 
 /** Air / open-space tile (IS_AIR). */
@@ -48,17 +50,11 @@ export function airTile(floor_type: SpriteKey): GridCell {
   return { isSolid: false, isAir: true, floor_type };
 }
 
-interface NeighborStep {
-  dr: number;
-  dc: number;
-  bit: number;
-}
-
-const NEIGHBORS: readonly NeighborStep[] = [
-  { dr: -1, dc: 0, bit: MASK.NORTH },
-  { dr: 0, dc: 1, bit: MASK.EAST },
-  { dr: 1, dc: 0, bit: MASK.SOUTH },
-  { dr: 0, dc: -1, bit: MASK.WEST },
+const DIG_FRAMES: readonly SpriteKey[] = [
+  'mining.progress-0',
+  'mining.progress-1',
+  'mining.progress-2',
+  'mining.progress-3',
 ];
 
 /** All 8 neighbor deltas in a stable order: N, E, S, W, NE, SE, SW, NW. */
@@ -72,44 +68,6 @@ const DIRS_8: ReadonlyArray<readonly [number, number]> = [
   [1, -1],
   [-1, -1],
 ];
-
-const DIG_FRAMES: readonly SpriteKey[] = [
-  'mining.progress-0',
-  'mining.progress-1',
-  'mining.progress-2',
-  'mining.progress-3',
-];
-
-/** True when two cells belong to the same connectable family. */
-export function sameFamily(
-  a: ConnectedFeature | undefined,
-  b: ConnectedFeature | undefined,
-): boolean {
-  return Boolean(a && b && a.family === b.family);
-}
-
-/** Compute the 4-way neighbor bitmask for a cell using the given feature selector. */
-export function computeNeighborMask(
-  grid: readonly GridCell[][],
-  row: number,
-  col: number,
-  select: (cell: GridCell) => SpriteKey | undefined,
-): number {
-  const center = grid[row]?.[col];
-  if (!center) return 0;
-  const centerKey = select(center);
-  if (centerKey === undefined) return 0;
-  const centerFeature = CONNECTABLE[centerKey];
-
-  let mask = 0;
-  for (const { dr, dc, bit } of NEIGHBORS) {
-    const neighbor = grid[row + dr]?.[col + dc];
-    const neighborKey = neighbor ? select(neighbor) : undefined;
-    if (neighborKey === undefined) continue;
-    if (sameFamily(centerFeature, CONNECTABLE[neighborKey])) mask |= bit;
-  }
-  return mask;
-}
 
 // --- Dwarf Fortress wall visibility autotiling -------------------------------
 
@@ -181,8 +139,9 @@ export function evaluateWall(
   return { visible: exposed, baseMask, corners };
 }
 
-/** Resolve a solid wall cell into its wall-face layers (base + corner overlays).
- *  Returns [] for interior/hidden walls (no face drawn). */
+/** Resolve a solid cell into its face layers (base + corner overlays).
+ *  A mineral cell renders the tinted grayscale vein face; otherwise the rock
+ *  face. Returns [] for interior/hidden cells (no face drawn). */
 export function resolveWallCell(
   grid: readonly GridCell[][],
   row: number,
@@ -191,13 +150,19 @@ export function resolveWallCell(
   const { visible, baseMask, corners } = evaluateWall(grid, row, col);
   if (!visible) return [];
 
-  const layers: ResolvedSpriteRef[] = [
-    { sheet: WALL_SHEET, ...wallBaseOffset(baseMask) },
-  ];
-  if (corners & WALL_CORNER.NE) layers.push({ sheet: WALL_SHEET, ...WALL_CORNER_OFFSETS.NE });
-  if (corners & WALL_CORNER.SE) layers.push({ sheet: WALL_SHEET, ...WALL_CORNER_OFFSETS.SE });
-  if (corners & WALL_CORNER.SW) layers.push({ sheet: WALL_SHEET, ...WALL_CORNER_OFFSETS.SW });
-  if (corners & WALL_CORNER.NW) layers.push({ sheet: WALL_SHEET, ...WALL_CORNER_OFFSETS.NW });
+  const cell = grid[row][col];
+  const mineral = cell.mineral ? MINERALS[cell.mineral] : undefined;
+  const sheet = mineral ? VEIN_SHEET : WALL_SHEET;
+  const tint = mineral?.tint;
+
+  const ref = (offset: { gridX: number; gridY: number }): ResolvedSpriteRef =>
+    ({ sheet, ...offset, ...(tint ? { tint } : {}) });
+
+  const layers: ResolvedSpriteRef[] = [ref(wallBaseOffset(baseMask))];
+  if (corners & WALL_CORNER.NE) layers.push(ref(WALL_CORNER_OFFSETS.NE));
+  if (corners & WALL_CORNER.SE) layers.push(ref(WALL_CORNER_OFFSETS.SE));
+  if (corners & WALL_CORNER.SW) layers.push(ref(WALL_CORNER_OFFSETS.SW));
+  if (corners & WALL_CORNER.NW) layers.push(ref(WALL_CORNER_OFFSETS.NW));
   return layers;
 }
 
@@ -213,10 +178,10 @@ export function clearAutoTileCache(): void {
 
 /**
  * Resolve a cell into its ordered back-to-front layer list:
- *   0 floor/surface -> 1 connected vein/feature -> 2 dig overlay -> 3 actor/item.
+ *   0 floor/wall face -> 1 dig overlay -> 2 actor/item.
  *
- * Air cells render their `floor_type`; solid cells render a wall face when
- * exposed to air, or their `floor_type` as interior fill when buried.
+ * Air cells render their `floor_type`; solid cells render a wall/vein face when
+ * exposed to air; buried solid cells render nothing (culled).
  *
  * Pure with respect to (grid, row, col); memoized on a content-based key so
  * unchanged cells return the same array reference across grid updates.
@@ -245,10 +210,6 @@ function buildLayers(grid: readonly GridCell[][], row: number, col: number): Res
 
   layers.push(...resolveBaseLayer(cell, grid, row, col));
 
-  if (cell.veinOrFeature) {
-    layers.push(...resolveConnectable(cell.veinOrFeature, grid, row, col, (c) => c.veinOrFeature));
-  }
-
   if (cell.diggingState) {
     layers.push(spriteRef(digFrameKey(cell.diggingState.frame)));
   }
@@ -260,7 +221,7 @@ function buildLayers(grid: readonly GridCell[][], row: number, col: number): Res
   return layers;
 }
 
-/** Base layer: wall face for exposed solid, interior fill for buried solid, floor for air. */
+/** Base layer: wall/vein face for exposed solid, floor for air, nothing for buried solid. */
 function resolveBaseLayer(
   cell: GridCell,
   grid: readonly GridCell[][],
@@ -268,26 +229,9 @@ function resolveBaseLayer(
   col: number,
 ): ResolvedSpriteRef[] {
   if (cell.isSolid) {
-    const wall = resolveWallCell(grid, row, col);
-    return wall.length > 0 ? wall : [spriteRef(cell.floor_type)];
+    return resolveWallCell(grid, row, col); // [] when interior (culled)
   }
-  return [spriteRef(cell.floor_type)];
-}
-
-function resolveConnectable(
-  key: SpriteKey,
-  grid: readonly GridCell[][],
-  row: number,
-  col: number,
-  select: (cell: GridCell) => SpriteKey | undefined,
-): ResolvedSpriteRef[] {
-  const feature = CONNECTABLE[key];
-  if (!feature) return [spriteRef(key)];
-
-  const set = CONNECTED_SETS[feature.set];
-  const mask = computeNeighborMask(grid, row, col, select);
-  const offset = resolveMaskOffset(set, mask);
-  return [{ sheet: set.sheet, gridX: offset.gridX, gridY: offset.gridY }];
+  return [spriteRef(cell.floor_type)]; // air -> floor
 }
 
 function spriteRef(key: SpriteKey): ResolvedSpriteRef {
@@ -308,6 +252,7 @@ function signature(grid: readonly GridCell[][], row: number, col: number): strin
     Number(cell.isSolid),
     Number(cell.isAir),
     cell.floor_type,
+    cell.mineral ?? '',
   ];
 
   for (const [dr, dc] of DIRS_8) {
@@ -316,11 +261,6 @@ function signature(grid: readonly GridCell[][], row: number, col: number): strin
   }
 
   parts.push(
-    cell.veinOrFeature ?? '',
-    grid[row - 1]?.[col]?.veinOrFeature ?? '',
-    grid[row]?.[col + 1]?.veinOrFeature ?? '',
-    grid[row + 1]?.[col]?.veinOrFeature ?? '',
-    grid[row]?.[col - 1]?.veinOrFeature ?? '',
     cell.diggingState?.frame ?? '',
     cell.occupant?.spriteKey ?? '',
   );

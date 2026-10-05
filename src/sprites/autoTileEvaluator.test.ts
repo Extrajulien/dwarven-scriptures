@@ -1,105 +1,170 @@
 import {
   airTile,
   clearAutoTileCache,
-  computeNeighborMask,
   evaluateWall,
   resolveCellSprites,
   resolveWallCell,
   solidTile,
   type GridCell,
 } from './autoTileEvaluator';
-import { resolveMaskOffset, type ConnectedSpriteSet } from './autoTileRegistry';
+import { MINERALS } from './autoTileRegistry';
 import { computeSpriteStyleFromOffset } from './spriteRegistry';
 
 const rock = (): GridCell => solidTile('terrain.solid-rock');
-const gold = (): GridCell => ({ ...solidTile('terrain.solid-rock'), veinOrFeature: 'vein.gold' });
+const gold = (): GridCell => solidTile('terrain.solid-rock', 'gold');
+const floor = (): GridCell => airTile('terrain.rock.floor');
 
 describe('autoTileEvaluator', () => {
-  test('3x3 cluster center is fully connected (mask 15)', () => {
-    const grid = [
-      [gold(), gold(), gold()],
-      [gold(), gold(), gold()],
-      [gold(), gold(), gold()],
-    ];
-    expect(computeNeighborMask(grid, 1, 1, (c) => c.veinOrFeature)).toBe(15);
+  test('solidTile/airTile set the IS_SOLID / IS_AIR flags and floor_type', () => {
+    expect(rock()).toMatchObject({ isSolid: true, isAir: false, floor_type: 'terrain.solid-rock' });
+    expect(floor()).toMatchObject({ isSolid: false, isAir: true, floor_type: 'terrain.rock.floor' });
+    expect(gold().mineral).toBe('gold');
   });
 
-  test('isolated vein has mask 0', () => {
-    const grid = [
-      [rock(), rock(), rock()],
-      [rock(), gold(), rock()],
-      [rock(), rock(), rock()],
-    ];
-    expect(computeNeighborMask(grid, 1, 1, (c) => c.veinOrFeature)).toBe(0);
+  test('MINERALS enum carries a tint color per mineral', () => {
+    expect(MINERALS.gold.tint).toBe('#eec14b');
+    expect(MINERALS.gold.label).toBe('Gold');
+    expect(MINERALS.silver.tint).toBe('#c9d1d9');
+    expect(MINERALS.copper.tint).toBe('#d98a5f');
   });
 
-  test('cardinal bits are N=1, E=2, S=4, W=8', () => {
-    const north = [
-      [rock(), gold(), rock()],
-      [rock(), gold(), rock()],
+  test('air cell renders its floor_type and no wall body', () => {
+    const grid = [
+      [rock(), rock(), rock()],
+      [rock(), floor(), rock()],
       [rock(), rock(), rock()],
     ];
-    expect(computeNeighborMask(north, 1, 1, (c) => c.veinOrFeature)).toBe(1);
-
-    const east = [
-      [rock(), rock(), rock()],
-      [rock(), gold(), gold()],
-      [rock(), rock(), rock()],
-    ];
-    expect(computeNeighborMask(east, 1, 1, (c) => c.veinOrFeature)).toBe(2);
-
-    const south = [
-      [rock(), rock(), rock()],
-      [rock(), gold(), rock()],
-      [rock(), gold(), rock()],
-    ];
-    expect(computeNeighborMask(south, 1, 1, (c) => c.veinOrFeature)).toBe(4);
-
-    const west = [
-      [rock(), rock(), rock()],
-      [gold(), gold(), rock()],
-      [rock(), rock(), rock()],
-    ];
-    expect(computeNeighborMask(west, 1, 1, (c) => c.veinOrFeature)).toBe(8);
+    expect(resolveCellSprites(grid, 1, 1)).toEqual([{ sheet: 'ramp_stone', gridX: 5, gridY: 9 }]);
   });
 
-  test('resolveCellSprites returns back-to-front layers', () => {
+  test('interior solid (no air neighbor) is culled', () => {
     const grid = [
-      [rock(), gold(), rock()],
-      [rock(), gold(), rock()],
+      [rock(), rock(), rock()],
+      [rock(), rock(), rock()],
       [rock(), rock(), rock()],
     ];
-    grid[1][1] = {
-      ...solidTile('terrain.solid-rock'),
-      veinOrFeature: 'vein.gold',
-      diggingState: { frame: 1 },
-      occupant: { spriteKey: 'actor.dwarf-miner-idle' },
-    };
+    expect(evaluateWall(grid, 1, 1).visible).toBe(false);
+    expect(resolveWallCell(grid, 1, 1)).toEqual([]);
+    expect(resolveCellSprites(grid, 1, 1)).toEqual([]);
+  });
 
+  test('exposed solid rock renders wall face + inner corner (no tint)', () => {
+    const grid = [
+      [floor(), rock(), floor()],
+      [floor(), rock(), rock()],
+      [floor(), floor(), floor()],
+    ];
+    expect(resolveWallCell(grid, 1, 1)).toEqual([
+      { sheet: 'wall', gridX: 3, gridY: 0 },
+      { sheet: 'wall', gridX: 0, gridY: 4 },
+    ]);
+  });
+
+  test('exposed gold vein renders tinted vein face alone (not rock)', () => {
+    const grid = [
+      [floor(), gold(), floor()],
+      [floor(), gold(), gold()],
+      [floor(), floor(), floor()],
+    ];
     const layers = resolveCellSprites(grid, 1, 1);
-    expect(layers).toHaveLength(4);
-    expect(layers[0]).toEqual({ sheet: 'ramp_stone', gridX: 0, gridY: 0 }); // interior rock fill
-    expect(layers[1].sheet).toBe('vein'); // connected gold vein
+    expect(layers).toEqual([
+      { sheet: 'vein', gridX: 3, gridY: 0, tint: MINERALS.gold.tint },
+      { sheet: 'vein', gridX: 0, gridY: 4, tint: MINERALS.gold.tint },
+    ]);
+  });
+
+  test('dig overlay and occupant stack above the wall face', () => {
+    const grid: GridCell[][] = [
+      [floor(), rock(), floor()],
+      [
+        floor(),
+        { ...rock(), diggingState: { frame: 1 }, occupant: { spriteKey: 'actor.dwarf-miner-idle' } },
+        rock(),
+      ],
+      [floor(), floor(), floor()],
+    ];
+    const layers = resolveCellSprites(grid, 1, 1);
+    expect(layers[0]).toEqual({ sheet: 'wall', gridX: 3, gridY: 0 }); // rock base (mask 3)
+    expect(layers[1]).toEqual({ sheet: 'wall', gridX: 0, gridY: 4 }); // NE corner
     expect(layers[2]).toEqual({ sheet: 'mining', gridX: 1, gridY: 0 }); // progress-1
     expect(layers[3]).toEqual({ sheet: 'actors', gridX: 0, gridY: 0 }); // dwarf idle
   });
 
-  test('resolveMaskOffset falls back when a mask is missing', () => {
-    const partial: ConnectedSpriteSet = {
-      sheet: 'vein',
-      fallbackMask: 15,
-      masks: { 15: { gridX: 3, gridY: 3 } },
-    };
-    expect(resolveMaskOffset(partial, 0)).toEqual({ gridX: 3, gridY: 3 });
-    expect(resolveMaskOffset(partial, 15)).toEqual({ gridX: 3, gridY: 3 });
+  test('base mask bits are N=1, E=2, S=4, W=8', () => {
+    const north = [
+      [floor(), rock(), floor()],
+      [floor(), rock(), floor()],
+      [floor(), floor(), floor()],
+    ];
+    expect(evaluateWall(north, 1, 1).baseMask).toBe(1);
+
+    const east = [
+      [floor(), floor(), floor()],
+      [floor(), rock(), rock()],
+      [floor(), floor(), floor()],
+    ];
+    expect(evaluateWall(east, 1, 1).baseMask).toBe(2);
+
+    const south = [
+      [floor(), floor(), floor()],
+      [floor(), rock(), floor()],
+      [floor(), rock(), floor()],
+    ];
+    expect(evaluateWall(south, 1, 1).baseMask).toBe(4);
+
+    const west = [
+      [floor(), floor(), floor()],
+      [rock(), rock(), floor()],
+      [floor(), floor(), floor()],
+    ];
+    expect(evaluateWall(west, 1, 1).baseMask).toBe(8);
+  });
+
+  test('diagonal inner corners (NE=1, SE=2, SW=4, NW=8)', () => {
+    const ne = [
+      [floor(), rock(), floor()],
+      [floor(), rock(), rock()],
+      [floor(), floor(), floor()],
+    ];
+    expect(evaluateWall(ne, 1, 1).corners).toBe(1);
+
+    const se = [
+      [floor(), floor(), floor()],
+      [floor(), rock(), rock()],
+      [floor(), rock(), floor()],
+    ];
+    expect(evaluateWall(se, 1, 1).corners).toBe(2);
+
+    const sw = [
+      [floor(), floor(), floor()],
+      [rock(), rock(), floor()],
+      [floor(), rock(), floor()],
+    ];
+    expect(evaluateWall(sw, 1, 1).corners).toBe(4);
+
+    const nw = [
+      [floor(), rock(), floor()],
+      [rock(), rock(), floor()],
+      [floor(), floor(), floor()],
+    ];
+    expect(evaluateWall(nw, 1, 1).corners).toBe(8);
+  });
+
+  test('different solid types connect as one wall (unified IS_SOLID)', () => {
+    const grid = [
+      [floor(), gold(), floor()],
+      [floor(), rock(), floor()],
+      [floor(), floor(), floor()],
+    ];
+    expect(evaluateWall(grid, 1, 1).baseMask).toBe(1); // gold-vein wall above counts as solid
   });
 
   test('resolveCellSprites memoizes identical cells (stable reference)', () => {
     clearAutoTileCache();
     const grid = [
-      [rock(), gold(), rock()],
-      [rock(), gold(), rock()],
-      [rock(), rock(), rock()],
+      [floor(), gold(), floor()],
+      [floor(), gold(), floor()],
+      [floor(), floor(), floor()],
     ];
     const first = resolveCellSprites(grid, 1, 1);
     expect(resolveCellSprites(grid, 1, 1)).toBe(first);
@@ -111,132 +176,6 @@ describe('autoTileEvaluator', () => {
   test('computeSpriteStyleFromOffset derives pixel-exact offsets', () => {
     const style = computeSpriteStyleFromOffset('vein', 2, 1, 1);
     expect(style.backgroundPosition).toBe('-64px -32px');
-    expect(style.backgroundSize).toBe('128px 160px'); // 4 cols x 5 rows
-  });
-});
-
-describe('wall autotiling (DF visibility rules)', () => {
-  const W: GridCell = solidTile('terrain.solid-rock');
-  const A: GridCell = airTile('terrain.cleared-path');
-
-  test('solidTile/airTile set the IS_SOLID / IS_AIR flags', () => {
-    expect(W.isSolid).toBe(true);
-    expect(W.isAir).toBe(false);
-    expect(A.isSolid).toBe(false);
-    expect(A.isAir).toBe(true);
-  });
-
-  test('air cell renders its floor_type and no wall body', () => {
-    const grid = [
-      [W, W, W],
-      [W, A, W],
-      [W, W, W],
-    ];
-    expect(resolveCellSprites(grid, 1, 1)).toEqual([{ sheet: 'ramp_stone', gridX: 2, gridY: 0 }]);
-  });
-
-  test('interior wall (no air neighbors) is hidden and renders interior fill', () => {
-    const grid = [
-      [W, W, W],
-      [W, W, W],
-      [W, W, W],
-    ];
-    expect(evaluateWall(grid, 1, 1)).toEqual({ visible: false, baseMask: 15, corners: 0 });
-    expect(resolveWallCell(grid, 1, 1)).toEqual([]);
-    expect(resolveCellSprites(grid, 1, 1)).toEqual([{ sheet: 'ramp_stone', gridX: 0, gridY: 0 }]);
-  });
-
-  test('base mask bits are N=1, E=2, S=4, W=8', () => {
-    const north = [
-      [A, W, A],
-      [A, W, A],
-      [A, A, A],
-    ];
-    expect(evaluateWall(north, 1, 1).baseMask).toBe(1);
-
-    const east = [
-      [A, A, A],
-      [A, W, W],
-      [A, A, A],
-    ];
-    expect(evaluateWall(east, 1, 1).baseMask).toBe(2);
-
-    const south = [
-      [A, A, A],
-      [A, W, A],
-      [A, W, A],
-    ];
-    expect(evaluateWall(south, 1, 1).baseMask).toBe(4);
-
-    const west = [
-      [A, A, A],
-      [W, W, A],
-      [A, A, A],
-    ];
-    expect(evaluateWall(west, 1, 1).baseMask).toBe(8);
-  });
-
-  test('diagonal inner corners (NE=1, SE=2, SW=4, NW=8)', () => {
-    const ne = [
-      [A, W, A],
-      [A, W, W],
-      [A, A, A],
-    ];
-    expect(evaluateWall(ne, 1, 1).corners).toBe(1);
-
-    const se = [
-      [A, A, A],
-      [A, W, W],
-      [A, W, A],
-    ];
-    expect(evaluateWall(se, 1, 1).corners).toBe(2);
-
-    const sw = [
-      [A, A, A],
-      [W, W, A],
-      [A, W, A],
-    ];
-    expect(evaluateWall(sw, 1, 1).corners).toBe(4);
-
-    const nw = [
-      [A, W, A],
-      [W, W, A],
-      [A, A, A],
-    ];
-    expect(evaluateWall(nw, 1, 1).corners).toBe(8);
-  });
-
-  test('different solid types connect as one wall (unified IS_SOLID)', () => {
-    const goldWall: GridCell = { ...solidTile('terrain.solid-rock'), veinOrFeature: 'vein.gold' };
-    const grid = [
-      [A, goldWall, A],
-      [A, W, A],
-      [A, A, A],
-    ];
-    expect(evaluateWall(grid, 1, 1).visible).toBe(true);
-    expect(evaluateWall(grid, 1, 1).baseMask).toBe(1); // gold-vein wall counts as solid
-  });
-
-  test('resolveWallCell emits base face then corner overlays', () => {
-    const grid = [
-      [A, W, A],
-      [A, W, W],
-      [A, A, A],
-    ];
-    expect(resolveWallCell(grid, 1, 1)).toEqual([
-      { sheet: 'wall', gridX: 3, gridY: 0 }, // base mask 3 (N|E)
-      { sheet: 'wall', gridX: 0, gridY: 4 }, // NE corner (index 16)
-    ]);
-  });
-
-  test('resolveCellSprites renders wall faces for exposed rock', () => {
-    const grid = [
-      [A, W, A],
-      [A, W, W],
-      [A, A, A],
-    ];
-    const layers = resolveCellSprites(grid, 1, 1);
-    expect(layers[0]).toEqual({ sheet: 'wall', gridX: 3, gridY: 0 });
-    expect(layers[1]).toEqual({ sheet: 'wall', gridX: 0, gridY: 4 });
+    expect(style.backgroundSize).toBe('128px 160px');
   });
 });
