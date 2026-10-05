@@ -24,7 +24,7 @@ function buildBaseGrid(): GridCell[][] {
 
   for (let dr = 0; dr < 3; dr++) {
     for (let dc = 0; dc < 3; dc++) {
-      grid[VEIN_ORIGIN.row + dr][VEIN_ORIGIN.col + dc] = solidTile('terrain.solid-rock', 'gold');
+      grid[VEIN_ORIGIN.row + dr][VEIN_ORIGIN.col + dc] = solidTile('terrain.solid-rock', 'copper');
     }
   }
 
@@ -123,7 +123,7 @@ export default function AutoTileDemo() {
 
       <div
         className="inline-grid bg-outline-variant/30"
-        style={{ gridTemplateColumns: `repeat(${COLS}, ${CELL_PX}px)`, gap: 1 }}
+        style={{ gridTemplateColumns: `repeat(${COLS}, ${CELL_PX}px)`, gap: 0 }}
       >
         {cells.map((row, r) =>
           row.map((cell, c) => (

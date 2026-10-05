@@ -15,16 +15,30 @@ export interface LayeredTileCellProps {
 
 function layerStyle(layer: ResolvedSpriteRef, scale: number): CSSProperties {
   const s = computeSpriteStyleFromOffset(layer.sheet, layer.gridX, layer.gridY, scale);
+  if (layer.tint) {
+    return {
+      backgroundColor: layer.tint,
+      // Use the sprite sheet slice as an alpha mask
+      WebkitMaskImage: s.backgroundImage,
+      maskImage: s.backgroundImage,
+      WebkitMaskPosition: s.backgroundPosition,
+      maskPosition: s.backgroundPosition,
+      WebkitMaskSize: s.backgroundSize,
+      maskSize: s.backgroundSize,
+      WebkitMaskRepeat: s.backgroundRepeat,
+      maskRepeat: s.backgroundRepeat,
+      imageRendering: 'pixelated' as const,
+      pointerEvents: 'none' as const,
+    };
+  }
+
   return {
     backgroundImage: s.backgroundImage,
     backgroundPosition: s.backgroundPosition,
     backgroundSize: s.backgroundSize,
     backgroundRepeat: s.backgroundRepeat,
-    imageRendering: 'pixelated',
-    // Overlay layers must never intercept pointer events aimed at the cell.
-    pointerEvents: 'none',
-    // Tint grayscale sprites (e.g. mineral veins) by multiplying a solid color.
-    ...(layer.tint ? { backgroundColor: layer.tint, backgroundBlendMode: 'multiply' as const } : {}),
+    imageRendering: 'pixelated' as const,
+    pointerEvents: 'none' as const,
   };
 }
 
