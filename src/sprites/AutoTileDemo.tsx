@@ -1,17 +1,14 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   airTile,
-  resolveCellSprites,
   solidTile,
   type GridCell,
-  type ResolvedSpriteRef,
 } from './autoTileEvaluator';
-import { LayeredTileCell } from './LayeredTileCell';
+import TileGrid from './TileGrid';
 
 const ROWS = 8;
 const COLS = 9;
 const SCALE = 2;
-const CELL_PX = 32 * SCALE;
 
 const VEIN_ORIGIN = { row: 3, col: 3 }; // top-left of the 3x3 cluster
 const ISOLATED = { row: 1, col: 7 }; // lone ore (isolated blob)
@@ -47,38 +44,6 @@ const INITIAL_MINED: ReadonlySet<string> = (() => {
   return set;
 })();
 
-interface CellRender {
-  layers: ResolvedSpriteRef[];
-}
-
-interface CellButtonProps {
-  layers: readonly ResolvedSpriteRef[];
-  mined: boolean;
-  row: number;
-  col: number;
-  onToggle: (row: number, col: number) => void;
-}
-
-const CellButton = memo(function CellButton({
-  layers,
-  mined,
-  row,
-  col,
-  onToggle,
-}: CellButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={() => onToggle(row, col)}
-      aria-pressed={mined}
-      title={mined ? 'Restore tile' : 'Mine tile'}
-      className="relative block transition-[filter] hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-    >
-      <LayeredTileCell layers={layers} scale={SCALE} />
-    </button>
-  );
-});
-
 export default function AutoTileDemo() {
   const [mined, setMined] = useState<ReadonlySet<string>>(() => INITIAL_MINED);
 
@@ -105,9 +70,14 @@ export default function AutoTileDemo() {
     [mined],
   );
 
-  const cells = useMemo<CellRender[][]>(
-    () => grid.map((row, r) => row.map((_, c) => ({ layers: resolveCellSprites(grid, r, c) }))),
-    [grid],
+  const getCellLabel = useCallback(
+    (row: number, col: number) => (mined.has(`${row},${col}`) ? 'Restore tile' : 'Mine tile'),
+    [mined],
+  );
+
+  const getCellPressed = useCallback(
+    (row: number, col: number) => mined.has(`${row},${col}`),
+    [mined],
   );
 
   return (
@@ -121,23 +91,14 @@ export default function AutoTileDemo() {
         </p>
       </header>
 
-      <div
-        className="inline-grid bg-outline-variant/30"
-        style={{ gridTemplateColumns: `repeat(${COLS}, ${CELL_PX}px)`, gap: 0 }}
-      >
-        {cells.map((row, r) =>
-          row.map((cell, c) => (
-            <CellButton
-              key={`${r},${c}`}
-              layers={cell.layers}
-              mined={mined.has(`${r},${c}`)}
-              row={r}
-              col={c}
-              onToggle={toggle}
-            />
-          )),
-        )}
-      </div>
+      <TileGrid
+        grid={grid}
+        scale={SCALE}
+        //onCellClick={toggle}
+        getCellLabel={getCellLabel}
+        getCellPressed={getCellPressed}
+        className="bg-outline-variant/30"
+      />
 
       <footer className="flex flex-wrap items-center gap-space-md">
         <button
