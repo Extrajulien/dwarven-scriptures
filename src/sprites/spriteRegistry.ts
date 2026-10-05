@@ -68,8 +68,8 @@ export const SPRITE_SHEETS = {
     url: '/assets/tiles/wall.png',
     tileSize: 32,
     columns: 4,
-    rows: 4,
-    label: 'Connected Wall Faces (16 bitmask tiles)',
+    rows: 5,
+    label: 'Wall Faces (16 base tiles + 4 inner-corner overlays)',
   },
 } as const satisfies Record<string, SpriteSheet>;
 

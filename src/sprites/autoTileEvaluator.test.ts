@@ -1,7 +1,10 @@
 import {
   clearAutoTileCache,
   computeNeighborMask,
+  evaluateWall,
+  isSolidWall,
   resolveCellSprites,
+  resolveWallCell,
   type GridCell,
 } from './autoTileEvaluator';
 import { resolveMaskOffset, type ConnectedSpriteSet } from './autoTileRegistry';
@@ -108,5 +111,109 @@ describe('autoTileEvaluator', () => {
     const style = computeSpriteStyleFromOffset('vein', 2, 1, 1);
     expect(style.backgroundPosition).toBe('-64px -32px');
     expect(style.backgroundSize).toBe('128px 128px');
+  });
+});
+
+describe('wall autotiling (DF visibility rules)', () => {
+  const W: GridCell = { baseTerrain: 'terrain.solid-rock' };
+  const A: GridCell = { baseTerrain: 'terrain.cleared-path' };
+
+  test('isSolidWall classifies walls vs air', () => {
+    expect(isSolidWall(W)).toBe(true);
+    expect(isSolidWall(A)).toBe(false);
+    expect(isSolidWall(undefined)).toBe(false);
+  });
+
+  test('interior wall (no air neighbors) is hidden', () => {
+    const grid = [
+      [W, W, W],
+      [W, W, W],
+      [W, W, W],
+    ];
+    expect(evaluateWall(grid, 1, 1)).toEqual({ visible: false, baseMask: 15, corners: 0 });
+    expect(resolveWallCell(grid, 1, 1)).toEqual([]);
+  });
+
+  test('base mask bits are N=1, E=2, S=4, W=8', () => {
+    const north = [
+      [A, W, A],
+      [A, W, A],
+      [A, A, A],
+    ];
+    expect(evaluateWall(north, 1, 1).baseMask).toBe(1);
+
+    const east = [
+      [A, A, A],
+      [A, W, W],
+      [A, A, A],
+    ];
+    expect(evaluateWall(east, 1, 1).baseMask).toBe(2);
+
+    const south = [
+      [A, A, A],
+      [A, W, A],
+      [A, W, A],
+    ];
+    expect(evaluateWall(south, 1, 1).baseMask).toBe(4);
+
+    const west = [
+      [A, A, A],
+      [W, W, A],
+      [A, A, A],
+    ];
+    expect(evaluateWall(west, 1, 1).baseMask).toBe(8);
+  });
+
+  test('diagonal inner corners (NE=1, SE=2, SW=4, NW=8)', () => {
+    const ne = [
+      [A, W, A],
+      [A, W, W],
+      [A, A, A],
+    ];
+    expect(evaluateWall(ne, 1, 1).corners).toBe(1);
+
+    const se = [
+      [A, A, A],
+      [A, W, W],
+      [A, W, A],
+    ];
+    expect(evaluateWall(se, 1, 1).corners).toBe(2);
+
+    const sw = [
+      [A, A, A],
+      [W, W, A],
+      [A, W, A],
+    ];
+    expect(evaluateWall(sw, 1, 1).corners).toBe(4);
+
+    const nw = [
+      [A, W, A],
+      [W, W, A],
+      [A, A, A],
+    ];
+    expect(evaluateWall(nw, 1, 1).corners).toBe(8);
+  });
+
+  test('resolveWallCell emits base face then corner overlays', () => {
+    const grid = [
+      [A, W, A],
+      [A, W, W],
+      [A, A, A],
+    ];
+    expect(resolveWallCell(grid, 1, 1)).toEqual([
+      { sheet: 'wall', gridX: 3, gridY: 0 }, // base mask 3 (N|E)
+      { sheet: 'wall', gridX: 0, gridY: 4 }, // NE corner (index 16)
+    ]);
+  });
+
+  test('resolveCellSprites renders wall faces for exposed rock', () => {
+    const grid = [
+      [A, W, A],
+      [A, W, W],
+      [A, A, A],
+    ];
+    const layers = resolveCellSprites(grid, 1, 1);
+    expect(layers[0]).toEqual({ sheet: 'wall', gridX: 3, gridY: 0 });
+    expect(layers[1]).toEqual({ sheet: 'wall', gridX: 0, gridY: 4 });
   });
 });
