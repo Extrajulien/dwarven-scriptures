@@ -61,11 +61,11 @@ export const SPRITE_SHEETS = {
     url: '/assets/tiles/vein.png',
     tileSize: 32,
     columns: 4,
-    rows: 4,
+    rows: 5,
     label: 'Connected Mineral Veins (16 bitmask tiles)',
   },
   wall: {
-    url: '/assets/tiles/wall.png',
+    url: '/assets/tiles/rock_wall.png',
     tileSize: 32,
     columns: 4,
     rows: 5,
