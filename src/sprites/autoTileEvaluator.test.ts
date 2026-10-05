@@ -1,17 +1,18 @@
 import {
+  airTile,
   clearAutoTileCache,
   computeNeighborMask,
   evaluateWall,
-  isSolidWall,
   resolveCellSprites,
   resolveWallCell,
+  solidTile,
   type GridCell,
 } from './autoTileEvaluator';
 import { resolveMaskOffset, type ConnectedSpriteSet } from './autoTileRegistry';
 import { computeSpriteStyleFromOffset } from './spriteRegistry';
 
-const rock = (): GridCell => ({ baseTerrain: 'terrain.solid-rock' });
-const gold = (): GridCell => ({ baseTerrain: 'terrain.solid-rock', veinOrFeature: 'vein.gold' });
+const rock = (): GridCell => solidTile('terrain.solid-rock');
+const gold = (): GridCell => ({ ...solidTile('terrain.solid-rock'), veinOrFeature: 'vein.gold' });
 
 describe('autoTileEvaluator', () => {
   test('3x3 cluster center is fully connected (mask 15)', () => {
@@ -69,7 +70,7 @@ describe('autoTileEvaluator', () => {
       [rock(), rock(), rock()],
     ];
     grid[1][1] = {
-      baseTerrain: 'terrain.solid-rock',
+      ...solidTile('terrain.solid-rock'),
       veinOrFeature: 'vein.gold',
       diggingState: { frame: 1 },
       occupant: { spriteKey: 'actor.dwarf-miner-idle' },
@@ -77,7 +78,7 @@ describe('autoTileEvaluator', () => {
 
     const layers = resolveCellSprites(grid, 1, 1);
     expect(layers).toHaveLength(4);
-    expect(layers[0]).toEqual({ sheet: 'ramp_stone', gridX: 0, gridY: 0 }); // base rock
+    expect(layers[0]).toEqual({ sheet: 'ramp_stone', gridX: 0, gridY: 0 }); // interior rock fill
     expect(layers[1].sheet).toBe('vein'); // connected gold vein
     expect(layers[2]).toEqual({ sheet: 'mining', gridX: 1, gridY: 0 }); // progress-1
     expect(layers[3]).toEqual({ sheet: 'actors', gridX: 0, gridY: 0 }); // dwarf idle
@@ -110,21 +111,31 @@ describe('autoTileEvaluator', () => {
   test('computeSpriteStyleFromOffset derives pixel-exact offsets', () => {
     const style = computeSpriteStyleFromOffset('vein', 2, 1, 1);
     expect(style.backgroundPosition).toBe('-64px -32px');
-    expect(style.backgroundSize).toBe('128px 128px');
+    expect(style.backgroundSize).toBe('128px 160px'); // 4 cols x 5 rows
   });
 });
 
 describe('wall autotiling (DF visibility rules)', () => {
-  const W: GridCell = { baseTerrain: 'terrain.solid-rock' };
-  const A: GridCell = { baseTerrain: 'terrain.cleared-path' };
+  const W: GridCell = solidTile('terrain.solid-rock');
+  const A: GridCell = airTile('terrain.cleared-path');
 
-  test('isSolidWall classifies walls vs air', () => {
-    expect(isSolidWall(W)).toBe(true);
-    expect(isSolidWall(A)).toBe(false);
-    expect(isSolidWall(undefined)).toBe(false);
+  test('solidTile/airTile set the IS_SOLID / IS_AIR flags', () => {
+    expect(W.isSolid).toBe(true);
+    expect(W.isAir).toBe(false);
+    expect(A.isSolid).toBe(false);
+    expect(A.isAir).toBe(true);
   });
 
-  test('interior wall (no air neighbors) is hidden', () => {
+  test('air cell renders its floor_type and no wall body', () => {
+    const grid = [
+      [W, W, W],
+      [W, A, W],
+      [W, W, W],
+    ];
+    expect(resolveCellSprites(grid, 1, 1)).toEqual([{ sheet: 'ramp_stone', gridX: 2, gridY: 0 }]);
+  });
+
+  test('interior wall (no air neighbors) is hidden and renders interior fill', () => {
     const grid = [
       [W, W, W],
       [W, W, W],
@@ -132,6 +143,7 @@ describe('wall autotiling (DF visibility rules)', () => {
     ];
     expect(evaluateWall(grid, 1, 1)).toEqual({ visible: false, baseMask: 15, corners: 0 });
     expect(resolveWallCell(grid, 1, 1)).toEqual([]);
+    expect(resolveCellSprites(grid, 1, 1)).toEqual([{ sheet: 'ramp_stone', gridX: 0, gridY: 0 }]);
   });
 
   test('base mask bits are N=1, E=2, S=4, W=8', () => {
@@ -192,6 +204,17 @@ describe('wall autotiling (DF visibility rules)', () => {
       [A, A, A],
     ];
     expect(evaluateWall(nw, 1, 1).corners).toBe(8);
+  });
+
+  test('different solid types connect as one wall (unified IS_SOLID)', () => {
+    const goldWall: GridCell = { ...solidTile('terrain.solid-rock'), veinOrFeature: 'vein.gold' };
+    const grid = [
+      [A, goldWall, A],
+      [A, W, A],
+      [A, A, A],
+    ];
+    expect(evaluateWall(grid, 1, 1).visible).toBe(true);
+    expect(evaluateWall(grid, 1, 1).baseMask).toBe(1); // gold-vein wall counts as solid
   });
 
   test('resolveWallCell emits base face then corner overlays', () => {

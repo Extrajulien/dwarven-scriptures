@@ -8,23 +8,26 @@ import {
   WALL_CORNER,
   WALL_CORNER_OFFSETS,
   WALL_SHEET,
-  WALL_SOLID_KEYS,
   wallBaseOffset,
   type ConnectedFeature,
 } from './autoTileRegistry';
 
 /**
  * Multi-layer grid cell. Layers render back-to-front:
- *   baseTerrain -> veinOrFeature -> diggingState -> occupant.
+ *   floor/surface -> veinOrFeature -> diggingState -> occupant.
+ *
+ * Tile state is expressed with flags (not by matching exact sprite keys):
+ *   isSolid (IS_SOLID) — any wall variant: natural stone, mineral vein, dirt, built wall.
+ *   isAir   (IS_AIR)   — walkable/open space or unrevealed void.
+ * `floor_type` is the tile's surface texture: the floor for air cells, and the
+ * interior fill (rock top) for solid cells that are buried from air.
  */
 export interface GridCell {
-  /** Bottom layer: unmined rock, soil, or bedrock. */
-  baseTerrain: SpriteKey;
-  /** Connectable layer: ore vein, magma stream, water, moss, … */
+  isSolid: boolean;
+  isAir: boolean;
+  floor_type: SpriteKey;
   veinOrFeature?: SpriteKey;
-  /** Overlay layer: cracks / broken stone sequence (frame 0..3). */
   diggingState?: { frame: number };
-  /** Top layer: dwarf miner, monster, item, … */
   occupant?: { spriteKey: SpriteKey; animationState?: string };
 }
 
@@ -33,6 +36,16 @@ export interface ResolvedSpriteRef {
   sheet: SheetKey;
   gridX: number;
   gridY: number;
+}
+
+/** Solid wall tile (IS_SOLID). */
+export function solidTile(floor_type: SpriteKey): GridCell {
+  return { isSolid: true, isAir: false, floor_type };
+}
+
+/** Air / open-space tile (IS_AIR). */
+export function airTile(floor_type: SpriteKey): GridCell {
+  return { isSolid: false, isAir: true, floor_type };
 }
 
 interface NeighborStep {
@@ -46,6 +59,18 @@ const NEIGHBORS: readonly NeighborStep[] = [
   { dr: 0, dc: 1, bit: MASK.EAST },
   { dr: 1, dc: 0, bit: MASK.SOUTH },
   { dr: 0, dc: -1, bit: MASK.WEST },
+];
+
+/** All 8 neighbor deltas in a stable order: N, E, S, W, NE, SE, SW, NW. */
+const DIRS_8: ReadonlyArray<readonly [number, number]> = [
+  [-1, 0],
+  [0, 1],
+  [1, 0],
+  [0, -1],
+  [-1, 1],
+  [1, 1],
+  [1, -1],
+  [-1, -1],
 ];
 
 const DIG_FRAMES: readonly SpriteKey[] = [
@@ -89,7 +114,7 @@ export function computeNeighborMask(
 // --- Dwarf Fortress wall visibility autotiling -------------------------------
 
 export interface WallEvaluation {
-  /** false = interior/hidden (surrounded by solid walls — no face drawn). */
+  /** false = interior/hidden (surrounded by solid — no face drawn). */
   visible: boolean;
   /** 4-bit base mask: N=1, E=2, S=4, W=8 (which orthogonal neighbors are SOLID). */
   baseMask: number;
@@ -97,36 +122,49 @@ export interface WallEvaluation {
   corners: number;
 }
 
-/** A cell is a solid wall when its base terrain is in WALL_SOLID_KEYS. */
-export function isSolidWall(cell: GridCell | undefined): boolean {
-  return Boolean(cell && WALL_SOLID_KEYS.has(cell.baseTerrain));
+function solidAt(grid: readonly GridCell[][], row: number, col: number): boolean {
+  return grid[row]?.[col]?.isSolid ?? false;
+}
+
+function airAt(grid: readonly GridCell[][], row: number, col: number): boolean {
+  const cell = grid[row]?.[col];
+  return cell ? cell.isAir : true; // out-of-bounds = air
 }
 
 /**
  * Evaluate DF-style wall visibility for a cell using all 8 neighbors.
- * Out-of-bounds cells count as Air (not solid).
+ * The base mask reads each orthogonal neighbor's IS_SOLID flag; air exposure
+ * and inner corners read each neighbor's IS_AIR flag. Out-of-bounds = Air.
  */
 export function evaluateWall(
   grid: readonly GridCell[][],
   row: number,
   col: number,
-  isSolid: (cell: GridCell | undefined) => boolean = isSolidWall,
 ): WallEvaluation {
   const center = grid[row]?.[col];
-  if (!center || !isSolid(center)) {
+  if (!center || !center.isSolid) {
     return { visible: false, baseMask: 0, corners: 0 };
   }
 
-  const N = isSolid(grid[row - 1]?.[col]);
-  const E = isSolid(grid[row]?.[col + 1]);
-  const S = isSolid(grid[row + 1]?.[col]);
-  const W = isSolid(grid[row]?.[col - 1]);
-  const NE = isSolid(grid[row - 1]?.[col + 1]);
-  const SE = isSolid(grid[row + 1]?.[col + 1]);
-  const SW = isSolid(grid[row + 1]?.[col - 1]);
-  const NW = isSolid(grid[row - 1]?.[col - 1]);
+  const N = solidAt(grid, row - 1, col);
+  const E = solidAt(grid, row, col + 1);
+  const S = solidAt(grid, row + 1, col);
+  const W = solidAt(grid, row, col - 1);
 
-  const airNeighbors = [N, E, S, W, NE, SE, SW, NW].filter((solid) => !solid).length;
+  const NE_air = airAt(grid, row - 1, col + 1);
+  const SE_air = airAt(grid, row + 1, col + 1);
+  const SW_air = airAt(grid, row + 1, col - 1);
+  const NW_air = airAt(grid, row - 1, col - 1);
+
+  const exposed =
+    airAt(grid, row - 1, col) ||
+    airAt(grid, row, col + 1) ||
+    airAt(grid, row + 1, col) ||
+    airAt(grid, row, col - 1) ||
+    NE_air ||
+    SE_air ||
+    SW_air ||
+    NW_air;
 
   const baseMask =
     (N ? MASK.NORTH : 0) |
@@ -135,12 +173,12 @@ export function evaluateWall(
     (W ? MASK.WEST : 0);
 
   const corners =
-    (N && E && !NE ? WALL_CORNER.NE : 0) |
-    (S && E && !SE ? WALL_CORNER.SE : 0) |
-    (S && W && !SW ? WALL_CORNER.SW : 0) |
-    (N && W && !NW ? WALL_CORNER.NW : 0);
+    (N && E && NE_air ? WALL_CORNER.NE : 0) |
+    (S && E && SE_air ? WALL_CORNER.SE : 0) |
+    (S && W && SW_air ? WALL_CORNER.SW : 0) |
+    (N && W && NW_air ? WALL_CORNER.NW : 0);
 
-  return { visible: airNeighbors > 0, baseMask, corners };
+  return { visible: exposed, baseMask, corners };
 }
 
 /** Resolve a solid wall cell into its wall-face layers (base + corner overlays).
@@ -149,9 +187,8 @@ export function resolveWallCell(
   grid: readonly GridCell[][],
   row: number,
   col: number,
-  isSolid: (cell: GridCell | undefined) => boolean = isSolidWall,
 ): ResolvedSpriteRef[] {
-  const { visible, baseMask, corners } = evaluateWall(grid, row, col, isSolid);
+  const { visible, baseMask, corners } = evaluateWall(grid, row, col);
   if (!visible) return [];
 
   const layers: ResolvedSpriteRef[] = [
@@ -164,7 +201,7 @@ export function resolveWallCell(
   return layers;
 }
 
-type LayerSelector = 'baseTerrain' | 'veinOrFeature';
+// --- memoized cell resolver --------------------------------------------------
 
 const cache = new Map<string, ResolvedSpriteRef[]>();
 const MAX_CACHE_ENTRIES = 20_000;
@@ -176,11 +213,13 @@ export function clearAutoTileCache(): void {
 
 /**
  * Resolve a cell into its ordered back-to-front layer list:
- *   0 base terrain -> 1 connected vein/wall -> 2 dig overlay -> 3 actor/item.
+ *   0 floor/surface -> 1 connected vein/feature -> 2 dig overlay -> 3 actor/item.
  *
- * Pure with respect to (grid, row, col); results are memoized on a
- * content-based key so unchanged cells return the same array reference across
- * grid updates — letting React skip re-renders of untouched tiles.
+ * Air cells render their `floor_type`; solid cells render a wall face when
+ * exposed to air, or their `floor_type` as interior fill when buried.
+ *
+ * Pure with respect to (grid, row, col); memoized on a content-based key so
+ * unchanged cells return the same array reference across grid updates.
  */
 export function resolveCellSprites(
   grid: readonly GridCell[][],
@@ -221,18 +260,18 @@ function buildLayers(grid: readonly GridCell[][], row: number, col: number): Res
   return layers;
 }
 
-/** Base terrain layer: DF wall faces for solid walls, else generic connectable/plain. */
+/** Base layer: wall face for exposed solid, interior fill for buried solid, floor for air. */
 function resolveBaseLayer(
   cell: GridCell,
   grid: readonly GridCell[][],
   row: number,
   col: number,
 ): ResolvedSpriteRef[] {
-  if (isSolidWall(cell)) {
+  if (cell.isSolid) {
     const wall = resolveWallCell(grid, row, col);
-    return wall.length > 0 ? wall : [spriteRef(cell.baseTerrain)];
+    return wall.length > 0 ? wall : [spriteRef(cell.floor_type)];
   }
-  return resolveConnectable(cell.baseTerrain, grid, row, col, (c) => c.baseTerrain);
+  return [spriteRef(cell.floor_type)];
 }
 
 function resolveConnectable(
@@ -261,35 +300,30 @@ function digFrameKey(frame: number): SpriteKey {
   return DIG_FRAMES[index];
 }
 
-function layerKeyAt(
-  grid: readonly GridCell[][],
-  row: number,
-  col: number,
-  layer: LayerSelector,
-): SpriteKey | undefined {
-  return grid[row]?.[col]?.[layer];
-}
-
 function signature(grid: readonly GridCell[][], row: number, col: number): string {
   const cell = grid[row][col];
-  return [
+  const parts: (string | number)[] = [
     row,
     col,
-    cell.baseTerrain,
-    layerKeyAt(grid, row - 1, col, 'baseTerrain') ?? '', // N
-    layerKeyAt(grid, row, col + 1, 'baseTerrain') ?? '', // E
-    layerKeyAt(grid, row + 1, col, 'baseTerrain') ?? '', // S
-    layerKeyAt(grid, row, col - 1, 'baseTerrain') ?? '', // W
-    layerKeyAt(grid, row - 1, col + 1, 'baseTerrain') ?? '', // NE
-    layerKeyAt(grid, row + 1, col + 1, 'baseTerrain') ?? '', // SE
-    layerKeyAt(grid, row + 1, col - 1, 'baseTerrain') ?? '', // SW
-    layerKeyAt(grid, row - 1, col - 1, 'baseTerrain') ?? '', // NW
+    Number(cell.isSolid),
+    Number(cell.isAir),
+    cell.floor_type,
+  ];
+
+  for (const [dr, dc] of DIRS_8) {
+    const neighbor = grid[row + dr]?.[col + dc];
+    parts.push(neighbor ? `${Number(neighbor.isSolid)}${Number(neighbor.isAir)}` : 'o');
+  }
+
+  parts.push(
     cell.veinOrFeature ?? '',
-    layerKeyAt(grid, row - 1, col, 'veinOrFeature') ?? '',
-    layerKeyAt(grid, row, col + 1, 'veinOrFeature') ?? '',
-    layerKeyAt(grid, row + 1, col, 'veinOrFeature') ?? '',
-    layerKeyAt(grid, row, col - 1, 'veinOrFeature') ?? '',
+    grid[row - 1]?.[col]?.veinOrFeature ?? '',
+    grid[row]?.[col + 1]?.veinOrFeature ?? '',
+    grid[row + 1]?.[col]?.veinOrFeature ?? '',
+    grid[row]?.[col - 1]?.veinOrFeature ?? '',
     cell.diggingState?.frame ?? '',
     cell.occupant?.spriteKey ?? '',
-  ].join('|');
+  );
+
+  return parts.join('|');
 }

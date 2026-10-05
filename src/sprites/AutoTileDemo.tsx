@@ -1,7 +1,9 @@
 import { memo, useCallback, useMemo, useState } from 'react';
 import {
+  airTile,
   computeNeighborMask,
   resolveCellSprites,
+  solidTile,
   type GridCell,
   type ResolvedSpriteRef,
 } from './autoTileEvaluator';
@@ -18,25 +20,25 @@ const DWARF = { row: 5, col: 0 }; // occupant on plain stone
 
 function buildBaseGrid(): GridCell[][] {
   const grid: GridCell[][] = Array.from({ length: ROWS }, () =>
-    Array.from({ length: COLS }, () => ({ baseTerrain: 'terrain.solid-rock' as const })),
+    Array.from({ length: COLS }, () => solidTile('terrain.solid-rock')),
   );
 
   for (let dr = 0; dr < 3; dr++) {
     for (let dc = 0; dc < 3; dc++) {
       grid[VEIN_ORIGIN.row + dr][VEIN_ORIGIN.col + dc] = {
-        baseTerrain: 'terrain.solid-rock',
+        ...solidTile('terrain.solid-rock'),
         veinOrFeature: 'vein.gold',
       };
     }
   }
 
   grid[ISOLATED.row][ISOLATED.col] = {
-    baseTerrain: 'terrain.solid-rock',
+    ...solidTile('terrain.solid-rock'),
     veinOrFeature: 'vein.gold',
   };
 
   grid[DWARF.row][DWARF.col] = {
-    baseTerrain: 'terrain.solid-rock',
+    ...solidTile('terrain.solid-rock'),
     occupant: { spriteKey: 'actor.dwarf-miner-idle' },
   };
 
@@ -106,7 +108,7 @@ export default function AutoTileDemo() {
         row.map((cell, c) => {
           if (!mined.has(`${r},${c}`)) return cell;
           return {
-            baseTerrain: 'terrain.rock.floor',
+            ...airTile('terrain.rock.floor'),
             diggingState: { frame: 2 },
             occupant: cell.occupant,
           };

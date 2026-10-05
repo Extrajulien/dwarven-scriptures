@@ -125,13 +125,3 @@ export const WALL_CORNER_OFFSETS = {
 export function wallBaseOffset(mask: number): TileOffset {
   return { gridX: mask & 3, gridY: (mask >> 2) & 3 };
 }
-
-/** Sprite keys treated as solid/opaque walls (vs Air) for visibility checks. */
-export const WALL_SOLID_KEYS: ReadonlySet<SpriteKey> = new Set<SpriteKey>([
-  'terrain.solid-rock',
-  'terrain.wall-north',
-  'terrain.wall-south',
-  'terrain.wall-east',
-  'terrain.wall-west',
-  'wall.face',
-]);
