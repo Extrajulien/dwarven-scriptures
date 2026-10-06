@@ -2,11 +2,11 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'DEEP DELVE // TYPIST EXPEDITION',
+  title: 'Dwarven Scriptures',
   description:
-    'Deep Delve // Typist Expedition — a competitive typing-race guild stronghold.',
+    'Dwarven Scriptures — a competitive typing-race guild stronghold.',
   icons: {
-    icon: '/favicon.ico',
+    icon: '/favicon.png',
     apple: '/logo192.png',
   },
   manifest: '/manifest.json',
