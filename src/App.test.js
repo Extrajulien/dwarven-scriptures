@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import App from './App.jsx';
+import App from './App';
 
 test('renders the guild stronghold heading', () => {
   render(<App />);

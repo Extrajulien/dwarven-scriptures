@@ -11,6 +11,15 @@
 # production
 /build
 
+# next.js
+/.next
+/out
+next-env.d.ts
+*.tsbuildinfo
+
+# local npm cache (used when the sandbox blocks the global cache)
+/.npm-cache
+
 # misc
 .DS_Store
 .env.local

@@ -32,6 +32,7 @@ export default function AnimatedSpriteTile({
   // Reset the sequence whenever the frames or speed change.
   useEffect(() => {
     indexRef.current = 0;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the sequence when inputs change
     setFrameIndex(0);
   }, [frames, frameMs]);
 

@@ -81,6 +81,10 @@ PostgreSQL is the source of persistent application data.
 * Preserve existing data unless explicitly asked otherwise.
 * Never commit database credentials.
 
+### ORM
+
+use Drizzle as the orm.
+
 ## Security
 
 * Hash passwords.

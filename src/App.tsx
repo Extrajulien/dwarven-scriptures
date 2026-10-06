@@ -1,3 +1,5 @@
+'use client';
+
 import ChronicleFeed from './components/ChronicleFeed';
 import Contracts from './components/Contracts';
 import Footer from './components/Footer';

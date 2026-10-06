@@ -28,6 +28,7 @@ export function useSpritePreloader(urls?: string[]): PreloadState {
 
   useEffect(() => {
     if (sources.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- nothing to preload
       setState({ isLoaded: true, progress: 1, error: null });
       return;
     }
