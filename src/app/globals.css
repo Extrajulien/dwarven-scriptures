@@ -30,3 +30,73 @@
   image-rendering: crisp-edges;
   image-rendering: pixelated;
 }
+
+/* --- Login terminal (stone UI bevels & effects) --------------------------- */
+/* Sourced from stitch/login.html; kept as bespoke classes because they layer
+   gradients/shadows that no single Tailwind utility reproduces. */
+.stone-panel {
+  border: 2px solid #4a4135;
+  outline: 1px solid #1c1a17;
+  box-shadow:
+    inset 1px 1px 0px rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0px rgba(0, 0, 0, 0.9),
+    0 8px 30px rgba(0, 0, 0, 0.7);
+}
+
+.stone-panel-inner {
+  border: 1px solid #363026;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+.btn-chisel-gold {
+  background: linear-gradient(180deg, #dbab2f 0%, #b88b1b 50%, #99710f 100%);
+  border: 1px solid #f6cf63;
+  border-bottom: 3px solid #5a4005;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  transition: all 0.1s ease-in-out;
+}
+.btn-chisel-gold:hover {
+  background: linear-gradient(180deg, #e9bd3f 0%, #c99a22 50%, #aa7e13 100%);
+  box-shadow: 0 0 18px rgba(229, 169, 60, 0.5);
+  transform: translateY(-1px);
+}
+.btn-chisel-gold:active {
+  transform: translateY(2px);
+  border-bottom: 1px solid #5a4005;
+}
+
+.btn-chisel-stone {
+  border: 1px solid #443c30;
+  border-bottom: 3px solid #14120f;
+  transition: all 0.12s ease;
+}
+.btn-chisel-stone:hover {
+  background-color: #2b2722;
+  border-color: #635744;
+  transform: translateY(-1px);
+}
+.btn-chisel-stone:active {
+  transform: translateY(2px);
+  border-bottom: 1px solid #14120f;
+}
+
+.retro-scanlines {
+  background:
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+    linear-gradient(
+      90deg,
+      rgba(255, 0, 0, 0.02),
+      rgba(0, 255, 0, 0.01),
+      rgba(0, 0, 255, 0.02)
+    );
+  background-size:
+    100% 4px,
+    6px 100%;
+  pointer-events: none;
+}
+
+.dwarf-checkbox:checked {
+  background-color: #c59b27;
+  border-color: #f5be54;
+  background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='%23121214' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+}

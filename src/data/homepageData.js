@@ -3,12 +3,12 @@
 // Class strings are Tailwind utilities resolved from tailwind.config.js.
 
 export const GUILD = {
-  title: 'DEEP DELVE // TYPIST EXPEDITION',
+  title: 'Dwarven Scriptures',
   runes: '[ᛞᛖᛖᛈ ᛞᛖᛚᚡᛖ]',
   tag: '[GUILD: IRONVEIN QUARRY - EXPEDITION #84]',
   streak: '🔥 STREAK: 14 STONES',
   logoUrl:
-    'https://lh3.googleusercontent.com/aida/AEtjO1XQmbtlKexI37fizZI_sqSCW-SvNJY3cbFrkWMzQhjyHVmx01ONqMT0jQJ_xqU5FKqB8MGhyAwe2QOoih9ffCCss79bU8yBaS8SfYfNhkSPLfZQzwggROkNXMkC9fsiyJl2JmnEfH8F1ayC-RA5DYLwbiYmOTcueQZLLSj_8sJeV9bvp_Du7rA34rVYzMPpE8We-41ZHbk8A4XcrydgY8vKu64TNBfB7KkxHf2U2FXIs2Zw7HZXCPiUxM4',
+    'favicon.png',
   user: {
     name: 'Overseer Urist McTypist',
     role: '(Lvl 24 Stonewright)',
