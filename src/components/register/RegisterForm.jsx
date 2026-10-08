@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { registerUser } from '../../app/register/actions';
 import { REGISTER_FORM } from '../../data/registerData';
 
 function PickaxeIcon() {
@@ -15,25 +17,6 @@ function PickaxeIcon() {
     >
       <path
         d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function MailIcon() {
-  return (
-    <svg
-      className="h-4 w-4 text-[#8a7241]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <path
-        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -97,14 +80,37 @@ function HammerIcon() {
   );
 }
 
+function FieldError({ id, message }) {
+  return (
+    <p id={id} role="alert" className="text-xs font-medium text-dwarf-magma">
+      {message}
+    </p>
+  );
+}
+
 export default function RegisterForm() {
+  const [state, formAction, pending] = useActionState(registerUser, null);
   const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (state && state.ok) {
+      router.replace('/login');
+    }
+  }, [state, router]);
+
+  const fieldErrors = state && state.ok === false ? state.fieldErrors : {};
+  const usernameError = fieldErrors.username;
+  const passwordError = fieldErrors.password;
+  const confirmPasswordError = fieldErrors.confirmPassword;
+  const hasUnexpectedError =
+    state && state.ok === false && state.formError === 'unexpected';
 
   return (
     <form
       className="space-y-4"
       data-purpose="scribe-registration-form"
-      onSubmit={(event) => event.preventDefault()}
+      action={formAction}
     >
       {/* Callsign / username field */}
       <div className="space-y-1.5">
@@ -133,9 +139,17 @@ export default function RegisterForm() {
             autoComplete="username"
             required
             placeholder={REGISTER_FORM.callsign.placeholder}
+            aria-invalid={usernameError ? true : undefined}
+            aria-describedby={usernameError ? 'username-error' : undefined}
             className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-3 font-mono text-sm text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
         </div>
+        {usernameError && (
+          <FieldError
+            id="username-error"
+            message={REGISTER_FORM.errors.username[usernameError]}
+          />
+        )}
       </div>
 
       {/* Password field */}
@@ -165,6 +179,8 @@ export default function RegisterForm() {
             autoComplete="new-password"
             required
             placeholder={REGISTER_FORM.password.placeholder}
+            aria-invalid={passwordError ? true : undefined}
+            aria-describedby={passwordError ? 'password-error' : undefined}
             className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
           <button
@@ -178,6 +194,12 @@ export default function RegisterForm() {
             <EyeIcon />
           </button>
         </div>
+        {passwordError && (
+          <FieldError
+            id="password-error"
+            message={REGISTER_FORM.errors.password[passwordError]}
+          />
+        )}
       </div>
 
       {/* Confirm password field */}
@@ -207,6 +229,8 @@ export default function RegisterForm() {
             autoComplete="new-password"
             required
             placeholder={REGISTER_FORM.confirmPassword.placeholder}
+            aria-invalid={confirmPasswordError ? true : undefined}
+            aria-describedby={confirmPasswordError ? 'confirm-password-error' : undefined}
             className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
           <button
@@ -220,6 +244,12 @@ export default function RegisterForm() {
             <EyeIcon />
           </button>
         </div>
+        {confirmPasswordError && (
+          <FieldError
+            id="confirm-password-error"
+            message={REGISTER_FORM.errors.confirmPassword[confirmPasswordError]}
+          />
+        )}
       </div>
 
       {/* Terms checkbox */}
@@ -238,12 +268,20 @@ export default function RegisterForm() {
 
       {/* Primary submit */}
       <div className="pt-2">
+        {hasUnexpectedError && (
+          <p role="alert" className="mb-3 text-xs font-medium text-dwarf-magma">
+            {REGISTER_FORM.errors.form.unexpected}
+          </p>
+        )}
         <button
           type="submit"
+          disabled={pending}
           className="btn-chisel-gold group flex min-h-[48px] w-full cursor-pointer items-center justify-center space-x-2 rounded px-4 py-3 text-xs font-extrabold uppercase tracking-widest text-on-primary-container shadow-gold-glow sm:text-sm"
         >
           <HammerIcon />
-          <span className="font-spacemono font-bold">{REGISTER_FORM.submit}</span>
+          <span className="font-spacemono font-bold">
+            {pending ? REGISTER_FORM.submitPending : REGISTER_FORM.submit}
+          </span>
         </button>
       </div>
     </form>

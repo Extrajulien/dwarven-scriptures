@@ -22,6 +22,7 @@ const calls: RecordedCall[] = [];
 let selectResult: unknown[] = [];
 let updateRowCount = 0;
 let insertRow: unknown;
+let insertError: unknown;
 
 /** Creates the chain for one operation and records it exactly once. */
 function newCall(operation: RecordedCall['operation'], args: unknown[] = []): RecordedCall {
@@ -55,6 +56,9 @@ function chainable(operation: RecordedCall['operation'], call: RecordedCall): Re
 
   chain.returning = (...args: unknown[]) => {
     call.args.push(args);
+    if (insertError !== undefined) {
+      return Promise.reject(insertError);
+    }
     if (operation === 'insert') {
       return Promise.resolve(insertRow === undefined ? [] : [insertRow]);
     }
@@ -81,13 +85,14 @@ jest.mock('../index', () => ({
   },
 }));
 
-import { adjustUserCoins, createUserWithProfiles, getUserFullProfile, recordCompletedRace } from './users';
+import { adjustUserCoins, createUserWithProfiles, getUserFullProfile, recordCompletedRace, UsernameTakenError } from './users';
 
 beforeEach(() => {
   calls.length = 0;
   selectResult = [];
   updateRowCount = 0;
   insertRow = undefined;
+  insertError = undefined;
 });
 
 type Queryable = { toQuery: (config: unknown) => { sql: string; params: unknown[] } };
@@ -230,6 +235,39 @@ describe('createUserWithProfiles', () => {
     await expect(createUserWithProfiles({ username: 'ada', passwordHash: '' })).rejects.toThrow(
       /passwordHash/,
     );
+  });
+
+  test('maps a unique username violation to UsernameTakenError', async () => {
+    // Drizzle wraps the driver error, so the SQLSTATE code sits on `cause`.
+    insertError = Object.assign(new Error('DrizzleQueryError'), {
+      cause: Object.assign(
+        new Error('duplicate key value violates unique constraint "users_username_unique"'),
+        { code: '23505', constraint: 'users_username_unique' },
+      ),
+    });
+
+    await expect(
+      createUserWithProfiles({ username: 'ada', passwordHash: 'x' }),
+    ).rejects.toThrow(UsernameTakenError);
+  });
+
+  test('maps a top-level unique violation too (no Drizzle wrapper)', async () => {
+    insertError = Object.assign(
+      new Error('duplicate key value violates unique constraint "users_username_unique"'),
+      { code: '23505', constraint: 'users_username_unique' },
+    );
+
+    await expect(
+      createUserWithProfiles({ username: 'ada', passwordHash: 'x' }),
+    ).rejects.toThrow(UsernameTakenError);
+  });
+
+  test('rethrows an unrelated database error unchanged', async () => {
+    insertError = new Error('connection refused');
+
+    await expect(
+      createUserWithProfiles({ username: 'ada', passwordHash: 'x' }),
+    ).rejects.toThrow('connection refused');
   });
 });
 
