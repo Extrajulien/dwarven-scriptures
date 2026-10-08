@@ -8,7 +8,7 @@ import MinerRoster from './components/MinerRoster';
 import PerksPanel from './components/PerksPanel';
 import SpriteShowcase from './sprites/SpriteShowcase';
 import AutoTileDemo from './sprites/AutoTileDemo';
-import Navbar from './components/Navbar';
+import Navbar from './components/Navbar/Navbar';
 
 export default function App() {
   return (

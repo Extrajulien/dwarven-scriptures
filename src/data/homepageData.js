@@ -9,10 +9,6 @@ export const GUILD = {
   streak: '🔥 STREAK: 14 STONES',
   logoUrl:
     'favicon.png',
-  user: {
-    name: 'Overseer Urist McTypist',
-    role: '(Lvl 24 Stonewright)',
-  },
 };
 
 export const NAV_LINKS = [
