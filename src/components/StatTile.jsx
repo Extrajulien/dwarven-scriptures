@@ -19,7 +19,7 @@ export default function StatTile({ stat }) {
         <span className="font-label-sm text-label-sm uppercase tracking-wider">
           {label}
         </span>
-        <Icon name={icon} className={`text-[16px] ${iconClass}`} />
+        <Icon name={icon} className={`text-body-md ${iconClass}`} />
       </div>
       <div className={`font-headline-md text-headline-md font-bold ${valueClass}`}>
         {value}

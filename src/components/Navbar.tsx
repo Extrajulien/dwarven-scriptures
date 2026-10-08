@@ -1,7 +1,7 @@
 import { GUILD, NAV_LINKS } from '../data/homepageData';
 import Icon from './Icon';
 
-export default function Header() {
+export default function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
       <div className="h-20 w-full px-margin-desktop flex items-center justify-between gap-gutter">
@@ -48,16 +48,7 @@ export default function Header() {
             <button
               type="button"
               className="font-label-sm text-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors"
-            >
-              [LANG: ENG / FR]
-            </button>
-            <span className="text-outline select-none">|</span>
-            <button
-              type="button"
-              className="font-label-sm text-label-sm uppercase text-on-surface-variant hover:text-secondary transition-colors"
-            >
-              [VIEW: STEAM UI / ASCII MATRIX]
-            </button>
+            >[ENG/FR]</button>
           </div>
 
           <div className="flex items-center gap-space-sm bg-surface-container px-space-sm py-space-xs rounded">
@@ -70,7 +61,7 @@ export default function Header() {
               </span>
             </div>
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <Icon name="person" className="text-on-primary text-[18px]" />
+              <Icon name="person" className="text-on-primary text-headline-sm" />
             </div>
           </div>
         </div>

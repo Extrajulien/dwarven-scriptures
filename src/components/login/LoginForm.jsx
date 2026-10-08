@@ -99,7 +99,7 @@ export default function LoginForm() {
             </span>
             <span>{LOGIN_FORM.callsign.label}</span>
           </label>
-          <span className="text-[10px] text-dwarf-parchmentMuted">
+          <span className="text-label-sm text-dwarf-parchmentMuted">
             {LOGIN_FORM.callsign.hint}
           </span>
         </div>
@@ -114,7 +114,7 @@ export default function LoginForm() {
             autoComplete="username"
             required
             placeholder={LOGIN_FORM.callsign.placeholder}
-            className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-3 font-mono text-sm text-dwarf-parchment placeholder-[#615747] shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
+            className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-3 font-mono text-sm text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
         </div>
       </div>
@@ -131,12 +131,9 @@ export default function LoginForm() {
             </span>
             <span>{LOGIN_FORM.password.label}</span>
           </label>
-          <a
-            href="#retrieve-cipher"
-            className="text-[11px] tracking-tight text-dwarf-gold hover:text-dwarf-goldLight hover:underline focus:underline focus:outline-none"
-          >
-            {LOGIN_FORM.password.forgot}
-          </a>
+          <span className="text-label-sm text-dwarf-parchmentMuted">
+            {LOGIN_FORM.password.hint}
+          </span>
         </div>
         <div className="relative">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-dwarf-gold">
@@ -149,14 +146,14 @@ export default function LoginForm() {
             autoComplete="current-password"
             required
             placeholder={LOGIN_FORM.password.placeholder}
-            className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-[#615747] shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
+            className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
           <button
             type="button"
             aria-label="Toggle password visibility"
             onClick={() => setShowPassword((visible) => !visible)}
             className={`absolute inset-y-0 right-0 flex items-center pr-3 transition-colors focus:outline-none ${
-              showPassword ? 'text-dwarf-gold' : 'text-[#746652] hover:text-dwarf-gold'
+              showPassword ? 'text-dwarf-gold' : 'text-dwarf-parchmentMuted hover:text-dwarf-gold'
             }`}
           >
             <EyeIcon />
@@ -172,7 +169,7 @@ export default function LoginForm() {
             name="remember_scribe"
             className="dwarf-checkbox h-4 w-4 rounded-none border-[#3f382d] bg-[#121110] text-dwarf-gold transition focus:border-dwarf-gold focus:ring-0 focus:ring-offset-0"
           />
-          <span className="text-xs tracking-tight text-[#a3957e]">
+          <span className="text-xs tracking-tight text-dwarf-parchmentMuted">
             {LOGIN_FORM.remember}
           </span>
         </label>
@@ -182,7 +179,7 @@ export default function LoginForm() {
       <div className="pt-2">
         <button
           type="submit"
-          className="btn-chisel-gold group flex min-h-[48px] w-full cursor-pointer items-center justify-center space-x-2 rounded px-4 py-3 text-xs font-extrabold uppercase tracking-widest text-[#16120b] shadow-gold-glow sm:text-sm"
+          className="btn-chisel-gold group flex min-h-[48px] w-full cursor-pointer items-center justify-center space-x-2 rounded px-4 py-3 text-xs font-extrabold uppercase tracking-widest text-on-primary-container shadow-gold-glow sm:text-sm"
         >
           <HammerIcon />
           <span className="font-spacemono font-bold">{LOGIN_FORM.submit}</span>

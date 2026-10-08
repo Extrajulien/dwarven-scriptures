@@ -135,8 +135,7 @@ export default function SpriteShowcase() {
               className="relative border border-outline-variant"
             >
               <div
-                className="pointer-events-none absolute inset-0"
-                style={{ backgroundColor: 'rgba(164, 211, 147, 0.25)' }}
+                className="pointer-events-none absolute inset-0 bg-tertiary/25"
               />
             </SpriteTile>
             <span className="font-label-sm text-on-surface-variant">idle + highlight tint</span>

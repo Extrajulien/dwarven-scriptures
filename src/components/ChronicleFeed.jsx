@@ -17,7 +17,7 @@ export default function ChronicleFeed() {
             key={event.id}
             className="bg-surface-container p-space-xs rounded flex flex-col"
           >
-            <div className="flex items-center justify-between text-[11px] text-outline">
+            <div className="flex items-center justify-between text-label-sm text-outline">
               <span className={`font-bold ${event.authorClass}`}>
                 {event.author}
               </span>

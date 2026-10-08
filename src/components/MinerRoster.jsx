@@ -51,7 +51,7 @@ export default function MinerRoster() {
                 <td className="py-3 px-space-sm">
                   <div className="flex items-center gap-space-xs">
                     <div
-                      className={`w-7 h-7 rounded flex items-center justify-center font-bold text-[12px] shadow-sm ${miner.avatarClass}`}
+                      className={`w-7 h-7 rounded flex items-center justify-center font-bold text-label-md shadow-sm ${miner.avatarClass}`}
                     >
                       {miner.initial}
                     </div>

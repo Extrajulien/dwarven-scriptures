@@ -1,7 +1,7 @@
 function RailBody({ body }) {
   return (
     <div className="bg-surface-container-lowest p-space-sm rounded font-label-sm text-label-sm flex flex-col gap-1">
-      <div className="flex justify-between text-outline text-[11px]">
+      <div className="flex justify-between text-outline text-label-sm">
         <span>{body.start}</span>
         <span className="text-tertiary">{body.lead}</span>
         <span>{body.end}</span>
@@ -27,7 +27,7 @@ function StatusBody({ body }) {
 function DecryptionBody({ body }) {
   return (
     <div className="bg-surface-container-lowest p-space-sm rounded font-label-sm text-label-sm flex flex-col gap-1">
-      <div className="flex justify-between text-outline text-[11px]">
+      <div className="flex justify-between text-outline text-label-sm">
         <span>{body.label}</span>
         <span className="text-tertiary font-bold">{body.pctLabel}</span>
       </div>

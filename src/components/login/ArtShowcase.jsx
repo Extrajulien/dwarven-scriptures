@@ -6,17 +6,17 @@ export default function ArtShowcase() {
       aria-label={ART_SHOWCASE.ariaLabel}
       className="hidden flex-col justify-center md:col-span-6 md:flex lg:col-span-7"
     >
-      <div className="stone-panel relative flex h-full flex-col justify-between rounded-md bg-[#141210] p-3 shadow-2xl sm:p-4">
+      <div className="stone-panel relative flex h-full flex-col justify-between rounded-md bg-dwarf-bg p-3 shadow-2xl sm:p-4">
         {/* Carved runic top arch border */}
-        <div className="mb-2.5 flex items-center justify-between border-b border-[#302a20] px-2 py-1 font-mono text-[11px] text-dwarf-gold/80">
+        <div className="mb-2.5 flex items-center justify-between border-b border-[#302a20] px-2 py-1 font-mono text-label-sm text-dwarf-gold/80">
           <div className="flex items-center space-x-1">
             <span className="text-dwarf-gold">╔════</span>
-            <span className="text-[10px] uppercase tracking-wider text-[#8e7e65]">
+            <span className="text-[10px] uppercase tracking-wider text-dwarf-parchmentMuted">
               {ART_SHOWCASE.topLeft}
             </span>
           </div>
           <div className="flex items-center space-x-2">
-            <span className="animate-pulse text-[10px] text-[#3c9142]">
+            <span className="animate-pulse text-[10px] text-dwarf-runeBright">
               {ART_SHOWCASE.feedStatus}
             </span>
             <span className="text-dwarf-gold">════╗</span>
@@ -45,23 +45,23 @@ export default function ArtShowcase() {
                     {ART_SHOWCASE.hud.title}
                   </span>
                 </div>
-                <div className="flex items-center space-x-3 text-[11px]">
-                  <span className="text-[#ad9c81]">
+                <div className="flex items-center space-x-3 text-label-sm">
+                  <span className="text-dwarf-parchmentMuted">
                     {ART_SHOWCASE.hud.activeScribesLabel}{' '}
                     <strong className="text-white">
                       {ART_SHOWCASE.hud.activeScribesValue}
                     </strong>
                   </span>
-                  <span className="text-[#594d3c]">|</span>
+                  <span className="text-dwarf-borderLight">|</span>
                   <span className="text-dwarf-runeBright">
                     {ART_SHOWCASE.hud.veinLabel}{' '}
-                    <strong className="text-[#a4e094]">
+                    <strong className="text-dwarf-runeBright">
                       {ART_SHOWCASE.hud.veinValue}
                     </strong>
                   </span>
                 </div>
               </div>
-              <p className="flex items-start space-x-1.5 pt-0.5 text-[11px] italic leading-relaxed text-[#d6c7ae]">
+              <p className="flex items-start space-x-1.5 pt-0.5 text-label-sm italic leading-relaxed text-dwarf-parchment">
                 <span className="font-serif text-sm text-dwarf-gold">“</span>
                 <span>{ART_SHOWCASE.hud.quote}</span>
                 <span className="font-serif text-sm text-dwarf-gold">”</span>
@@ -79,9 +79,9 @@ export default function ArtShowcase() {
         </div>
 
         {/* Bottom bracket frame marker */}
-        <div className="mt-2.5 flex items-center justify-between border-t border-[#302a20] px-2 py-1 font-mono text-[10px] text-[#6d614e]">
-          <span>{ART_SHOWCASE.bottomLeft}</span>
-          <span>{ART_SHOWCASE.bottomRight}</span>
+        <div className="mt-2.5 flex items-center justify-between border-t border-[#302a20] px-2 py-1 font-mono text-[10px] text-dwarf-parchmentMuted">
+          <span><span className="text-dwarf-gold">╚════</span> {ART_SHOWCASE.bottomLeft}</span>
+          <span>{ART_SHOWCASE.bottomRight} <span className="text-dwarf-gold">════╝</span></span>
         </div>
       </div>
     </section>

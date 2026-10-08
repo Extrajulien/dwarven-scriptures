@@ -2,19 +2,19 @@ import { TERMINAL_HEADER } from '../../data/loginData';
 
 export default function LoginHeader() {
   return (
-    <header className="sticky top-0 z-30 flex w-full items-center justify-between border-b border-dwarf-border bg-[#141210]/90 px-4 py-2.5 text-xs text-dwarf-parchmentMuted backdrop-blur-sm">
+    <header className="sticky top-0 z-30 flex w-full items-center justify-between border-b border-dwarf-border bg-dwarf-bg/90 px-4 py-2.5 text-xs text-dwarf-parchmentMuted backdrop-blur-sm">
       <div className="flex items-center space-x-3">
         <span className="inline-block h-2.5 w-2.5 animate-pulse rounded-none bg-dwarf-runeGreen shadow-rune-glow" />
-        <span className="text-[13px] font-bold tracking-wider text-dwarf-gold">
+        <span className="text-body-sm font-bold tracking-wider text-dwarf-gold">
           {TERMINAL_HEADER.node}
         </span>
-        <span className="hidden text-[#52493d] sm:inline-block">|</span>
-        <span className="hidden tracking-widest text-[#887b64] sm:inline-block">
+        <span className="hidden text-dwarf-borderLight sm:inline-block">|</span>
+        <span className="hidden tracking-widest text-dwarf-parchmentMuted sm:inline-block">
           {TERMINAL_HEADER.protocol}
         </span>
       </div>
       <div className="flex items-center space-x-4">
-        <div className="rounded border border-[#3b3429] bg-[#1a1714] px-2 py-1 text-[11px] text-dwarf-gold">
+        <div className="rounded border border-dwarf-basalt bg-dwarf-bg px-2 py-1 text-[11px] text-dwarf-gold">
           {TERMINAL_HEADER.depth}
         </div>
         <div className="hidden items-center space-x-1.5 text-dwarf-runeBright md:flex">

@@ -3,7 +3,7 @@ import { AUTH_ALTERNATIVES } from '../../data/loginData';
 function GitHubIcon() {
   return (
     <svg
-      className="h-4 w-4 fill-current text-[#b5a78e] group-hover:text-white"
+      className="h-4 w-4 fill-current text-dwarf-parchmentMuted group-hover:text-white"
       viewBox="0 0 24 24"
       aria-hidden="true"
     >
@@ -45,10 +45,10 @@ export default function OAuthButtons() {
           <button
             key={provider.id}
             type="button"
-            className="btn-chisel-stone group flex min-h-[44px] items-center justify-center space-x-2 rounded bg-[#1f1d19] px-3 py-2.5 text-xs text-dwarf-parchment transition hover:text-white"
+            className="btn-chisel-stone group flex min-h-[44px] items-center justify-center space-x-2 rounded bg-dwarf-basalt px-3 py-2.5 text-xs text-dwarf-parchment transition hover:text-white"
           >
             <Icon />
-            <span className="text-[11px] font-bold tracking-tight">
+            <span className="text-label-sm font-bold tracking-tight">
               {provider.label}
             </span>
           </button>

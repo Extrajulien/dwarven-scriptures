@@ -2,7 +2,7 @@ import { LOGIN_FOOTER } from '../../data/loginData';
 
 export default function LoginFooter() {
   return (
-    <footer className="z-20 w-full border-t border-[#2d271e] bg-[#11100e] px-4 py-3 text-[11px] text-[#716551]">
+    <footer className="z-20 w-full border-t border-[#2d271e] bg-[#11100e] px-4 py-3 text-[11px] text-dwarf-parchmentMuted">
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 text-center sm:flex-row sm:text-left">
         <div className="flex items-center space-x-2">
           <span className="font-bold text-dwarf-gold">{LOGIN_FOOTER.left}</span>

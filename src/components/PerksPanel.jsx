@@ -9,7 +9,7 @@ export default function PerksPanel() {
       <SectionHeader
         title="[ RUNIC_FORGE_PERKS ]"
         subtitle="ANCESTRAL RESEARCH & BUFFS"
-        right={<Icon name="construction" className="text-primary text-[24px]" />}
+        right={<Icon name="construction" className="text-primary text-headline-md" />}
       />
 
       <div className="flex flex-col gap-space-sm">

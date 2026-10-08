@@ -29,14 +29,14 @@ export const LOGIN_CARD = {
 export const LOGIN_FORM = {
   callsign: {
     rune: 'ᛗ',
-    label: '[ SCRIBE_CALLSIGN / USERNAME ]',
-    hint: '[RUNIC ID REQUIRED]',
-    placeholder: 'e.g. Urist_Stonewright',
+    label: '[ Dwarven identity ]',
+    hint: '[username]',
+    placeholder: 'moe lester',
   },
   password: {
     rune: 'ᛝ',
-    label: '[ RUNIC_CIPHER / PASSWORD ]',
-    forgot: '[ FORGOT CIPHER? ]',
+    label: '[ CIPHER ]',
+    hint: '[password]',
     placeholder: '••••••••••••',
   },
   remember: 'Remember Scribe Rune-Stone for 30 cycles',
@@ -74,8 +74,8 @@ export const ART_SHOWCASE = {
     quote:
       'Strike the granite true, young scribes. Every keystroke fortifies the mountain hall.',
   },
-  bottomLeft: '╚════ [ SECTOR: LOWER_FORGE_LEVEL ]',
-  bottomRight: 'MAGMA RESERVOIR: 1,420°C // 98% CAPACITY ════╝',
+  bottomLeft: '[ SECTOR: LOWER_FORGE_LEVEL ]',
+  bottomRight: 'MAGMA RESERVOIR: 1,420°C // 98% CAPACITY',
 };
 
 export const LOGIN_FOOTER = {

@@ -31,7 +31,7 @@ export default function LoginCard() {
               <h1 className="font-spacemono text-base font-bold leading-tight tracking-wide text-dwarf-parchment sm:text-lg">
                 {LOGIN_CARD.heading}
               </h1>
-              <p className="mt-0.5 text-[11px] tracking-tight text-dwarf-parchmentMuted">
+              <p className="mt-0.5 text-label-sm tracking-tight text-dwarf-parchmentMuted">
                 {LOGIN_CARD.subtitle}
               </p>
             </div>
@@ -40,14 +40,14 @@ export default function LoginCard() {
             <span className="border border-dwarf-runeGreen/40 bg-[#1a2818] px-2 py-0.5 text-[9px] tracking-wider text-dwarf-runeBright">
               {LOGIN_CARD.status}
             </span>
-            <span className="mt-1 font-mono text-[10px] text-[#71644f]">
+            <span className="mt-1 font-mono text-[10px] text-dwarf-parchmentMuted">
               {LOGIN_CARD.terminalId}
             </span>
           </div>
         </div>
 
         {/* Stone inscription guidance bar */}
-        <div className="mb-5 flex items-center justify-between border-l-2 border-dwarf-gold bg-[#1f1c18] px-3 py-2 text-[11px] text-[#aa9d85]">
+        <div className="mb-5 flex items-center justify-between border-l-2 border-dwarf-gold bg-[#1f1c18] px-3 py-2 text-label-sm text-dwarf-parchment">
           <span className="flex items-center space-x-1.5">
             <span className="text-dwarf-gold">{LOGIN_CARD.guidance.rune}</span>
             <span>{LOGIN_CARD.guidance.text}</span>
@@ -62,7 +62,7 @@ export default function LoginCard() {
         {/* ASCII divider */}
         <div className="relative my-5 flex items-center justify-center">
           <div className="absolute w-full border-t border-[#362f25]" />
-          <span className="relative select-none bg-[#171513] px-3 font-mono text-[10px] uppercase tracking-widest text-[#786a55]">
+          <span className="relative select-none bg-[#171513] px-3 font-mono text-[10px] uppercase tracking-widest text-dwarf-parchmentMuted">
             {AUTH_ALTERNATIVES.divider}
           </span>
         </div>
@@ -74,7 +74,7 @@ export default function LoginCard() {
           className="mt-6 border-t border-[#342e24] pt-4 text-center"
           data-purpose="registration-callout"
         >
-          <p className="text-[11px] text-[#8e806b]">
+          <p className="text-label-sm text-dwarf-parchmentMuted">
             {AUTH_ALTERNATIVES.register.prompt}
           </p>
           <a
@@ -87,7 +87,7 @@ export default function LoginCard() {
 
         {/* Security footer note */}
         <div className="mt-4 border-t border-[#23201a] pt-3 text-center">
-          <p className="font-mono text-[9px] uppercase tracking-wider text-[#5c5344]">
+          <p className="font-mono text-[9px] uppercase tracking-wider text-dwarf-slate">
             {AUTH_ALTERNATIVES.security}
           </p>
         </div>
