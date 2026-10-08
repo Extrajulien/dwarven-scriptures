@@ -138,38 +138,6 @@ export default function RegisterForm() {
         </div>
       </div>
 
-      {/* Email field */}
-      <div className="space-y-1.5 pt-1">
-        <div className="flex items-center justify-between text-xs">
-          <label
-            htmlFor="raven-input"
-            className="flex items-center space-x-1.5 text-xs font-bold uppercase tracking-wide text-dwarf-parchment"
-          >
-            <span className="font-bold text-dwarf-gold">
-              {REGISTER_FORM.email.rune}
-            </span>
-            <span>{REGISTER_FORM.email.label}</span>
-          </label>
-          <span className="text-label-sm text-dwarf-parchmentMuted">
-            {REGISTER_FORM.email.hint}
-          </span>
-        </div>
-        <div className="relative">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-dwarf-gold">
-            <MailIcon />
-          </div>
-          <input
-            id="raven-input"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            placeholder={REGISTER_FORM.email.placeholder}
-            className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-3 font-mono text-sm text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
-          />
-        </div>
-      </div>
-
       {/* Password field */}
       <div className="space-y-1.5 pt-1">
         <div className="flex items-center justify-between text-xs">

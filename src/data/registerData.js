@@ -13,7 +13,7 @@ export const REGISTER_CARD = {
   terminalId: 'TERM_ID: #84-R',
   guidance: {
     rune: 'ᚱ',
-    text: 'Engrave your dossier into the stone',
+    text: 'Engrave your life on a stone',
     version: '',
   },
 };
@@ -23,13 +23,7 @@ export const REGISTER_FORM = {
     rune: 'ᛗ',
     label: '[ Dwarven identity ]',
     hint: '[username]',
-    placeholder: 'urist-mctypist',
-  },
-  email: {
-    rune: 'ᛒ',
-    label: '[ RUNE-POST ]',
-    hint: '[email]',
-    placeholder: 'scribe@deepdelve.guild',
+    placeholder: 'Joe Mama',
   },
   password: {
     rune: 'ᛝ',
@@ -44,7 +38,7 @@ export const REGISTER_FORM = {
     placeholder: '••••••••••••',
   },
   terms: 'I swear the Guild Charter oath and accept the stonebound terms',
-  submit: '[ ENGRAVE DOSSIER // CREATE ACCOUNT ]',
+  submit: '[ ENGRAVE // CREATE ACCOUNT ]',
 };
 
 export const AUTH_ALTERNATIVES = {
