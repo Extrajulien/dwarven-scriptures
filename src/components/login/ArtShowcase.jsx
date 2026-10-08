@@ -24,7 +24,7 @@ export default function ArtShowcase() {
         </div>
 
         {/* Main pixel art stage */}
-        <div className="group relative flex min-h-[460px] w-full flex-grow items-center justify-center overflow-hidden rounded border border-[#3b3327] bg-black shadow-inner lg:min-h-[580px]">
+        <div className="group relative flex min-h-[460px] max-h-[90] w-full flex-grow items-center justify-center overflow-hidden rounded border border-[#3b3327] bg-black shadow-inner lg:min-h-[580px]">
           <img
             alt={ART_SHOWCASE.image.alt}
             className="h-full w-full object-cover object-center contrast-[1.05] saturate-[1.08] transition-transform duration-700 group-hover:scale-105"

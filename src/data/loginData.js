@@ -63,7 +63,7 @@ export const ART_SHOWCASE = {
   feedStatus: '● FEED SYNCED',
   image: {
     alt: 'Detailed pixel art scene of an ancient subterranean Dwarven fortress hall in Dwarf Fortress Steam Edition style. Grand stone carved pillars, warm glowing lava forge channels in the distance, mining carts on tracks, glowing runic engravings in emerald and amber, rugged dwarven scribes and miners at basalt desks with quills and picks, intricate stone masonry borders, atmospheric dark slate cavern with warm torchlight, retro isometric high detail 16-bit video game art',
-    src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBI2fbdkpzdiU3QwvAlqvGhytbaNhZgDF9dDLl8YXrQXeq3GSTGQKkdInUlwdg-a8A03z6VQzFCdHe6mI4CDEZJuGxMwROItDqbwgzgjFq6cPZhwHFoTsEVdRGZafJxPQnZMnuIVKOnmXwVxfqmb1Xd4FuXP7TbRx-tBWvy03t4gs6uyK8-nCsYTDaCuQj-nUvoAvKPD5iiqyQO5VYacxQL7shKQP9Ulm8Ut5-Tbsp2',
+    src: 'assets/images/dwarf-angry.gif',
   },
   hud: {
     title: '[ DEEP DELVE SANCTUM ]',
