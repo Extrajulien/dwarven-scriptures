@@ -4,7 +4,7 @@ import LoginForm from './LoginForm';
 test('toggles the password field visibility', () => {
   render(<LoginForm />);
 
-  const passwordInput = screen.getByLabelText(/runic_cipher/i);
+  const passwordInput = screen.getByLabelText(/\[ cipher \]/i);
   const toggle = screen.getByRole('button', {
     name: /toggle password visibility/i,
   });
