@@ -37,6 +37,14 @@ export class InvalidUserInputError extends Error {
   }
 }
 
+/** Raised when a username already exists (unique constraint violation). */
+export class UsernameTakenError extends Error {
+  constructor() {
+    super('Username is already taken');
+    this.name = 'UsernameTakenError';
+  }
+}
+
 /** Raised when spending coins would take the balance below zero. */
 export class InsufficientCoinsError extends Error {
   constructor(internalUserId: number) {
@@ -99,26 +107,33 @@ export async function createUserWithProfiles(data: NewUserParams): Promise<User>
   }
   assertNonEmptyString(data.passwordHash, 'passwordHash');
 
-  return db.transaction(async (tx) => {
-    const [created] = await tx
-      .insert(users)
-      .values({
-        username,
-        passwordHash: data.passwordHash,
-        pfpUrl: data.pfpUrl ?? null,
-      })
-      .returning();
+  try {
+    return await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(users)
+        .values({
+          username,
+          passwordHash: data.passwordHash,
+          pfpUrl: data.pfpUrl ?? null,
+        })
+        .returning();
 
-    if (!created) {
-      throw new Error('Failed to create user: the insert returned no row');
+      if (!created) {
+        throw new Error('Failed to create user: the insert returned no row');
+      }
+
+      const now = new Date();
+      await tx.insert(userStats).values({ userId: created.id, updatedAt: now });
+      await tx.insert(userResources).values({ userId: created.id, updatedAt: now });
+
+      return created;
+    });
+  } catch (error) {
+    if (isUsernameUniqueViolation(error)) {
+      throw new UsernameTakenError();
     }
-
-    const now = new Date();
-    await tx.insert(userStats).values({ userId: created.id, updatedAt: now });
-    await tx.insert(userResources).values({ userId: created.id, updatedAt: now });
-
-    return created;
-  });
+    throw error;
+  }
 }
 
 /**
@@ -282,6 +297,36 @@ function computeAverageWpm(totalWords: bigint, totalTimeMs: bigint): number {
   }
 
   return Number(totalWords) / (Number(totalTimeMs) / 60_000);
+}
+
+const POSTGRES_UNIQUE_VIOLATION = '23505';
+const USERS_USERNAME_UNIQUE_CONSTRAINT = 'users_username_unique';
+
+/**
+ * Recognises a PostgreSQL unique-violation raised by the `username` column.
+ * Drizzle wraps driver errors in a `DrizzleQueryError`, so the SQLSTATE code
+ * sits on the `cause` chain rather than on the thrown error itself — the chain
+ * is walked the same way `verify-users.ts` walks CHECK violations. During
+ * `createUserWithProfiles` the username is the only realistically colliding
+ * value (`publicId` is a random UUID), so a missing constraint name is still
+ * treated as a username clash.
+ */
+function isUsernameUniqueViolation(error: unknown): boolean {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+
+  while (current && typeof current === 'object' && !seen.has(current)) {
+    seen.add(current);
+
+    const { code, constraint } = current as { code?: unknown; constraint?: unknown };
+    if (code === POSTGRES_UNIQUE_VIOLATION) {
+      return constraint === undefined || constraint === USERS_USERNAME_UNIQUE_CONSTRAINT;
+    }
+
+    current = (current as { cause?: unknown }).cause;
+  }
+
+  return false;
 }
 
 function buildIdentifierMatch(identifier: UserIdentifier) {

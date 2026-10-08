@@ -41,13 +41,16 @@ are declared there rather than in a separate file.
 ## Schema
 
 Three tables, all keyed so that no internal id ever reaches a client: the
-`users.id` `bigserial` is used only for foreign keys, while `public_id` (uuid)
-and `username` (slug) are the public identifiers. `user_stats` and
-`user_resources` reference `users(id)` with `ON DELETE CASCADE`.
+`users.id` `bigserial` is used only for foreign keys, while `publicId` (uuid)
+and `username` are the public identifiers. `username` holds the trimmed
+**display name** (it may contain spaces, is unique and ≤ 32 chars) rather than a
+URL slug — see [`doc/auth.md`](auth.md) for how registration populates it.
+`user_stats` and `user_resources` reference `users(id)` with
+`ON DELETE CASCADE`.
 
 | Table             | Key            | Notes                                                   |
 | ----------------- | -------------- | ------------------------------------------------------- |
-| `users`           | `id` bigserial | unique `publicId` (uuid, `gen_random_uuid()`), unique `username` (≤ 32 chars), `passwordHash`, `pfpUrl`, `createdAt` |
+| `users`           | `id` bigserial | unique `publicId` (uuid, `gen_random_uuid()`), unique `username` (display name ≤ 32 chars), `passwordHash`, `pfpUrl`, `createdAt` |
 | `user_stats`      | `userId` → `users.id` | `racesCompleted`, `totalWords`, `totalTimeMs`, `bestWpm`, `updatedAt` |
 | `user_resources`  | `userId` → `users.id` | `coins`, `gems`, `updatedAt`                    |
 

@@ -39,6 +39,27 @@ export const REGISTER_FORM = {
   },
   terms: 'I swear the Guild Charter oath and accept the stonebound terms',
   submit: '[ ENGRAVE // CREATE ACCOUNT ]',
+  submitPending: '[ ENGRAVING… ]',
+  errors: {
+    username: {
+      required: 'A name is required.',
+      usernameTooLong: 'Name must be 32 characters or fewer.',
+      usernameTaken: 'That name is already taken.',
+    },
+    password: {
+      required: 'A password is required.',
+      passwordTooShort: 'Password must be at least 12 characters.',
+      passwordTooLong: 'Password must be 128 characters or fewer.',
+      passwordWeak: 'Password needs more variety — mix upper/lowercase letters, numbers and symbols.',
+    },
+    confirmPassword: {
+      required: 'Please confirm your password.',
+      passwordsDoNotMatch: 'Passwords do not match.',
+    },
+    form: {
+      unexpected: 'Something went wrong. Please try again.',
+    },
+  },
 };
 
 export const AUTH_ALTERNATIVES = {
@@ -61,7 +82,7 @@ export const ART_SHOWCASE = {
   feedStatus: '● FEED SYNCED',
   image: {
     alt: 'Detailed pixel art scene of an ancient subterranean Dwarven fortress hall in Dwarf Fortress Steam Edition style. Grand stone carved pillars, warm glowing lava forge channels in the distance, mining carts on tracks, glowing runic engravings in emerald and amber, rugged dwarven scribes and miners at basalt desks with quills and picks, intricate stone masonry borders, atmospheric dark slate cavern with warm torchlight, retro isometric high detail 16-bit video game art',
-    src: 'assets/images/dwarf-angry.gif',
+    src: 'assets/images/gnome_drip.jpg',
   },
   hud: {
     title: '[ DEEP DELVE SANCTUM ]',
