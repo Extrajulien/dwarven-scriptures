@@ -32,6 +32,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run db:migrate`  | Apply pending migrations             |
 | `npm run db:push`     | Push the schema directly (no SQL)    |
 | `npm run db:studio`   | Open Drizzle Studio                  |
+| `npm run db:verify`   | Check the user tables against the database |
 
 Database setup, environment variables and deployment are documented in
 [`doc/database.md`](doc/database.md).
