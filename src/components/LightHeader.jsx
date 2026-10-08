@@ -1,6 +1,6 @@
-import { TERMINAL_HEADER } from '../../data/loginData';
+import { TERMINAL_HEADER } from '../data/loginData';
 
-export default function LoginHeader() {
+export default function LightHeader() {
   return (
     <header className="sticky top-0 z-30 flex w-full items-center justify-between border-b border-dwarf-border bg-dwarf-bg/90 px-4 py-2.5 text-xs text-dwarf-parchmentMuted backdrop-blur-sm">
       <div className="flex items-center space-x-3">

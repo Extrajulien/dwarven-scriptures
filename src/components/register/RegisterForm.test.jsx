@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import LoginForm from './LoginForm';
+import RegisterForm from './RegisterForm';
 
 test('toggles the password field visibility', () => {
-  render(<LoginForm />);
+  render(<RegisterForm />);
 
   const passwordInput = screen.getByLabelText(/\[ cipher \]/i);
   const toggle = screen.getByRole('button', {

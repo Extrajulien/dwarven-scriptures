@@ -1,6 +1,6 @@
-import { LOGIN_FOOTER } from '../../data/loginData';
+import { LOGIN_FOOTER } from '../data/loginData';
 
-export default function LoginFooter() {
+export default function LightFooter() {
   return (
     <footer className="z-20 w-full border-t border-[#2d271e] bg-[#11100e] px-4 py-3 text-[11px] text-dwarf-parchmentMuted">
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 text-center sm:flex-row sm:text-left">

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { AUTH_ALTERNATIVES, LOGIN_CARD } from '../../data/loginData';
 import LoginForm from './LoginForm';
 import OAuthButtons from './OAuthButtons';
@@ -77,12 +78,12 @@ export default function LoginCard() {
           <p className="text-label-sm text-dwarf-parchmentMuted">
             {AUTH_ALTERNATIVES.register.prompt}
           </p>
-          <a
+          <Link
             href={AUTH_ALTERNATIVES.register.href}
             className="mt-1 inline-block font-spacemono text-xs font-bold tracking-wider text-dwarf-gold transition hover:text-dwarf-goldLight hover:underline"
           >
             {AUTH_ALTERNATIVES.register.label}
-          </a>
+          </Link>
         </div>
 
         {/* Security footer note */}

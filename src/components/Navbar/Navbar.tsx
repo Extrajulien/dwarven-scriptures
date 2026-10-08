@@ -1,5 +1,6 @@
-import { GUILD, NAV_LINKS } from '../data/homepageData';
-import Icon from './Icon';
+import { GUILD, NAV_LINKS } from '../../data/homepageData';
+import PersonalAccount from './PersonalAccount';
+
 
 export default function Navbar() {
   return (
@@ -51,19 +52,7 @@ export default function Navbar() {
             >[ENG/FR]</button>
           </div>
 
-          <div className="flex items-center gap-space-sm bg-surface-container px-space-sm py-space-xs rounded">
-            <div className="text-right hidden sm:block">
-              <span className="block font-label-md text-label-md text-on-surface">
-                {GUILD.user.name}
-              </span>
-              <span className="block font-label-sm text-label-sm text-primary">
-                {GUILD.user.role}
-              </span>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <Icon name="person" className="text-on-primary text-headline-sm" />
-            </div>
-          </div>
+          <PersonalAccount />
         </div>
       </div>
     </header>
