@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
-import ArtShowcase from '../../components/login/ArtShowcase';
-import LoginCard from '../../components/login/LoginCard';
+import RegisterArtShowcase from '../../components/register/RegisterArtShowcase';
+import RegisterCard from '../../components/register/RegisterCard';
 import LightFooter from '../../components/LightFooter';
 import LightHeader from '../../components/LightHeader';
 
 export const metadata: Metadata = {
-  title: 'Citadel of Granite // Scribe Access Terminal',
+  title: 'Citadel of Granite // Scribe Registration Terminal',
 };
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#0f0e0d] font-mono text-dwarf-parchment antialiased selection:bg-dwarf-gold selection:text-dwarf-abyss">
       {/* Scanline texture overlay */}
@@ -20,8 +20,8 @@ export default function LoginPage() {
 
       <main className="relative z-20 flex flex-grow items-center justify-center p-3 sm:p-6 lg:p-10">
         <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-stretch gap-6 md:grid-cols-12 lg:gap-8">
-          <LoginCard />
-          <ArtShowcase />
+          <RegisterCard />
+          <RegisterArtShowcase />
         </div>
       </main>
 
