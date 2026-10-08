@@ -26,7 +26,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:verify": "tsx src/db/verify-users.ts"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
