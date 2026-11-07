@@ -5,6 +5,11 @@ signed session cookie. GitHub/Discord OAuth is still mocked and is the next
 step. This document records the decisions a future agent must preserve or
 consciously change when extending authentication.
 
+`/login` and `/register` share one route-group layout
+([`src/app/(auth)/layout.tsx`](../src/app/(auth)/layout.tsx)) that renders the
+cave shell and a single lean navbar (site name linking home); there is no
+footer.
+
 ## Registration flow
 
 The `/register` form posts to a single server action,
@@ -153,7 +158,7 @@ should add this.
 
 `validateRegistration` and the action use these stable codes; the client maps
 them to display strings in
-[`src/data/registerData.js`](../src/data/registerData.js) (English only — the
+[`src/data/registerData.ts`](../src/data/registerData.ts) (English only — the
 i18n layer referenced in AGENTS.md is not built yet).
 
 | Field | Codes |
@@ -164,7 +169,7 @@ i18n layer referenced in AGENTS.md is not built yet).
 | form-level | `unexpected` |
 
 `validateLogin` and the login action use these codes; the client maps them in
-[`src/data/loginData.js`](../src/data/loginData.js):
+[`src/data/loginData.ts`](../src/data/loginData.ts):
 
 | Field | Codes |
 | ----- | ----- |
