@@ -1,9 +1,9 @@
 # Authentication & Registration
 
-Status: **registration and login are implemented end-to-end** with a stateless
-signed session cookie. GitHub/Discord OAuth is still mocked and is the next
-step. This document records the decisions a future agent must preserve or
-consciously change when extending authentication.
+Status: **registration, login and GitHub/Discord OAuth are implemented
+end-to-end** with a stateless signed session cookie. This document records the
+decisions a future agent must preserve or consciously change when extending
+authentication.
 
 `/login` and `/register` share one route-group layout
 ([`src/app/(auth)/layout.tsx`](../src/app/(auth)/layout.tsx)) that renders the
@@ -54,6 +54,53 @@ A **wrong username and a wrong password both return the same**
 `invalidCredentials` form error, so the response never reveals whether an
 account exists. A database or hashing failure maps to a generic `unexpected`
 form error.
+
+## OAuth login & registration (GitHub and Discord)
+
+GitHub and Discord sign-in is implemented end-to-end with a hand-rolled
+authorization-code flow (no auth dependency), reusing the same stateless
+session cookie as password login. The OAuth buttons on both `/login` and
+`/register` link to `GET /api/auth/<provider>`.
+
+The flow:
+
+1. `GET /api/auth/<provider>` generates a CSRF `state`, stores it (plus the
+   sanitized post-login `next` destination) in short-lived HttpOnly cookies
+   (`oauth_state`, `oauth_next`), and redirects to the provider's authorize
+   page.
+2. The provider redirects back to `GET /api/auth/<provider>/callback` with
+   `code` and `state`. The callback verifies the `state` (timing-safe), then
+   exchanges the code for an access token and fetches the provider profile.
+3. The profile is passed to `createOrLinkOAuthUser`
+   ([`src/db/queries/oauth-accounts.ts`](../src/db/queries/oauth-accounts.ts)),
+   which returns the existing user for a returning identity or creates one on
+   first sign-in. The callback writes the session and redirects to `next`
+   (default `/`).
+
+Key decisions:
+
+| Aspect | Value |
+| ------ | ----- |
+| Flow | Authorization code + CSRF `state` (no PKCE: confidential server client with a secret) |
+| Scopes | GitHub `read:user`; Discord `identify` (no email) |
+| Username | GitHub `login`; Discord `global_name` (fallback `username`); trimmed/truncated to 32 chars, random-suffixed on collision |
+| Avatar | GitHub `avatar_url`; Discord assembled from `id` + `avatar` hash, stored as `pfpUrl` |
+| Session | `createSession(..., { remember: true })` → 30-day cookie (no checkbox in the flow) |
+| Failure | Any exchange/profile/db error → redirect `/login`; `state` mismatch or provider `error` → `/login` |
+| Credentials | `GITHUB_CLIENT_ID/SECRET` and `DISCORD_CLIENT_ID/SECRET` environment variables (server-only) |
+
+Provider logic lives in [`src/lib/oauth.ts`](../src/lib/oauth.ts); the route
+handlers are
+[`src/app/api/auth/[provider]/route.ts`](../src/app/api/auth/[provider]/route.ts)
+and
+[`src/app/api/auth/[provider]/callback/route.ts`](../src/app/api/auth/[provider]/callback/route.ts).
+
+### Password-less accounts
+
+An account created through OAuth has `passwordHash = NULL` (see
+[`doc/database.md`](database.md)). Password login for such an account returns
+the same `invalidCredentials` form error as a wrong password, so the response
+never reveals how the account was created.
 
 ## Sessions (stateless, signed cookie)
 
