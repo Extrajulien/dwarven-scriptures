@@ -1,4 +1,5 @@
 import { AUTH_ALTERNATIVES } from '../../data/loginData';
+import ButtonSecondary from '../ButtonSecondary';
 
 function GitHubIcon() {
   return (
@@ -42,16 +43,12 @@ export default function OAuthButtons() {
       {AUTH_ALTERNATIVES.providers.map((provider) => {
         const Icon = PROVIDER_ICONS[provider.id];
         return (
-          <button
-            key={provider.id}
-            type="button"
-            className="btn-chisel-stone group flex min-h-[44px] items-center justify-center space-x-2 rounded bg-dwarf-basalt px-3 py-2.5 text-xs text-dwarf-parchment transition hover:text-white"
-          >
+          <ButtonSecondary key={provider.id}>
             <Icon />
             <span className="text-label-sm font-bold tracking-tight">
               {provider.label}
             </span>
-          </button>
+          </ButtonSecondary>
         );
       })}
     </div>
