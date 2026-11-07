@@ -192,6 +192,40 @@ export async function getUserFullProfile(
   };
 }
 
+/** Credentials needed to authenticate a user; never leaves the server. */
+export type UserCredentials = {
+  publicId: string;
+  username: string;
+  passwordHash: string;
+};
+
+/**
+ * Loads the password hash (and public identifiers) for a username, for the
+ * login flow. This is intentionally separate from `getUserFullProfile`: the
+ * profile projection strips `passwordHash`, while authentication needs it to
+ * verify a submitted password.
+ *
+ * Returns `null` when no user matches. The caller must not expose the hash.
+ */
+export async function getUserCredentialsByUsername(
+  username: string,
+): Promise<UserCredentials | null> {
+  const trimmed = username?.trim();
+  assertNonEmptyString(trimmed, 'username');
+
+  const rows = await db
+    .select({
+      publicId: users.publicId,
+      username: users.username,
+      passwordHash: users.passwordHash,
+    })
+    .from(users)
+    .where(eq(users.username, trimmed))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
 /**
  * Folds a finished race into the user's lifetime stats.
  *

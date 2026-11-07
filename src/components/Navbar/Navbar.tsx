@@ -1,8 +1,9 @@
 import { GUILD, NAV_LINKS } from '../../data/homepageData';
 import PersonalAccount from './PersonalAccount';
 
+export type NavUser = { username: string };
 
-export default function Navbar() {
+export default function Navbar({ user = null }: { user?: NavUser | null }) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
       <div className="h-20 w-full px-margin-desktop flex items-center justify-between gap-gutter">
@@ -52,7 +53,7 @@ export default function Navbar() {
             >[ENG/FR]</button>
           </div>
 
-          <PersonalAccount />
+          <PersonalAccount user={user} />
         </div>
       </div>
     </header>

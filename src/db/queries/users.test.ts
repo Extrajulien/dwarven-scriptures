@@ -85,7 +85,7 @@ jest.mock('../index', () => ({
   },
 }));
 
-import { adjustUserCoins, createUserWithProfiles, getUserFullProfile, recordCompletedRace, UsernameTakenError } from './users';
+import { adjustUserCoins, createUserWithProfiles, getUserCredentialsByUsername, getUserFullProfile, recordCompletedRace, UsernameTakenError } from './users';
 
 beforeEach(() => {
   calls.length = 0;
@@ -400,6 +400,39 @@ describe('getUserFullProfile', () => {
 
   test('rejects a malformed publicId before touching the database', async () => {
     await expect(getUserFullProfile({ publicId: 'nope' })).rejects.toThrow(/UUID/);
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe('getUserCredentialsByUsername', () => {
+  const credentialsRow = {
+    publicId: '11111111-1111-4111-8111-111111111111',
+    username: 'ada',
+    passwordHash: 'scrypt$32768$8$1$salt$hash',
+  };
+
+  test('returns the credentials when the user exists', async () => {
+    selectResult = [credentialsRow];
+
+    await expect(getUserCredentialsByUsername('ada')).resolves.toEqual(credentialsRow);
+  });
+
+  test('returns null when no user matches', async () => {
+    selectResult = [];
+
+    await expect(getUserCredentialsByUsername('ghost')).resolves.toBeNull();
+  });
+
+  test('trims the username and filters by it', async () => {
+    selectResult = [credentialsRow];
+
+    await getUserCredentialsByUsername('  ada  ');
+
+    expect(sqlTextOf('select')).toContain('"users"."username" =');
+  });
+
+  test('rejects an empty username before touching the database', async () => {
+    await expect(getUserCredentialsByUsername('   ')).rejects.toThrow(/username/);
     expect(calls).toHaveLength(0);
   });
 });

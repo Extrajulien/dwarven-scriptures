@@ -1,8 +1,9 @@
 # Authentication & Registration
 
-Status: **registration is implemented end-to-end**; login is still a mock form
-(no session/verification yet). This document records the decisions a future
-agent must preserve or consciously change when adding login and sessions.
+Status: **registration and login are implemented end-to-end** with a stateless
+signed session cookie. GitHub/Discord OAuth is still mocked and is the next
+step. This document records the decisions a future agent must preserve or
+consciously change when extending authentication.
 
 ## Registration flow
 
@@ -25,6 +26,57 @@ The action returns a serializable `RegisterResult`
 (`{ ok: true }` or `{ ok: false, fieldErrors, formError? }`); no database row
 ever leaves the function. The client (`RegisterForm.jsx`) renders each field
 error under its input and redirects to `/login` on success.
+
+## Login flow
+
+The `/login` form posts to a single server action,
+[`src/app/login/actions.ts`](../src/app/login/actions.ts) — the only
+authoritative entry point. It never trusts the client:
+
+1. Reads `username`, `password` and `remember_scribe` from the raw `FormData`.
+2. Validates them with the pure function `validateLogin`
+   ([`src/lib/login-validation.ts`](../src/lib/login-validation.ts)), which
+   trims the username and only requires both fields to be non-empty. The
+   registration password policy is **not** re-applied: an existing password was
+   already checked when the account was created.
+3. Looks up the stored hash with `getUserCredentialsByUsername`
+   ([`src/db/queries/users.ts`](../src/db/queries/users.ts)) and verifies it
+   with `verifyPassword`.
+4. On success, writes a signed session cookie (see below) and returns
+   `{ ok: true }`; the client redirects to `/`.
+
+A **wrong username and a wrong password both return the same**
+`invalidCredentials` form error, so the response never reveals whether an
+account exists. A database or hashing failure maps to a generic `unexpected`
+form error.
+
+## Sessions (stateless, signed cookie)
+
+There is no session table and no auth dependency. A session is a
+`body.signature` token stored in an HttpOnly cookie, built with Node's built-in
+`crypto` HMAC-SHA256 in [`src/lib/session.ts`](../src/lib/session.ts).
+
+| Aspect | Value |
+| ------ | ----- |
+| Cookie name | `session` |
+| Payload | `{ publicId, username, exp }` — public identifiers plus an absolute expiry in Unix seconds |
+| Signature | HMAC-SHA256 over the base64url body, verified with `timingSafeEqual` |
+| Lifetime | 30 days (`SESSION_TTL_SECONDS`) |
+| Options | `httpOnly`, `secure` in production, `sameSite: 'lax'`, `path: '/'` |
+| Remember me | checked → `maxAge` 30 days; unchecked → browser-session cookie |
+| Secret | `SESSION_SECRET` environment variable (required; `openssl rand -base64 32`) |
+
+`getSession()` reads and verifies the cookie and returns `{ publicId, username }`
+or `null`; a tampered or expired token is treated as logged out. The homepage
+reads the session in `src/app/page.tsx` and passes the username down to the
+navbar. `deleteSession()` exists for a future logout action; it has no caller
+yet.
+
+This stateless design means sessions cannot be individually revoked server-side.
+If that becomes a requirement (for example "log out all devices"), replace the
+cookie with a database-backed session table (see
+[`doc/database.md`](database.md)) without changing the login action's result
+contract.
 
 ## Name rules
 
@@ -111,6 +163,15 @@ i18n layer referenced in AGENTS.md is not built yet).
 | `confirmPassword` | `required`, `passwordsDoNotMatch` |
 | form-level | `unexpected` |
 
+`validateLogin` and the login action use these codes; the client maps them in
+[`src/data/loginData.js`](../src/data/loginData.js):
+
+| Field | Codes |
+| ----- | ----- |
+| `username` | `required` |
+| `password` | `required` |
+| form-level | `invalidCredentials`, `unexpected` |
+
 ## Tests
 
 * [`src/lib/password.test.ts`](../src/lib/password.test.ts) — real scrypt
@@ -121,3 +182,9 @@ i18n layer referenced in AGENTS.md is not built yet).
   `23505` → `UsernameTakenError` mapping.
 * [`src/components/register/RegisterForm.test.jsx`](../src/components/register/RegisterForm.test.jsx)
   — the client renders each field error under its input (action is mocked).
+* [`src/lib/session.test.ts`](../src/lib/session.test.ts) — token round-trips,
+  tamper/expiry/malformed/wrong-secret rejection.
+* [`src/lib/login-validation.test.ts`](../src/lib/login-validation.test.ts) —
+  trimming and the `required` rules.
+* [`src/components/login/LoginForm.test.jsx`](../src/components/login/LoginForm.test.jsx)
+  — the client renders field errors, form errors, and redirects on success.

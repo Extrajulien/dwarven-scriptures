@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { loginUser } from '../../app/login/actions';
 import { LOGIN_FORM } from '../../data/loginData';
 
 function PickaxeIcon() {
@@ -78,14 +80,36 @@ function HammerIcon() {
   );
 }
 
+function FieldError({ id, message }) {
+  return (
+    <p id={id} role="alert" className="text-xs font-medium text-dwarf-magma">
+      {message}
+    </p>
+  );
+}
+
 export default function LoginForm() {
+  const [state, formAction, pending] = useActionState(loginUser, null);
   const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (state && state.ok) {
+      router.replace('/');
+    }
+  }, [state, router]);
+
+  const fieldErrors = state && state.ok === false ? state.fieldErrors : {};
+  const usernameError = fieldErrors.username;
+  const passwordError = fieldErrors.password;
+  const formError = state && state.ok === false ? state.formError : undefined;
 
   return (
     <form
       className="space-y-4"
-      data-purpose="scribe-verification-form"
-      onSubmit={(event) => event.preventDefault()}
+      data-purpose="scribe-login-form"
+      action={formAction}
+      noValidate
     >
       {/* Callsign / username field */}
       <div className="space-y-1.5">
@@ -114,9 +138,17 @@ export default function LoginForm() {
             autoComplete="username"
             required
             placeholder={LOGIN_FORM.callsign.placeholder}
+            aria-invalid={usernameError ? true : undefined}
+            aria-describedby={usernameError ? 'username-error' : undefined}
             className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-3 font-mono text-sm text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
         </div>
+        {usernameError && (
+          <FieldError
+            id="username-error"
+            message={LOGIN_FORM.errors.username[usernameError]}
+          />
+        )}
       </div>
 
       {/* Password field */}
@@ -146,6 +178,8 @@ export default function LoginForm() {
             autoComplete="current-password"
             required
             placeholder={LOGIN_FORM.password.placeholder}
+            aria-invalid={passwordError ? true : undefined}
+            aria-describedby={passwordError ? 'password-error' : undefined}
             className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
           <button
@@ -159,6 +193,12 @@ export default function LoginForm() {
             <EyeIcon />
           </button>
         </div>
+        {passwordError && (
+          <FieldError
+            id="password-error"
+            message={LOGIN_FORM.errors.password[passwordError]}
+          />
+        )}
       </div>
 
       {/* Remember checkbox */}
@@ -177,12 +217,20 @@ export default function LoginForm() {
 
       {/* Primary submit */}
       <div className="pt-2">
+        {formError && (
+          <p role="alert" className="mb-3 text-xs font-medium text-dwarf-magma">
+            {LOGIN_FORM.errors.form[formError]}
+          </p>
+        )}
         <button
           type="submit"
+          disabled={pending}
           className="btn-chisel-gold group flex min-h-[48px] w-full cursor-pointer items-center justify-center space-x-2 rounded px-4 py-3 text-xs font-extrabold uppercase tracking-widest text-on-primary-container shadow-gold-glow sm:text-sm"
         >
           <HammerIcon />
-          <span className="font-spacemono font-bold">{LOGIN_FORM.submit}</span>
+          <span className="font-spacemono font-bold">
+            {pending ? LOGIN_FORM.submitPending : LOGIN_FORM.submit}
+          </span>
         </button>
       </div>
     </form>

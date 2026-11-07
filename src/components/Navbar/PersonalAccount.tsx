@@ -2,17 +2,15 @@ import Link from 'next/link';
 import Icon from '../Icon';
 import { LOGIN } from '../../data/NavbarData';
 
-export default function PersonalAccount() {
-    const isConnected = false;
-    if (isConnected) {
+export type NavUser = { username: string };
+
+export default function PersonalAccount({ user = null }: { user?: NavUser | null }) {
+    if (user) {
         return (
         <div className="flex items-center gap-space-sm bg-surface-container px-space-sm py-space-xs rounded">
             <div className="text-right hidden sm:block">
               <span className="block font-label-md text-label-md text-on-surface">
-                Name
-              </span>
-              <span className="block font-label-sm text-label-sm text-primary">
-                Title
+                {user.username}
               </span>
             </div>
             <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">

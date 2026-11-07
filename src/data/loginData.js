@@ -41,6 +41,19 @@ export const LOGIN_FORM = {
   },
   remember: 'Remember Scribe Rune-Stone for 30 cycles',
   submit: '[ ENTER THE DELVE // LOGIN ]',
+  submitPending: '[ VERIFYING… ]',
+  errors: {
+    username: {
+      required: 'A name is required.',
+    },
+    password: {
+      required: 'A password is required.',
+    },
+    form: {
+      invalidCredentials: 'Incorrect username or password.',
+      unexpected: 'Something went wrong. Please try again.',
+    },
+  },
 };
 
 export const AUTH_ALTERNATIVES = {

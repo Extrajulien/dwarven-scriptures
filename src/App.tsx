@@ -10,10 +10,12 @@ import SpriteShowcase from './sprites/SpriteShowcase';
 import AutoTileDemo from './sprites/AutoTileDemo';
 import Navbar from './components/Navbar/Navbar';
 
-export default function App() {
+export type NavUser = { username: string };
+
+export default function App({ user = null }: { user?: NavUser | null }) {
   return (
     <>
-      <Navbar />
+      <Navbar user={user} />
 
       <main className="w-full pt-20 bg-surface min-h-[calc(100vh-3rem)] pb-12">
         <div className="flex flex-col w-full">
