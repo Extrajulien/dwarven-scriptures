@@ -196,7 +196,8 @@ export async function getUserFullProfile(
 export type UserCredentials = {
   publicId: string;
   username: string;
-  passwordHash: string;
+  /** `null` for OAuth-only accounts, which have no password. */
+  passwordHash: string | null;
 };
 
 /**

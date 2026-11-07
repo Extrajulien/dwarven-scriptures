@@ -8,6 +8,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -27,10 +28,35 @@ export const users = pgTable('users', {
   publicId: uuid().defaultRandom().notNull().unique(),
   /** URL slug used by public routes, e.g. `/u/<username>`. */
   username: varchar({ length: 32 }).notNull().unique(),
-  passwordHash: text().notNull(),
+  /** `NULL` for accounts created through OAuth, which have no password. */
+  passwordHash: text(),
   pfpUrl: text(),
   createdAt: timestamp({ mode: 'date', withTimezone: true }).defaultNow().notNull(),
 });
+
+export const oauthAccounts = pgTable(
+  'oauth_accounts',
+  {
+    /** Internal primary key. Foreign keys reference this; never expose it. */
+    id: bigserial({ mode: 'number' }).primaryKey(),
+    userId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** OAuth provider this account is linked to (`github` or `discord`). */
+    provider: varchar({ length: 16 }).notNull(),
+    /** Provider-side user id, stringified so both numeric and snowflake ids fit. */
+    providerAccountId: text().notNull(),
+    createdAt: timestamp({ mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    // One row per (provider, account); two providers may link the same user.
+    unique('oauth_accounts_provider_account_unique').on(
+      table.provider,
+      table.providerAccountId,
+    ),
+    check('oauth_accounts_provider_not_empty', sql`${table.provider} <> ''`),
+  ],
+);
 
 export const userStats = pgTable(
   'user_stats',
@@ -68,7 +94,7 @@ export const userResources = pgTable(
   ],
 );
 
-export const usersRelations = relations(users, ({ one }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   stats: one(userStats, {
     fields: [users.id],
     references: [userStats.userId],
@@ -76,6 +102,14 @@ export const usersRelations = relations(users, ({ one }) => ({
   resources: one(userResources, {
     fields: [users.id],
     references: [userResources.userId],
+  }),
+  oauthAccounts: many(oauthAccounts),
+}));
+
+export const oauthAccountsRelations = relations(oauthAccounts, ({ one }) => ({
+  user: one(users, {
+    fields: [oauthAccounts.userId],
+    references: [users.id],
   }),
 }));
 
@@ -99,6 +133,8 @@ export type UserStat = InferSelectModel<typeof userStats>;
 export type NewUserStat = InferInsertModel<typeof userStats>;
 export type UserResource = InferSelectModel<typeof userResources>;
 export type NewUserResource = InferInsertModel<typeof userResources>;
+export type OAuthAccount = InferSelectModel<typeof oauthAccounts>;
+export type NewOAuthAccount = InferInsertModel<typeof oauthAccounts>;
 
 /**
  * Public projection of a user: the internal `id` is dropped so it cannot leak

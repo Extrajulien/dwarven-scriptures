@@ -49,6 +49,12 @@ export async function loginUser(
     return { ok: false, fieldErrors: {}, formError: 'invalidCredentials' };
   }
 
+  // OAuth-only accounts have no password; report the same error as a wrong
+  // password so the response never reveals how the account was created.
+  if (credentials.passwordHash === null) {
+    return { ok: false, fieldErrors: {}, formError: 'invalidCredentials' };
+  }
+
   let passwordMatches;
   try {
     passwordMatches = await verifyPassword(password, credentials.passwordHash);
