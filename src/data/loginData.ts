@@ -2,18 +2,80 @@
 // page. Values are placeholders until the real auth flow and i18n land.
 // Class strings are Tailwind utilities resolved from tailwind.config.js.
 
-export const TERMINAL_HEADER = {
-  node: '[ FORTRESS_NODE // OZ_DEEP_DELVE ]',
-  protocol: '[ PROTOCOL: FORGE_ENCRYPT_256 ]',
-  depth: '[ DEPTH: Z-LEVEL -42 ]',
-  carrierLabel: 'RUNIC CARRIER:',
-  carrierStatus: '99.8% STABLE',
-};
+export interface LoginCardData {
+  logoAlt: string;
+  logoUrl: string;
+  title: string;
+  heading: string;
+  subtitle: string;
+  status: string;
+  terminalId: string;
+  guidance: {
+    rune: string;
+    text: string;
+    version: string;
+  };
+}
 
-export const LOGIN_CARD = {
+export interface LoginFormField {
+  rune: string;
+  label: string;
+  hint: string;
+  placeholder: string;
+}
+
+export interface LoginFormData {
+  callsign: LoginFormField;
+  password: LoginFormField;
+  remember: string;
+  submit: string;
+  submitPending: string;
+  errors: {
+    username: Record<string, string>;
+    password: Record<string, string>;
+    form: Record<string, string>;
+  };
+}
+
+export interface AuthProvider {
+  id: string;
+  label: string;
+}
+
+export interface AuthAlternativesData {
+  divider: string;
+  providers: AuthProvider[];
+  register: {
+    prompt: string;
+    label: string;
+    href: string;
+  };
+  security: string;
+}
+
+export interface ArtShowcaseData {
+  ariaLabel: string;
+  topLeft: string;
+  feedStatus: string;
+  image: {
+    alt: string;
+    src: string;
+  };
+  hud: {
+    title: string;
+    activeScribesLabel: string;
+    activeScribesValue: string;
+    veinLabel: string;
+    veinValue: string;
+    quote: string;
+  };
+  bottomLeft: string;
+  bottomRight: string;
+}
+
+export const LOGIN_CARD: LoginCardData = {
   logoAlt: 'Logo of Dwarven Scriptures',
-  logoUrl:
-    'favicon.png',
+  logoUrl: 'favicon.png',
   title: '[ CITADEL OF GRANITE ]',
   heading: 'SCRIBE ACCESS TERMINAL',
   subtitle: 'Deep Delve Guild • Scribe Verification',
@@ -26,7 +88,7 @@ export const LOGIN_CARD = {
   },
 };
 
-export const LOGIN_FORM = {
+export const LOGIN_FORM: LoginFormData = {
   callsign: {
     rune: 'ᛗ',
     label: '[ Dwarven identity ]',
@@ -56,7 +118,7 @@ export const LOGIN_FORM = {
   },
 };
 
-export const AUTH_ALTERNATIVES = {
+export const AUTH_ALTERNATIVES: AuthAlternativesData = {
   divider: '─── [ OR ATTUNE VIA EXTERNAL FORGE ] ───',
   providers: [
     { id: 'github', label: 'Forge with GitHub' },
@@ -70,7 +132,7 @@ export const AUTH_ALTERNATIVES = {
   security: '• 256-BIT BASALT ENCRYPTION • GUILD PROTOCOL ASCII_V2 •',
 };
 
-export const ART_SHOWCASE = {
+export const ART_SHOWCASE: ArtShowcaseData = {
   ariaLabel: 'Citadel Fortress Live Feed',
   topLeft: '[ CITADEL HALL ARCHIVE // EXPEDITION #84 ]',
   feedStatus: '● FEED SYNCED',
@@ -89,26 +151,4 @@ export const ART_SHOWCASE = {
   },
   bottomLeft: '[ SECTOR: LOWER_FORGE_LEVEL ]',
   bottomRight: 'MAGMA RESERVOIR: 1,420°C // 98% CAPACITY',
-};
-
-export const LOGIN_FOOTER = {
-  left: 'ᛞ CITADEL KEEPER',
-  leftNote: '— Built for apprentice coders & dwarf cartographers',
-  links: [
-    {
-      label: '[ GUILD CHARTER ]',
-      href: '#guild-charter',
-      className: 'transition hover:text-dwarf-parchment',
-    },
-    {
-      label: '[ RUNIC CIPHER HELP ]',
-      href: '#terminal-help',
-      className: 'transition hover:text-dwarf-parchment',
-    },
-    {
-      label: '[ ALL VEINS ONLINE ]',
-      href: '#matrix-status',
-      className: 'text-[#4f7942] transition hover:text-dwarf-runeBright',
-    },
-  ],
 };

@@ -2,10 +2,82 @@
 // page. Values are placeholders until the real auth flow and i18n land.
 // Class strings are Tailwind utilities resolved from tailwind.config.js.
 
-export const REGISTER_CARD = {
+export interface RegisterCardData {
+  logoAlt: string;
+  logoUrl: string;
+  title: string;
+  heading: string;
+  subtitle: string;
+  status: string;
+  terminalId: string;
+  guidance: {
+    rune: string;
+    text: string;
+    version: string;
+  };
+}
+
+export interface RegisterFormField {
+  rune: string;
+  label: string;
+  hint: string;
+  placeholder: string;
+}
+
+export interface RegisterFormData {
+  callsign: RegisterFormField;
+  password: RegisterFormField;
+  confirmPassword: RegisterFormField;
+  terms: string;
+  submit: string;
+  submitPending: string;
+  errors: {
+    username: Record<string, string>;
+    password: Record<string, string>;
+    confirmPassword: Record<string, string>;
+    form: Record<string, string>;
+  };
+}
+
+export interface AuthProvider {
+  id: string;
+  label: string;
+}
+
+export interface AuthAlternativesData {
+  divider: string;
+  providers: AuthProvider[];
+  login: {
+    prompt: string;
+    label: string;
+    href: string;
+  };
+  security: string;
+}
+
+export interface ArtShowcaseData {
+  ariaLabel: string;
+  topLeft: string;
+  feedStatus: string;
+  image: {
+    alt: string;
+    src: string;
+  };
+  hud: {
+    title: string;
+    activeScribesLabel: string;
+    activeScribesValue: string;
+    veinLabel: string;
+    veinValue: string;
+    quote: string;
+  };
+  bottomLeft: string;
+  bottomRight: string;
+}
+
+export const REGISTER_CARD: RegisterCardData = {
   logoAlt: 'Logo of Dwarven Scriptures',
-  logoUrl:
-    'favicon.png',
+  logoUrl: 'favicon.png',
   title: '[ CITADEL OF GRANITE ]',
   heading: 'SCRIBE REGISTRATION TERMINAL',
   subtitle: 'Deep Delve Guild • New Scribe Enlistment',
@@ -18,7 +90,7 @@ export const REGISTER_CARD = {
   },
 };
 
-export const REGISTER_FORM = {
+export const REGISTER_FORM: RegisterFormData = {
   callsign: {
     rune: 'ᛗ',
     label: '[ Dwarven identity ]',
@@ -50,7 +122,8 @@ export const REGISTER_FORM = {
       required: 'A password is required.',
       passwordTooShort: 'Password must be at least 12 characters.',
       passwordTooLong: 'Password must be 128 characters or fewer.',
-      passwordWeak: 'Password needs more variety — mix upper/lowercase letters, numbers and symbols.',
+      passwordWeak:
+        'Password needs more variety — mix upper/lowercase letters, numbers and symbols.',
     },
     confirmPassword: {
       required: 'Please confirm your password.',
@@ -62,7 +135,7 @@ export const REGISTER_FORM = {
   },
 };
 
-export const AUTH_ALTERNATIVES = {
+export const AUTH_ALTERNATIVES: AuthAlternativesData = {
   divider: '─── [ OR ATTUNE VIA EXTERNAL FORGE ] ───',
   providers: [
     { id: 'github', label: 'Forge with GitHub' },
@@ -76,7 +149,7 @@ export const AUTH_ALTERNATIVES = {
   security: '• 256-BIT BASALT ENCRYPTION • GUILD PROTOCOL ASCII_V2 •',
 };
 
-export const ART_SHOWCASE = {
+export const ART_SHOWCASE: ArtShowcaseData = {
   ariaLabel: 'Citadel Fortress Live Feed',
   topLeft: '[ CITADEL HALL ARCHIVE // EXPEDITION #84 ]',
   feedStatus: '● FEED SYNCED',
