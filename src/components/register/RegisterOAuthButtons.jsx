@@ -1,5 +1,9 @@
 import { AUTH_ALTERNATIVES } from '../../data/registerData';
-import ButtonSecondary from '../ButtonSecondary';
+
+// A plain anchor (not `next/link`) so the browser performs a full-page load
+// to the route handler, which immediately redirects to the external provider.
+const PROVIDER_LINK_CLASSES =
+  'btn-chisel-stone group inline-flex min-h-[44px] items-center justify-center gap-2 rounded bg-dwarf-basalt px-3 py-2.5 text-xs text-dwarf-parchment transition hover:text-white';
 
 function GitHubIcon() {
   return (
@@ -43,12 +47,16 @@ export default function RegisterOAuthButtons() {
       {AUTH_ALTERNATIVES.providers.map((provider) => {
         const Icon = PROVIDER_ICONS[provider.id];
         return (
-          <ButtonSecondary key={provider.id}>
+          <a
+            key={provider.id}
+            href={`/api/auth/${provider.id}`}
+            className={PROVIDER_LINK_CLASSES}
+          >
             <Icon />
             <span className="text-label-sm font-bold tracking-tight">
               {provider.label}
             </span>
-          </ButtonSecondary>
+          </a>
         );
       })}
     </div>
