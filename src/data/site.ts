@@ -4,7 +4,7 @@ export interface SiteIdentity {
 }
 
 /**
- * Shared site identity used by the app chrome (navbar, metadata, footers).
+ * Shared site identity used by the app chrome (navbar, metadata).
  * Kept in one place so the name and logo stay in sync across pages.
  */
 export const SITE: SiteIdentity = {
