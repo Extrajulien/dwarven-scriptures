@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginUser } from '../../app/login/actions';
 import { LOGIN_FORM } from '../../data/loginData';
+import ButtonPrimary from '../ButtonPrimary';
 
 function PickaxeIcon() {
   return (
@@ -222,16 +223,12 @@ export default function LoginForm() {
             {LOGIN_FORM.errors.form[formError]}
           </p>
         )}
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn-chisel-gold group flex min-h-[48px] w-full cursor-pointer items-center justify-center space-x-2 rounded px-4 py-3 text-xs font-extrabold uppercase tracking-widest text-on-primary-container shadow-gold-glow sm:text-sm"
-        >
+        <ButtonPrimary type="submit" disabled={pending} className="w-full">
           <HammerIcon />
-          <span className="font-spacemono font-bold">
+          <span className="font-bold">
             {pending ? LOGIN_FORM.submitPending : LOGIN_FORM.submit}
           </span>
-        </button>
+        </ButtonPrimary>
       </div>
     </form>
   );
