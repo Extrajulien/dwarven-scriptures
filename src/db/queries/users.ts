@@ -346,7 +346,7 @@ const USERS_USERNAME_UNIQUE_CONSTRAINT = 'users_username_unique';
  * value (`publicId` is a random UUID), so a missing constraint name is still
  * treated as a username clash.
  */
-function isUsernameUniqueViolation(error: unknown): boolean {
+export function isUsernameUniqueViolation(error: unknown): boolean {
   const seen = new Set<unknown>();
   let current: unknown = error;
 
