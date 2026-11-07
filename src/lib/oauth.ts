@@ -85,6 +85,7 @@ export function buildAuthorizeUrl(
   url.searchParams.set('redirect_uri', redirectUri);
   url.searchParams.set('scope', config.scope);
   url.searchParams.set('state', state);
+  url.searchParams.set('response_type', 'code');
   return url;
 }
 

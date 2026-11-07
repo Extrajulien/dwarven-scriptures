@@ -100,6 +100,7 @@ describe('buildAuthorizeUrl', () => {
     expect(url.searchParams.get('redirect_uri')).toBe('http://localhost/api/auth/github/callback');
     expect(url.searchParams.get('scope')).toBe('read:user');
     expect(url.searchParams.get('state')).toBe('state-abc');
+    expect(url.searchParams.get('response_type')).toBe('code');
   });
 
   test('builds the Discord authorize URL with the expected parameters', () => {
@@ -108,6 +109,7 @@ describe('buildAuthorizeUrl', () => {
     expect(url.origin + url.pathname).toBe('https://discord.com/oauth2/authorize');
     expect(url.searchParams.get('scope')).toBe('identify');
     expect(url.searchParams.get('state')).toBe('state-xyz');
+    expect(url.searchParams.get('response_type')).toBe('code');
   });
 });
 
