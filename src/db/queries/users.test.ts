@@ -23,6 +23,7 @@ let selectResult: unknown[] = [];
 let updateRowCount = 0;
 let insertRow: unknown;
 let insertError: unknown;
+let updateError: unknown;
 
 /** Creates the chain for one operation and records it exactly once. */
 function newCall(operation: RecordedCall['operation'], args: unknown[] = []): RecordedCall {
@@ -65,8 +66,12 @@ function chainable(operation: RecordedCall['operation'], call: RecordedCall): Re
     return Promise.resolve(Array.from({ length: updateRowCount }, (_value, index) => ({ index })));
   };
 
-  chain.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
-    Promise.resolve(selectResult).then(resolve, reject);
+  chain.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => {
+    if (operation === 'update' && updateError !== undefined) {
+      return Promise.reject(updateError).then(resolve, reject);
+    }
+    return Promise.resolve(selectResult).then(resolve, reject);
+  };
 
   return chain;
 }
@@ -85,7 +90,7 @@ jest.mock('../index', () => ({
   },
 }));
 
-import { adjustUserCoins, createUserWithProfiles, getUserCredentialsByUsername, getUserFullProfile, recordCompletedRace, UsernameTakenError } from './users';
+import { adjustUserCoins, createUserWithProfiles, getUserCredentialsByUsername, getUserFullProfile, recordCompletedRace, updateUserProfile, UsernameTakenError } from './users';
 
 beforeEach(() => {
   calls.length = 0;
@@ -93,6 +98,7 @@ beforeEach(() => {
   updateRowCount = 0;
   insertRow = undefined;
   insertError = undefined;
+  updateError = undefined;
 });
 
 type Queryable = { toQuery: (config: unknown) => { sql: string; params: unknown[] } };
@@ -299,6 +305,60 @@ describe('adjustUserCoins', () => {
   test('rejects a non-positive internal id', async () => {
     await expect(adjustUserCoins(0, 1n)).rejects.toThrow(/positive integer/);
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe('updateUserProfile', () => {
+  test('sets the trimmed username and pfpUrl on the user row', async () => {
+    await updateUserProfile(7, { username: '  ada  ', pfpUrl: 'https://example.com/a.png' });
+
+    const updateCall = calls.find((call) => call.operation === 'update');
+    expect(updateCall).toBeDefined();
+    // args: [ [users table], [ { username, pfpUrl } ], [ where fragment ] ]
+    expect(updateCall!.args[1][0]).toEqual({ username: 'ada', pfpUrl: 'https://example.com/a.png' });
+    expect(sqlTextOf('update')).toContain('"users"."id" =');
+  });
+
+  test('accepts a null pfpUrl to clear the avatar', async () => {
+    await updateUserProfile(7, { username: 'ada', pfpUrl: null });
+
+    const updateCall = calls.find((call) => call.operation === 'update');
+    expect(updateCall!.args[1][0]).toEqual({ username: 'ada', pfpUrl: null });
+  });
+
+  test('rejects a non-positive internal id', async () => {
+    await expect(updateUserProfile(0, { username: 'ada', pfpUrl: null })).rejects.toThrow(
+      /positive integer/,
+    );
+    expect(calls).toHaveLength(0);
+  });
+
+  test('rejects an empty or over-long username', async () => {
+    await expect(updateUserProfile(7, { username: '   ', pfpUrl: null })).rejects.toThrow(/username/);
+    await expect(updateUserProfile(7, { username: 'a'.repeat(33), pfpUrl: null })).rejects.toThrow(
+      /at most 32/,
+    );
+    expect(calls).toHaveLength(0);
+  });
+
+  test('rejects a non-string pfpUrl', async () => {
+    await expect(updateUserProfile(7, { username: 'ada', pfpUrl: 42 as never })).rejects.toThrow(
+      /pfpUrl/,
+    );
+    expect(calls).toHaveLength(0);
+  });
+
+  test('maps a unique username violation to UsernameTakenError', async () => {
+    updateError = Object.assign(new Error('DrizzleQueryError'), {
+      cause: Object.assign(
+        new Error('duplicate key value violates unique constraint "users_username_unique"'),
+        { code: '23505', constraint: 'users_username_unique' },
+      ),
+    });
+
+    await expect(updateUserProfile(7, { username: 'ada', pfpUrl: null })).rejects.toThrow(
+      UsernameTakenError,
+    );
   });
 });
 

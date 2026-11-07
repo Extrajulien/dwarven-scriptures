@@ -11,12 +11,14 @@ type ReturningResult = { resolve?: unknown; reject?: unknown };
 const selectResult: unknown[] = [];
 let insertCallCount = 0;
 let returningCallCount = 0;
+let deleteCallCount = 0;
 const returningQueue: ReturningResult[] = [];
 
 function resetState(): void {
   selectResult.length = 0;
   insertCallCount = 0;
   returningCallCount = 0;
+  deleteCallCount = 0;
   returningQueue.length = 0;
 }
 
@@ -61,6 +63,13 @@ function makeInsertChain(): Record<string, unknown> {
   return chain;
 }
 
+function makeDeleteChain(): Record<string, unknown> {
+  const chain: Record<string, unknown> = {};
+  chain.where = () => chain;
+  chain.then = (resolve: (value: unknown) => unknown) => Promise.resolve([]).then(resolve);
+  return chain;
+}
+
 const txStub = {
   insert: () => {
     insertCallCount += 1;
@@ -75,6 +84,10 @@ jest.mock('../index', () => ({
       return makeInsertChain();
     },
     select: () => makeSelectChain(),
+    delete: () => {
+      deleteCallCount += 1;
+      return makeDeleteChain();
+    },
     transaction: async (callback: (tx: typeof txStub) => Promise<unknown>) => callback(txStub),
   },
 }));
@@ -83,6 +96,8 @@ import {
   createOrLinkOAuthUser,
   createOAuthUser,
   findUserByOAuthAccount,
+  listLinkedProviders,
+  unlinkOAuthAccount,
 } from './oauth-accounts';
 import { InvalidUserInputError, UsernameTakenError } from './users';
 
@@ -114,6 +129,39 @@ describe('findUserByOAuthAccount', () => {
       InvalidUserInputError,
     );
     expect(selectResult).toHaveLength(0);
+  });
+});
+
+describe('listLinkedProviders', () => {
+  test('returns the providers linked to a user', async () => {
+    selectResult.push({ provider: 'github' }, { provider: 'discord' });
+
+    await expect(listLinkedProviders(7)).resolves.toEqual(['github', 'discord']);
+  });
+
+  test('returns an empty list when nothing is linked', async () => {
+    await expect(listLinkedProviders(7)).resolves.toEqual([]);
+  });
+
+  test('rejects a non-positive internal id before touching the database', async () => {
+    await expect(listLinkedProviders(0)).rejects.toThrow(InvalidUserInputError);
+  });
+});
+
+describe('unlinkOAuthAccount', () => {
+  test('deletes the provider link for a user', async () => {
+    await expect(unlinkOAuthAccount(7, 'github')).resolves.toBeUndefined();
+    expect(deleteCallCount).toBe(1);
+  });
+
+  test('rejects a non-positive internal id before touching the database', async () => {
+    await expect(unlinkOAuthAccount(0, 'github')).rejects.toThrow(/positive integer/);
+    expect(deleteCallCount).toBe(0);
+  });
+
+  test('rejects an unknown provider before touching the database', async () => {
+    await expect(unlinkOAuthAccount(7, 'twitter' as never)).rejects.toThrow(/provider/);
+    expect(deleteCallCount).toBe(0);
   });
 });
 

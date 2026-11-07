@@ -39,12 +39,17 @@ export type OAuthSessionUser = {
 const USERNAME_MAX_LENGTH = 32;
 const MAX_USERNAME_ATTEMPTS = 5;
 
-function assertIdentity(provider: string, providerAccountId: string): void {
+function assertProvider(provider: string): void {
   if (!(OAUTH_PROVIDERS as readonly string[]).includes(provider)) {
     throw new InvalidUserInputError(
       `provider must be one of ${OAUTH_PROVIDERS.join(', ')}`,
     );
   }
+}
+
+function assertIdentity(provider: string, providerAccountId: string): void {
+  assertProvider(provider);
+
   if (
     typeof providerAccountId !== 'string' ||
     providerAccountId.trim().length === 0
@@ -137,6 +142,50 @@ export async function createOrLinkOAuthUser(
   }
 
   return createOAuthUser(profile);
+}
+
+/**
+ * Lists the providers linked to a user, for the account screen's
+ * "linked accounts" chips. Only `github` / `discord` are ever written by
+ * `insertOAuthUser`, so the results are asserted back to `OAuthProvider`.
+ */
+export async function listLinkedProviders(
+  internalUserId: number,
+): Promise<OAuthProvider[]> {
+  if (!Number.isSafeInteger(internalUserId) || internalUserId <= 0) {
+    throw new InvalidUserInputError('internalUserId must be a positive integer');
+  }
+
+  const rows = await db
+    .select({ provider: oauthAccounts.provider })
+    .from(oauthAccounts)
+    .where(eq(oauthAccounts.userId, internalUserId));
+
+  return rows.map((row) => row.provider as OAuthProvider);
+}
+
+/**
+ * Removes a provider link from a user's account. Unlinking never touches
+ * `users.pfpUrl`, so a provider-supplied avatar stays as-is until the user
+ * changes it separately.
+ */
+export async function unlinkOAuthAccount(
+  internalUserId: number,
+  provider: OAuthProvider,
+): Promise<void> {
+  if (!Number.isSafeInteger(internalUserId) || internalUserId <= 0) {
+    throw new InvalidUserInputError('internalUserId must be a positive integer');
+  }
+  assertProvider(provider);
+
+  await db
+    .delete(oauthAccounts)
+    .where(
+      and(
+        eq(oauthAccounts.userId, internalUserId),
+        eq(oauthAccounts.provider, provider),
+      ),
+    );
 }
 
 async function insertOAuthUser(
