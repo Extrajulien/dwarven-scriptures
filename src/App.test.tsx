@@ -31,3 +31,16 @@ test('renders the race cavern with quick play, join and the guest create empty s
     screen.getByRole('heading', { level: 3, name: /fonder une salle/i })
   ).toBeInTheDocument();
 });
+
+test('guests never see the create-room form (AUTH-03)', () => {
+  render(<App messages={MESSAGES.fr} />);
+  expect(screen.queryByText(MESSAGES.fr['createRoom.visibilityLabel'])).not.toBeInTheDocument();
+  expect(screen.queryByText(MESSAGES.fr['createRoom.capacityLabel'])).not.toBeInTheDocument();
+});
+
+test('signed-in users see the create-room card (SALLE-01/05)', () => {
+  render(<App messages={MESSAGES.fr} user={{ username: 'ada' }} />);
+  expect(screen.getByText(MESSAGES.fr['createRoom.visibilityLabel'])).toBeInTheDocument();
+  expect(screen.getByText(MESSAGES.fr['createRoom.capacityLabel'])).toBeInTheDocument();
+  expect(screen.getByText(MESSAGES.fr['createRoom.roleLabel'])).toBeInTheDocument();
+});

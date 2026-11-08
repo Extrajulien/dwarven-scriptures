@@ -16,8 +16,12 @@ as Next.js (`server.ts` custom server), a Zod-validated protocol
 (`src/realtime/hub.ts`) with presence/heartbeat/kick/close/config broadcasts,
 the Postgres adapter (`src/realtime/room-store.ts`), the action→hub bridge
 (`src/realtime/events.ts`) and the typed client hook
-(`src/realtime/useRoomSocket.ts`). No room UI exists yet; the race engine,
-bots and bonuses are still not built.
+(`src/realtime/useRoomSocket.ts`). The room UI exists for checkpoint 1: home
+race section (quick play, join by code, create-room card),
+`/rooms` public explorer with filters and ~5 s auto-refresh,
+`/rooms/[publicId]` lobby (live member list, host controls, invitation
+links), guest nickname flow and the `/i/[token]` invitation endpoint. The
+race engine, bots and bonuses are still not built.
 
 ## Folder layout
 
@@ -431,7 +435,31 @@ closed with `error(already_in_room)` — the newest tab wins); a ws-level
 heartbeat (~30 s ping, dead socket evicted in ~30–60 s) whose eviction applies
 the normal departure path; graceful shutdown closes every socket and marks all
 memberships left. **Phase-1 reconnection is a plain re-join by code/token** —
-COURSE-08's 30-second mid-race resume is Phase 2.
+COURSE-08's 30-second mid-race resume is Phase 2. After a `roomClosed` message
+the client hook does not schedule a reconnect (`shouldReconnect` in
+`src/realtime/useRoomSocket.ts`): retrying would only flip the "room closed"
+screen into a "not found" error.
+
+### Invitation endpoint and room-page access model (checkpoint 1)
+
+* `GET /i/[token]` (`src/app/i/[token]/route.ts`) consumes the invitation
+  server-side with the same queries as the realtime store: unknown / revoked /
+  used-by-someone-else tokens redirect to the friendly error page
+  (`/i/error`), the bound member may reuse their own link, and the join +
+  consumption run with the same admission rules (status, capacity, kick,
+  one-active-room). Guests without a nickname are redirected to the room page
+  first — the lobby collects the name (AUTH-02) and then joins by token over
+  the realtime channel, where the link is bound.
+* The room page (`/rooms/[publicId]`) renders by visibility (SALLE-03):
+  public rooms join directly by code; code rooms show a code gate to
+  non-members; private rooms only open with an invitation token — except an
+  *active member reconnecting*, whose membership is the credential
+  (`room-store.ts` lets the hub re-attach such a connection without admitting
+  anyone else; the code still proves nothing).
+* The lobby is driven entirely by the snapshot from `useRoomSocket`:
+  `configUpdated`, `hostChanged`, `memberJoined/Left/Kicked` and `roomClosed`
+  re-render from the authoritative state; a kicked member is redirected home
+  with a notice.
 
 ```mermaid
 sequenceDiagram

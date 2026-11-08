@@ -49,18 +49,18 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 - [x] (partiel) **DES-04** — Design unique, pas « généré par défaut » ; la piste de progression est un élément signature.
   — Direction « Dwarf Fortress » (tuiles ASCII, grotte) en place ; la piste de progression n'existe pas encore.
 - [ ] **DES-05** — Thèmes clair et sombre : sélecteur, préférence système respectée par défaut, aucun flash du mauvais thème au chargement (ou justification mono-thème dans la démarche créative).
-- [ ] **DES-06** — Responsive : toutes les pages utilisables à 360 px et plus ; sur mobile, la course est remplacée par un message recommandant un clavier physique.
+- [x] (partiel) **DES-06** — Responsive : toutes les pages utilisables à 360 px et plus ; sur mobile, la course est remplacée par un message recommandant un clavier physique.
+  — L'accueil, l'explorateur et le salon passent en disposition empilée à 360 px (grilles 1 colonne, tableau de l'explorateur défilant horizontalement). Manque : le message « clavier physique » pendant une course — Phase 2, aucune course n'existe au checkpoint 1.
 
 ## AUTH — Comptes et profil
 
 - [x] **AUTH-01** — Authentification : OAuth Discord **et** GitHub, plus connexion par nom d'utilisateur et mot de passe (utile pour les tests de bout en bout).
   — fichiers : `src/app/(auth)/`, `src/app/login/actions.ts`, `src/app/register/actions.ts`, `src/app/api/auth/[provider]/`, `src/lib/oauth.ts`
   — tests : `src/lib/password.test.ts`, `session.test.ts`, `oauth.test.ts`, `login-validation.test.ts`, `register-validation.test.ts`, formulaires
-- [x] (partiel) **AUTH-02** — Un invité choisit un pseudonyme (3 à 20 caractères) avant de rejoindre une salle ; sa session est conservée par un cookie signé.
-  — L'infrastructure serveur est complète : cookie HttpOnly signé `guest` (HMAC-SHA256, 30 jours, `src/lib/guest-session.ts`), pseudonyme validé par schéma Zod 3–20 caractères exporté du module, action `setGuestNickname` (`src/app/rooms/actions.ts`). Tests : `src/lib/guest-session.test.ts`, `src/app/rooms/actions.test.ts`.
-  — Manque : l'UI où l'invité choisit son pseudonyme avant de rejoindre (unité ultérieure).
-- [x] (partiel) **AUTH-03** — Un invité ne peut pas créer de salle, n'a ni historique persistant ni photo de profil ; un avatar généré est affiché à la place.
-  — La création de salle est refusée aux invités côté serveur (`createRoom` exige une session utilisateur, `src/app/rooms/actions.ts`) et un invité n'écrit jamais dans `user_stats` (identifié par `guestToken`, pas par `userId`). Manque : l'avatar généré côté UI.
+- [x] **AUTH-02** — Un invité choisit un pseudonyme (3 à 20 caractères) avant de rejoindre une salle ; sa session est conservée par un cookie signé.
+  — Cookie HttpOnly signé `guest` (HMAC-SHA256, 30 jours, `src/lib/guest-session.ts`), pseudonyme validé par schéma Zod 3–20 caractères, action `setGuestNickname` / `guestNicknameFormAction` (`src/app/rooms/actions.ts`). L'UI de choix du nom (`src/components/rooms/GuestNicknameForm.tsx`, formulaire « nain » sur la page de salle) est branchée sur chaque chemin d'entrée invité : rejoindre par code depuis l'accueil (`src/components/home/JoinByCodeForm.tsx`), par lien d'invitation (`src/app/i/[token]/route.ts` → page de salle), par « Faire une course » (`quickPlay`) et au portail des salles sur code (`CodeGatePanel.tsx`). Tests : `src/lib/guest-session.test.ts`, `src/app/rooms/actions.test.ts`, `src/components/rooms/GuestNicknameForm.test.tsx`.
+- [x] **AUTH-03** — Un invité ne peut pas créer de salle, n'a ni historique persistant ni photo de profil ; un avatar généré est affiché à la place.
+  — La création de salle est refusée aux invités côté serveur (`createRoom` exige une session utilisateur, `src/app/rooms/actions.ts`) et un invité n'écrit jamais dans `user_stats` (identifié par `guestToken`, pas par `userId`). Côté UI : l'accueil montre aux invités l'état vide au lieu de la carte de création (`src/components/home/RaceSection.tsx`), les commandes d'hôte ne sont rendues que pour l'hôte courant (`src/components/rooms/RoomLobby.tsx`) et l'avatar invité est une rune déterministe générée à partir de l'identité (`src/components/rooms/GuestAvatar.tsx`). Tests : `src/app/rooms/actions.test.ts` (refus serveur), `src/App.test.tsx` (carte de création absente pour les invités), `src/components/rooms/RoomLobby.test.tsx` (commandes d'hôte invisibles pour les non-hôtes).
 - [x] (partiel) **AUTH-04** — Un utilisateur connecté peut téléverser une photo de profil : JPEG/PNG/WebP, 2 Mo max, validée côté serveur, redimensionnée avant l'affichage.
   — L'édition de l'URL d'avatar existe (`updateProfile`) ; le téléversement de fichier est absent.
 - [x] **AUTH-05** — Un utilisateur connecté peut modifier son pseudonyme d'affichage.
@@ -72,28 +72,27 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 
 ## SALLE — Salles et visibilité
 
-- [x] (partiel) **SALLE-01** — Un utilisateur connecté peut créer une salle et en devient l'hôte, en tant que participant ou seulement spectateur.
-  — Serveur : `createRoom` (requête `src/db/queries/rooms.ts` + action `src/app/rooms/actions.ts`), hôte = `rooms.hostUserId`, rôle de l'hôte `participant`/`spectateur`. Tests : `src/db/queries/rooms.test.ts`, `src/app/rooms/actions.test.ts`. Manque : l'UI de création.
+- [x] **SALLE-01** — Un utilisateur connecté peut créer une salle et en devient l'hôte, en tant que participant ou seulement spectateur.
+  — Serveur : `createRoom` (requête `src/db/queries/rooms.ts` + action `src/app/rooms/actions.ts`), hôte = `rooms.hostUserId`, rôle de l'hôte `participant`/`spectateur`. UI : carte de création sur l'accueil (`src/components/home/CreateRoomCard.tsx` + `createRoomFormAction` — visibilité, capacité, rôle de l'hôte). Tests : `src/db/queries/rooms.test.ts`, `src/app/rooms/actions.test.ts`, `src/App.test.tsx`.
 - [x] **SALLE-02** — Chaque salle a un code court unique de 6 caractères alphanumériques, sans caractères ambigus (0/O, 1/I/L).
   — Génération CSPRNG dans `src/lib/room-rules.ts` (`generateRoomCode`), `unique` + CHECK regex `^[A-HJKMNP-Z2-9]{6}$` dans `src/db/schema.ts` (migration `drizzle/0003_boring_meggan.sql`), reprise sur collision dans `createRoom`. Tests : `src/lib/room-rules.test.ts`, `src/db/queries/rooms.test.ts`.
-- [x] (partiel) **SALLE-03** — Visibilité de la salle : publique (explorateur + « Faire une course », accès direct ou par code), sur code (accès par code ou lien d'invitation), privée (lien d'invitation seulement).
-  — Serveur : colonne + CHECK + validation Zod ; `listPublicRooms` ne liste que les salles publiques en attente ; `joinRoomByCode` refuse les salles privées (réponse « salle introuvable » pour ne pas révéler l'existence du code). Manque : l'UI (explorateur, « Faire une course », entrée par lien).
-- [x] (partiel) **SALLE-04** — Liens d'invitation :
-  - [x] (partiel) un lien distinct par invité, générable en plusieurs exemplaires, copiable, avec statut visible (non utilisé, ou utilisé par qui) ;
-    — Jetons distincts par lien, génération par lots (`createInvitationLinks`), statut en base. Manque : l'UI de copie/affichage du statut et de l'identité liée.
+- [x] **SALLE-03** — Visibilité de la salle : publique (explorateur + « Faire une course », accès direct ou par code), sur code (accès par code ou lien d'invitation), privée (lien d'invitation seulement).
+  — Serveur : colonne + CHECK + validation Zod ; `listPublicRooms` ne liste que les salles publiques en attente ; `joinRoomByCode` refuse les salles privées (réponse « salle introuvable » pour ne pas révéler l'existence du code). UI : explorateur `/rooms` (`src/app/rooms/page.tsx`, `src/components/rooms/RoomExplorer.tsx`), « Faire une course » (`quickPlay`), accès direct des salles publiques (la page `/rooms/[publicId]` rejoint par code), portail à code pour les salles « sur code » (`src/components/rooms/CodeGatePanel.tsx`), salles privées par lien d'invitation seulement (`src/app/i/[token]/route.ts`) — le temps réel refuse le code d'une salle privée sauf pour un membre actif qui se reconnecte (`src/realtime/room-store.ts`). Tests : `src/app/rooms/actions.test.ts`, `src/realtime/room-store.test.ts`, `src/app/i/[token]/route.test.ts`, `src/components/rooms/RoomExplorer.test.tsx`.
+- [x] **SALLE-04** — Liens d'invitation :
+  - [x] un lien distinct par invité, générable en plusieurs exemplaires, copiable, avec statut visible (non utilisé, ou utilisé par qui) ;
+    — Jetons distincts par lien, génération par lots (`createInvitationLinks`), statut en base ; l'UI hôte (`src/components/rooms/InvitationsPanel.tsx` + `listInvitationsForRoom`) liste les liens avec leur statut (non utilisé / utilisé par qui / révoqué), génère par lots, copie les liens et resynchronise les statuts (`router.refresh()`).
   - [x] jeton aléatoire non devinable (≥ 128 bits d'entropie) ; — 24 octets aléatoires base64url (192 bits), `src/db/queries/invitations.ts`. Test : `src/db/queries/invitations.test.ts`.
   - [x] usage unique : à la première utilisation, associé à l'adresse IP ; une autre IP est refusée ; — `consumeInvitationToken` lie `boundIp` + `boundMemberId` à la première utilisation ; une autre personne est refusée (contrôle par identité). Test : `src/db/queries/invitations.test.ts`.
-  - [x] la personne associée peut réutiliser le lien pour se reconnecter ; — réutilisation permise par identité (même utilisateur ou même invité), indépendamment de l'IP de reconnexion (choix documenté dans `invitations.ts`).
+  - [x] la personne associée peut réutiliser le lien pour se reconnecter ; — réutilisation permise par identité (même utilisateur ou même invité), indépendamment de l'IP de reconnexion (choix documenté dans `invitations.ts`) ; l'endpoint `/i/[token]` suit ce chemin (`resolveInvitationJoin`). Test : `src/db/queries/invitations.test.ts`, `src/app/i/[token]/route.test.ts`.
   - [x] le lien d'un participant expulsé (SALLE-07) est révoqué ; — `kickMember` révoque les liens du membre dans la même transaction.
   - [x] tous les liens deviennent invalides à la fermeture de la salle ; — `closeRoom` révoque tous les liens restants dans la même transaction.
-  - [x] le code seul ne suffit pas pour entrer dans une salle privée. — `joinRoomByCode` refuse (`roomNotFound`). Test : `src/app/rooms/actions.test.ts`.
-  — Manque : l'UI des liens (génération, copie, statut).
-- [x] (partiel) **SALLE-05** — Capacité maximale configurable par l'hôte : minimum 2, maximum 30 participants ; les spectateurs ne comptent pas.
-  — Serveur : CHECK 2–30 + `createRoom({capacity})` + comptage SQL des seuls participants présents dans `joinRoom`. Tests : `src/db/queries/rooms.test.ts`. Manque : l'UI de configuration.
-- [x] (partiel) **SALLE-06** — Une personne ne peut être que dans une seule salle à la fois : garantie côté serveur (contrainte en base), proposition de quitter la salle actuelle, pas de doublon pour un deuxième onglet.
-  — Contrainte en base : index uniques partiels `room_members_one_active_user_idx`/`room_members_one_active_guest_idx` (`WHERE leftAt IS NULL`) ; `joinRoom` marque `leftAt` sur l'ancienne salle et refuse la même salle (`AlreadyInRoomError`) ; `createRoom` refuse un hôte déjà actif ailleurs. Tests : `src/db/queries/rooms.test.ts`. Manque : la proposition de quitter la salle actuelle (UI).
-- [x] (partiel) **SALLE-07** — L'hôte peut expulser un participant ou un spectateur ; l'expulsé ne peut plus rejoindre cette salle.
-  — Serveur : `kickMember` (vérification hôte, `kicked = true` + `leftAt`, révocation des liens) ; `joinRoom` refuse tout retour (historique de kick). Tests : `src/db/queries/rooms.test.ts`, `src/app/rooms/actions.test.ts`. Manque : l'UI d'expulsion.
+  - [x] le code seul ne suffit pas pour entrer dans une salle privée. — `joinRoomByCode` refuse (`roomNotFound`) et le hub temps réel applique la même règle (sauf membre actif qui se reconnecte). Test : `src/app/rooms/actions.test.ts`, `src/realtime/room-store.test.ts`.
+- [x] **SALLE-05** — Capacité maximale configurable par l'hôte : minimum 2, maximum 30 participants ; les spectateurs ne comptent pas.
+  — Serveur : CHECK 2–30 + `createRoom({capacity})` + comptage SQL des seuls participants présents dans `joinRoom`. UI : sélecteur de capacité (2–30) dans la carte de création de l'accueil (`src/components/home/CreateRoomCard.tsx`, validé par `createRoomFormDataSchema`). Tests : `src/db/queries/rooms.test.ts`, `src/app/rooms/actions.test.ts`.
+- [x] **SALLE-06** — Une personne ne peut être que dans une seule salle à la fois : garantie côté serveur (contrainte en base), proposition de quitter la salle actuelle, pas de doublon pour un deuxième onglet.
+  — Contrainte en base : index uniques partiels `room_members_one_active_user_idx`/`room_members_one_active_guest_idx` (`WHERE leftAt IS NULL`) ; `joinRoom` marque `leftAt` sur l'ancienne salle et refuse la même salle (`AlreadyInRoomError`) ; `createRoom` refuse un hôte déjà actif ailleurs. UI : `joinRoomByCode` renvoie la salle actuelle avec `alreadyInRoom` et le formulaire d'accueil propose « voir ma salle » et « quitter ma salle et rejoindre » (`src/components/home/JoinByCodeForm.tsx` + `leaveAndJoinFormAction`). Tests : `src/db/queries/rooms.test.ts`, `src/app/rooms/actions.test.ts`, `src/components/home/JoinByCodeForm.test.tsx`.
+- [x] **SALLE-07** — L'hôte peut expulser un participant ou un spectateur ; l'expulsé ne peut plus rejoindre cette salle.
+  — Serveur : `kickMember` (vérification hôte, `kicked = true` + `leftAt`, révocation des liens) ; `joinRoom` refuse tout retour (historique de kick). UI : bouton d'expulsion avec confirmation sur chaque membre (jamais sur l'hôte) dans `src/components/rooms/RoomLobby.tsx` ; l'expulsé reçoit `error(kicked)` et est redirigé vers l'accueil avec un message (`/?notice=kicked`). Tests : `src/db/queries/rooms.test.ts`, `src/app/rooms/actions.test.ts`, `src/components/rooms/RoomLobby.test.tsx`.
 - [x] **SALLE-08** — Si l'hôte quitte, le rôle passe à la personne humaine connectée présente depuis le plus longtemps ; s'il n'en reste aucune, la salle est fermée.
   — `findHostSuccessor` (règle pure, `src/lib/room-rules.ts`), orchestration dans l'action `leaveRoom` (`src/app/rooms/actions.ts`) : transfert via `transferHost`, fermeture via `closeRoom` sinon. Les invités sont exclus (seul un compte peut héberger). Tests : `src/lib/room-rules.test.ts`, `src/app/rooms/actions.test.ts`.
 - [x] **SALLE-09** — On ne peut rejoindre une salle qu'en attente ou sur l'écran des résultats ; jamais une course en cours.
@@ -103,9 +102,12 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 
 ## JOIN — Rejoindre une course
 
-- [ ] **JOIN-01** — Rejoindre par code : champ accessible dès la page d'accueil.
-- [ ] **JOIN-02** — Explorateur de salles publiques : participants/capacité, langue du texte, complexité, hôte, état ; filtres langue et complexité au minimum ; mise à jour sans rechargement manuel.
-- [ ] **JOIN-03** — « Faire une course » : choisit la salle publique joignable non pleine la plus proche de sa capacité maximale (la plus ancienne en cas d'égalité) ; sinon offre de créer une salle publique par défaut (connecté) ou état vide avec message (invité).
+- [x] **JOIN-01** — Rejoindre par code : champ accessible dès la page d'accueil.
+  — `src/components/home/JoinByCodeForm.tsx` (section « Caverne de course » de l'accueil) → action `joinRoomByCode` via `joinByCodeFormAction` ; erreurs typées (`rate_limited`, `room_not_found`, …), chemin « quitter ma salle et rejoindre » sur `alreadyInRoom` (SALLE-06), champ de pseudonyme pour les invités (AUTH-02). Tests : `src/components/home/JoinByCodeForm.test.tsx`, `src/app/rooms/actions.test.ts`, `src/App.test.tsx`.
+- [x] **JOIN-02** — Explorateur de salles publiques : participants/capacité, langue du texte, complexité, hôte, état ; filtres langue et complexité au minimum ; mise à jour sans rechargement manuel.
+  — `/rooms` (`src/app/rooms/page.tsx` + `src/components/rooms/RoomExplorer.tsx`) alimenté par `listPublicRoomsForPage` (`src/db/queries/rooms.ts`) ; filtres langue/complexité préservés dans l'URL (`src/lib/explorer-filters.ts`) ; rafraîchissement automatique ~5 s sans rechargement (`RoomsAutoRefresh.tsx`, `router.refresh()`) ; états vides connecté/invité ; bouton « Rejoindre » par rangée (`ExplorerJoinButton.tsx`). Tests : `src/lib/explorer-filters.test.ts`, `src/components/rooms/RoomExplorer.test.tsx`, `src/db/queries/rooms.test.ts`.
+- [x] **JOIN-03** — « Faire une course » : choisit la salle publique joignable non pleine la plus proche de sa capacité maximale (la plus ancienne en cas d'égalité) ; sinon offre de créer une salle publique par défaut (connecté) ou état vide avec message (invité).
+  — Logique pure `src/lib/quickplay.ts` (`rankQuickPlayRooms`/`pickQuickPlayRoom`, comparaison par produit croisé) ; action `quickPlay` (`src/app/rooms/actions.ts`) qui rejoint la meilleure salle et redirige ; sans salle : renvoi vers la création sur l'accueil (connecté, notice `noRooms`) ou l'état vide invité (`noRoomsGuest`) ; un invité sans pseudonyme passe par la page de salle pour choisir son nom (AUTH-02). Tests : `src/lib/quickplay.test.ts`, `src/app/rooms/actions.test.ts`, `src/App.test.tsx`.
 
 ## CONF — Configuration de la course
 
@@ -120,8 +122,8 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 - [ ] **CONF-09** — Bonus de remontée activés ou non.
 - [ ] **CONF-10** — Ajout et retrait de bots, avec le niveau de chacun.
 - [ ] **CONF-11** — Visibilité et capacité (voir SALLE-03 et SALLE-05).
-- [x] (partiel) **CONF-12** — Toutes les personnes présentes voient la configuration en temps réel.
-  — La mécanique serveur est complète : la configuration validée est incluse dans `roomSnapshot` (chaque connexion reçoit la config à l'arrivée) et `updateRoomConfig` diffuse `configUpdated` à toutes les connexions présentes via `src/realtime/events.ts` → hub (ADR-010, un seul processus — pas de pont NOTIFY nécessaire). Ce qui manque : l'UI de salle qui affiche la configuration (les écrans CONF-01..11 arrivent avec l'interface des salles).
+- [x] **CONF-12** — Toutes les personnes présentes voient la configuration en temps réel.
+  — La mécanique serveur est complète : la configuration validée est incluse dans `roomSnapshot` (chaque connexion reçoit la config à l'arrivée) et `updateRoomConfig` diffuse `configUpdated` à toutes les connexions présentes via `src/realtime/events.ts` → hub (ADR-010, un seul processus — pas de pont NOTIFY nécessaire). L'UI de salle (`src/components/rooms/RoomLobby.tsx`) affiche la configuration depuis le snapshot — `configUpdated` re-rend immédiatement. Tests : `src/realtime/useRoomSocket.test.ts`, `src/components/rooms/RoomLobby.test.tsx`.
 
 ## COURSE — Déroulement d'une course
 
