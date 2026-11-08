@@ -15,11 +15,11 @@ export default async function AuthLayout({
   const messages = pick(locale);
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#0f0e0d] font-mono text-dwarf-parchment antialiased selection:bg-dwarf-gold selection:text-dwarf-abyss">
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-dwarf-cave font-mono text-dwarf-parchment antialiased selection:bg-dwarf-gold selection:text-dwarf-abyss">
       {/* Scanline texture overlay */}
       <div className="retro-scanlines pointer-events-none fixed inset-0 z-50" />
-      {/* Ambient cave lighting gradient */}
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(197,155,39,0.08),rgba(15,14,13,0.9))]" />
+      {/* Ambient cave lighting gradient (token-driven, see .cave-ambient) */}
+      <div className="cave-ambient pointer-events-none fixed inset-0" />
 
       <AuthNavbar locale={locale} messages={messages} />
 

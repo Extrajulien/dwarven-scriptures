@@ -19,7 +19,7 @@ import type { Messages } from '../../i18n/messages';
 
 const FILL_CLASSES: Record<PasswordStrength, string> = {
   empty: 'bg-transparent',
-  weak: 'bg-[#dc2626]',
+  weak: 'bg-dwarf-danger',
   acceptable: 'bg-dwarf-goldLight',
   strong: 'bg-dwarf-runeBright',
 };
@@ -51,7 +51,7 @@ export default function PasswordStrengthBar({
       aria-valuemax={100}
       aria-valuenow={score}
       aria-valuetext={messages[STRENGTH_LABEL_KEYS[tier]]}
-      className="h-1.5 w-full overflow-hidden rounded border border-[#3f382d] bg-[#0e0d0c] shadow-stone-inner"
+      className="h-1.5 w-full overflow-hidden rounded border border-dwarf-inputBorder bg-dwarf-track shadow-stone-inner"
     >
       <div
         aria-hidden="true"

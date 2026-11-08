@@ -9,7 +9,7 @@ export default function ArtShowcase({ messages }: { messages: Messages }) {
     >
       <div className="stone-panel relative flex h-full flex-col justify-between rounded-md bg-dwarf-bg p-3 shadow-2xl sm:p-4">
         {/* Carved runic top arch border */}
-        <div className="mb-2.5 flex items-center justify-between border-b border-[#302a20] px-2 py-1 font-mono text-label-sm text-dwarf-gold/80">
+        <div className="mb-2.5 flex items-center justify-between border-b border-dwarf-showcaseHeader px-2 py-1 font-mono text-label-sm text-dwarf-gold/80">
           <div className="flex items-center space-x-1">
             <span className="text-dwarf-gold">╔════</span>
             <span className="text-[10px] uppercase tracking-wider text-dwarf-parchmentMuted">
@@ -24,8 +24,10 @@ export default function ArtShowcase({ messages }: { messages: Messages }) {
           </div>
         </div>
 
-        {/* Main pixel art stage */}
-        <div className="group relative flex min-h-[460px] max-h-[90] w-full flex-grow items-center justify-center overflow-hidden rounded border border-[#3b3327] bg-black shadow-inner lg:min-h-[580px]">
+        {/* Main pixel art stage. bg-black + to-black/30: theme-independent —
+            the dark cave GIF artwork always sits on a black stage, like a
+            picture frame, in both themes. */}
+        <div className="group relative flex min-h-[460px] max-h-[90] w-full flex-grow items-center justify-center overflow-hidden rounded border border-dwarf-showcaseFrame bg-black shadow-inner lg:min-h-[580px]">
           <img
             alt={messages[ART_SHOWCASE.image.altKey]}
             className="h-full w-full object-cover object-center contrast-[1.05] saturate-[1.08] transition-transform duration-700 group-hover:scale-105"
@@ -34,12 +36,12 @@ export default function ArtShowcase({ messages }: { messages: Messages }) {
             loading="eager"
             src={ART_SHOWCASE.image.src}
           />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#100e0c] via-transparent to-black/30" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-dwarf-showcaseOverlay via-transparent to-black/30" />
 
           {/* Floating HUD overlay */}
-          <div className="absolute bottom-3 left-3 right-3 rounded border border-[#4d4233] bg-[#161412]/90 p-3.5 shadow-2xl backdrop-blur-md">
+          <div className="absolute bottom-3 left-3 right-3 rounded border border-dwarf-showcasePanelBorder bg-dwarf-showcasePanel/90 p-3.5 shadow-2xl backdrop-blur-md">
             <div className="flex flex-col space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#332b21] pb-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dwarf-showcaseDivider pb-2">
                 <div className="flex items-center space-x-2">
                   <span className="h-2 w-2 animate-ping rounded-full bg-dwarf-gold" />
                   <span className="font-spacemono text-xs font-bold uppercase tracking-widest text-dwarf-gold">
@@ -80,7 +82,7 @@ export default function ArtShowcase({ messages }: { messages: Messages }) {
         </div>
 
         {/* Bottom bracket frame marker */}
-        <div className="mt-2.5 flex items-center justify-between border-t border-[#302a20] px-2 py-1 font-mono text-[10px] text-dwarf-parchmentMuted">
+        <div className="mt-2.5 flex items-center justify-between border-t border-dwarf-showcaseHeader px-2 py-1 font-mono text-[10px] text-dwarf-parchmentMuted">
           <span><span className="text-dwarf-gold">╚════</span> {messages[ART_SHOWCASE.bottomLeftKey]}</span>
           <span>{messages[ART_SHOWCASE.bottomRightKey]} <span className="text-dwarf-gold">════╝</span></span>
         </div>

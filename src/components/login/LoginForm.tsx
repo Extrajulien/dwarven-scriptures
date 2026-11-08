@@ -29,7 +29,7 @@ const FORM_ERROR_KEYS: Record<LoginFormError, keyof Messages> = {
 function PickaxeIcon() {
   return (
     <svg
-      className="h-4 w-4 text-[#8a7241]"
+      className="h-4 w-4 text-dwarf-parchmentIcon"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
@@ -48,7 +48,7 @@ function PickaxeIcon() {
 function LockIcon() {
   return (
     <svg
-      className="h-4 w-4 text-[#8a7241]"
+      className="h-4 w-4 text-dwarf-parchmentIcon"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
@@ -91,7 +91,7 @@ function EyeIcon() {
 function HammerIcon() {
   return (
     <svg
-      className="h-4 w-4 text-[#3d2c07] transition-transform duration-150 group-hover:rotate-12"
+      className="h-4 w-4 text-dwarf-goldInk transition-transform duration-150 group-hover:rotate-12"
       fill="currentColor"
       viewBox="0 0 24 24"
       aria-hidden="true"
@@ -162,7 +162,7 @@ export default function LoginForm({ messages }: { messages: Messages }) {
             placeholder={messages[LOGIN_FORM.callsign.placeholderKey]}
             aria-invalid={usernameError ? true : undefined}
             aria-describedby={usernameError ? 'username-error' : undefined}
-            className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-3 font-mono text-sm text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
+            className="w-full rounded border border-dwarf-inputBorder bg-dwarf-inputBg py-2.5 pl-10 pr-3 font-mono text-sm text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
         </div>
         {usernameError && (
@@ -202,7 +202,7 @@ export default function LoginForm({ messages }: { messages: Messages }) {
             placeholder={messages[LOGIN_FORM.password.placeholderKey]}
             aria-invalid={passwordError ? true : undefined}
             aria-describedby={passwordError ? 'password-error' : undefined}
-            className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
+            className="w-full rounded border border-dwarf-inputBorder bg-dwarf-inputBg py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
           <button
             type="button"
@@ -229,7 +229,7 @@ export default function LoginForm({ messages }: { messages: Messages }) {
           <input
             type="checkbox"
             name="remember_scribe"
-            className="dwarf-checkbox h-4 w-4 rounded-none border-[#3f382d] bg-[#121110] text-dwarf-gold transition focus:border-dwarf-gold focus:ring-0 focus:ring-offset-0"
+            className="dwarf-checkbox h-4 w-4 rounded-none border-dwarf-inputBorder bg-dwarf-inputBg text-dwarf-gold transition focus:border-dwarf-gold focus:ring-0 focus:ring-offset-0"
           />
           <span className="text-xs tracking-tight text-dwarf-parchmentMuted">
             {messages[LOGIN_FORM.rememberKey]}
