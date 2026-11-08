@@ -3,9 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   isFatalErrorCode,
-  type ConnectionStatus,
   type JoinTarget,
-  type RoomSocketError,
   type RoomSnapshot,
   type RoomSocketState,
 } from './client-types';
@@ -198,6 +196,9 @@ export function useRoomSocket(): UseRoomSocketResult {
   const attemptRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stoppedRef = useRef(false);
+  // Indirection so the reconnect timer calls the latest `open` without the
+  // callback referencing itself (react-hooks/immutability).
+  const openRef = useRef<(target: JoinTarget) => void>(() => {});
 
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimerRef.current) {
@@ -222,88 +223,88 @@ export function useRoomSocket(): UseRoomSocketResult {
     }
   }, [clearReconnectTimer]);
 
-  const open = useCallback(
-    (target: JoinTarget) => {
-      stoppedRef.current = false;
-      targetRef.current = target;
-      attemptRef.current = 0;
-      setState({ status: 'connecting', snapshot: null, error: null });
+  const open = useCallback((target: JoinTarget) => {
+    stoppedRef.current = false;
+    targetRef.current = target;
+    attemptRef.current = 0;
+    setState({ status: 'connecting', snapshot: null, error: null });
 
-      const url = buildWsUrl(
-        { protocol: window.location.protocol, host: window.location.host },
-        process.env.NEXT_PUBLIC_WS_URL,
+    const url = buildWsUrl(
+      { protocol: window.location.protocol, host: window.location.host },
+      process.env.NEXT_PUBLIC_WS_URL,
+    );
+    const socket = new WebSocket(url);
+    socketRef.current = socket;
+
+    socket.onopen = () => {
+      if (stoppedRef.current) {
+        return;
+      }
+      socket.send(
+        JSON.stringify({
+          type: 'joinRoom',
+          ...('code' in target ? { code: target.code } : { invitationToken: target.invitationToken }),
+        }),
       );
-      const socket = new WebSocket(url);
-      socketRef.current = socket;
+    };
 
-      socket.onopen = () => {
-        if (stoppedRef.current) {
-          return;
-        }
-        socket.send(
-          JSON.stringify({
-            type: 'joinRoom',
-            ...('code' in target ? { code: target.code } : { invitationToken: target.invitationToken }),
-          }),
-        );
-      };
+    socket.onmessage = (event) => {
+      if (stoppedRef.current) {
+        return;
+      }
+      let raw: unknown;
+      try {
+        raw = JSON.parse(String(event.data));
+      } catch {
+        setState((previous) => ({
+          ...previous,
+          error: { message: 'received a non-JSON frame from the server', fatal: false },
+        }));
+        return;
+      }
+      const message = parseServerMessage(raw);
+      if (!message) {
+        // Never trust raw server data: invalid frames never reach state.
+        setState((previous) => ({
+          ...previous,
+          error: { message: 'received an invalid frame from the server', fatal: false },
+        }));
+        return;
+      }
+      setState((previous) => applyServerMessage(previous, message));
+    };
 
-      socket.onmessage = (event) => {
-        if (stoppedRef.current) {
-          return;
+    socket.onclose = () => {
+      socketRef.current = null;
+      if (stoppedRef.current) {
+        setState((previous) => ({ ...previous, status: 'closed' }));
+        return;
+      }
+      setState((previous) => {
+        const fatal = previous.error?.fatal ?? false;
+        if (fatal) {
+          return { ...previous, status: 'closed' };
         }
-        let raw: unknown;
-        try {
-          raw = JSON.parse(String(event.data));
-        } catch {
-          setState((previous) => ({
-            ...previous,
-            error: { message: 'received a non-JSON frame from the server', fatal: false },
-          }));
-          return;
-        }
-        const message = parseServerMessage(raw);
-        if (!message) {
-          // Never trust raw server data: invalid frames never reach state.
-          setState((previous) => ({
-            ...previous,
-            error: { message: 'received an invalid frame from the server', fatal: false },
-          }));
-          return;
-        }
-        setState((previous) => applyServerMessage(previous, message));
-      };
-
-      socket.onclose = () => {
-        socketRef.current = null;
-        if (stoppedRef.current) {
-          setState((previous) => ({ ...previous, status: 'closed' }));
-          return;
-        }
-        setState((previous) => {
-          const fatal = previous.error?.fatal ?? false;
-          if (fatal) {
-            return { ...previous, status: 'closed' };
+        // Transport drop: schedule a reconnect (plain re-join, Phase 1).
+        const delay = computeReconnectDelay(attemptRef.current);
+        attemptRef.current += 1;
+        reconnectTimerRef.current = setTimeout(() => {
+          if (!stoppedRef.current && targetRef.current) {
+            openRef.current(targetRef.current);
           }
-          // Transport drop: schedule a reconnect (plain re-join, Phase 1).
-          const delay = computeReconnectDelay(attemptRef.current);
-          attemptRef.current += 1;
-          reconnectTimerRef.current = setTimeout(() => {
-            if (!stoppedRef.current && targetRef.current) {
-              open(targetRef.current);
-            }
-          }, delay);
-          return { ...previous, status: 'reconnecting' };
-        });
-      };
+        }, delay);
+        return { ...previous, status: 'reconnecting' };
+      });
+    };
 
-      socket.onerror = () => {
-        // The close event follows and owns the reconnect decision.
-      };
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
+    socket.onerror = () => {
+      // The close event follows and owns the reconnect decision.
+    };
+  }, []);
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
 
   const join = useCallback(
     (target: JoinTarget) => {
