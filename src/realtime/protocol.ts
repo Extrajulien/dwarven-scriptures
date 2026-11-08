@@ -77,6 +77,8 @@ export const roomStatusSchema = z.enum([
   'fermee',
 ]);
 
+export type RoomStatus = z.infer<typeof roomStatusSchema>;
+
 // ---------------------------------------------------------------- client → server
 
 /**
