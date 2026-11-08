@@ -350,8 +350,11 @@ player who returns within 30 s resumes in place (COURSE-08).
   * `npm run dev` / `npm run start` become `tsx server.ts` (dev mode when
     `NODE_ENV !== 'production'`); `next build` is unchanged and `next start`
     is no longer used. The custom server file is excluded from the Next build
-    and runs under `tsx`, so it does not go through the Next compiler
-    (per `custom-server.md`).
+    (`custom-server.md`). Verified locally: the full `tsx` CLI is required
+    (`node --import tsx/esm` breaks drizzle-orm's module resolution), `next`
+    must be prepared before the realtime module loads, and the realtime boot
+    graph must not import `next/headers` — the token codecs live in
+    `src/lib/session-token.ts` / `guest-token.ts` for that reason.
   * **Single-instance assumption:** presence, the hub and the rate limiter
     live in one process's memory. Scaling to several instances would require a
     shared pub/sub (e.g. PostgreSQL LISTEN/NOTIFY or Redis) and a shared rate

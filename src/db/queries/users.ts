@@ -211,6 +211,29 @@ export type UserCredentials = {
 };
 
 /**
+ * Public identity of a user by **internal** id — server-internal use only
+ * (host handover and the realtime layer resolve `rooms.hostUserId` to the
+ * public shape). Client inputs must never reach this function: callers obtain
+ * the internal id from the database or the session, never from a request.
+ */
+export async function getUserPublicInfoById(
+  id: number,
+): Promise<{ publicId: string; username: string } | null> {
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return null;
+  }
+
+  const rows = await db
+    .select({ publicId: users.publicId, username: users.username })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+
+  const row = rows[0];
+  return row ?? null;
+}
+
+/**
  * Loads the password hash (and public identifiers) for a username, for the
  * login flow. This is intentionally separate from `getUserFullProfile`: the
  * profile projection strips `passwordHash`, while authentication needs it to

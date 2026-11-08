@@ -290,3 +290,24 @@ export async function revokeInvitationsForMember(memberId: number): Promise<void
       and(eq(invitationLinks.boundMemberId, memberId), ne(invitationLinks.status, 'revoked')),
     );
 }
+
+/**
+ * Identity of a membership row by internal member id — server-internal use
+ * only. The realtime join-by-token path uses it to refuse a used link whose
+ * bound member is a different person *before* creating a membership
+ * (SALLE-04), so the refusal never has to be rolled back.
+ */
+export async function getBoundMemberIdentity(
+  memberId: number,
+): Promise<{ userId: number | null; guestToken: string | null } | null> {
+  assertPositiveInteger(memberId, 'memberId');
+
+  const rows = await db
+    .select({ userId: roomMembers.userId, guestToken: roomMembers.guestToken })
+    .from(roomMembers)
+    .where(eq(roomMembers.id, memberId))
+    .limit(1);
+
+  const row = rows[0];
+  return row ?? null;
+}

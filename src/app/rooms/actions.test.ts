@@ -31,7 +31,7 @@ import {
   transferHost as transferHostQuery,
   updateRoomConfig as updateRoomConfigQuery,
 } from '../../db/queries/rooms';
-import { getUserFullProfile } from '../../db/queries/users';
+import { getUserFullProfile, getUserPublicInfoById } from '../../db/queries/users';
 import {
   createGuestSession,
   getGuestSession,
@@ -61,7 +61,10 @@ jest.mock('../../lib/rate-limit', () => {
   };
 });
 
-jest.mock('../../db/queries/users', () => ({ getUserFullProfile: jest.fn() }));
+jest.mock('../../db/queries/users', () => ({
+  getUserFullProfile: jest.fn(),
+  getUserPublicInfoById: jest.fn(),
+}));
 
 jest.mock('../../db/queries/rooms', () => {
   const actual = jest.requireActual('../../db/queries/rooms');
@@ -104,6 +107,7 @@ const getSessionMock = getSession as jest.Mock;
 const getGuestSessionMock = getGuestSession as jest.Mock;
 const createGuestSessionMock = createGuestSession as jest.Mock;
 const getUserFullProfileMock = getUserFullProfile as jest.Mock;
+const getUserPublicInfoByIdMock = getUserPublicInfoById as jest.Mock;
 const createRoomQueryMock = createRoomQuery as jest.Mock;
 const joinRoomQueryMock = joinRoomQuery as jest.Mock;
 const getRoomByCodeMock = getRoomByCode as jest.Mock;
@@ -566,6 +570,10 @@ describe('leaveRoom (SALLE-08)', () => {
     getRoomInternalByPublicIdMock.mockResolvedValue(roomRow);
     getActiveMemberIdMock.mockResolvedValue(51);
     findHostSuccessorForRoomMock.mockResolvedValue({ userId: 9 });
+    getUserPublicInfoByIdMock.mockResolvedValue({
+      publicId: USER_PUBLIC_ID,
+      username: 'bob',
+    });
 
     await expect(leaveRoom({ roomPublicId: ROOM_PUBLIC_ID })).resolves.toEqual({ ok: true });
     expect(transferHostQueryMock).toHaveBeenCalledWith(42, 9);

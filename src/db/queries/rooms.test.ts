@@ -224,6 +224,7 @@ function updateSet(index: number): Record<string, unknown> {
 }
 
 const ROOM_PUBLIC_ID = '11111111-1111-4111-8111-111111111111';
+const ADA_PUBLIC_ID = '22222222-2222-4222-8222-222222222222';
 
 const roomRow = {
   id: 42,
@@ -494,6 +495,7 @@ describe('joinRoom (SALLE-05/06/07/09)', () => {
 
     expect(joined).toEqual({
       roomPublicId: ROOM_PUBLIC_ID,
+      memberId: 51,
       role: 'participant',
       joinedAt: memberRow.joinedAt,
     });
@@ -828,16 +830,19 @@ describe('updateRoomConfig (CONF-01..12)', () => {
 });
 
 describe('getRoomForJoin (SP-1B seam)', () => {
-  test('returns the room and its present members with display names', async () => {
+  test('returns the room, its host and its present members with display info', async () => {
     selectQueue = [
       [roomRow],
+      [{ publicId: ADA_PUBLIC_ID, username: 'ada' }],
       [
         {
           memberId: 51,
           role: 'participant',
           userId: 7,
           guestToken: null,
+          userPublicId: ADA_PUBLIC_ID,
           username: 'ada',
+          pfpUrl: null,
           joinedAt: memberRow.joinedAt,
         },
       ],
@@ -846,12 +851,17 @@ describe('getRoomForJoin (SP-1B seam)', () => {
     const state = await getRoomForJoin(42);
 
     expect(state?.roomId).toBe(42);
+    expect(state?.hostUserId).toBe(7);
+    expect(state?.hostPublicId).toBe(ADA_PUBLIC_ID);
+    expect(state?.hostName).toBe('ada');
     expect(state?.members[0]).toEqual({
       memberId: 51,
       role: 'participant',
       userId: 7,
       guestToken: null,
+      userPublicId: ADA_PUBLIC_ID,
       username: 'ada',
+      pfpUrl: null,
       joinedAt: memberRow.joinedAt,
     });
     expect(methodsOf('select')).toContain('leftJoin');

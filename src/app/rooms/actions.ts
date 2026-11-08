@@ -25,7 +25,14 @@ import {
   updateRoomConfig as updateRoomConfigQuery,
   type PublicRoom,
 } from '../../db/queries/rooms';
-import { getUserFullProfile } from '../../db/queries/users';
+import { getUserFullProfile, getUserPublicInfoById } from '../../db/queries/users';
+import {
+  publishConfigUpdated,
+  publishHostChanged,
+  publishMemberKicked,
+  publishMemberLeft,
+  publishRoomClosed,
+} from '../../realtime/events';
 import {
   createGuestSession,
   getGuestSession,
@@ -119,8 +126,8 @@ export type SimpleActionResult = ActionFailure | ActionSuccess;
 
 /** The acting person: a logged-in user, a guest, or nobody. */
 type Actor =
-  | { kind: 'user'; internalUserId: number; publicId: string }
-  | { kind: 'guest'; guestToken: string; guestId: string }
+  | { kind: 'user'; internalUserId: number; publicId: string; username: string }
+  | { kind: 'guest'; guestToken: string; guestId: string; nickname: string }
   | { kind: 'none' };
 
 /**
@@ -133,14 +140,24 @@ async function resolveActor(): Promise<Actor> {
   if (session) {
     const profile = await getUserFullProfile({ publicId: session.publicId });
     if (profile) {
-      return { kind: 'user', internalUserId: profile.id, publicId: session.publicId };
+      return {
+        kind: 'user',
+        internalUserId: profile.id,
+        publicId: session.publicId,
+        username: profile.username,
+      };
     }
     return { kind: 'none' };
   }
 
   const guest = await getGuestSession();
   if (guest) {
-    return { kind: 'guest', guestToken: guest.guestId, guestId: guest.guestId };
+    return {
+      kind: 'guest',
+      guestToken: guest.guestId,
+      guestId: guest.guestId,
+      nickname: guest.nickname,
+    };
   }
 
   return { kind: 'none' };
@@ -332,6 +349,9 @@ export async function updateRoomConfig(
       config: parsed.data.config,
     });
 
+    // CONF-12: everyone present sees the configuration change immediately.
+    publishConfigUpdated(room.roomId, parsed.data.config);
+
     return { ok: true };
   } catch (error) {
     if (isZodValidationError(error)) {
@@ -357,6 +377,7 @@ export async function closeRoom(input: RoomActionInput): Promise<SimpleActionRes
     }
 
     await closeRoomQuery({ roomId: room.roomId, hostUserId: room.hostUserId });
+    publishRoomClosed(room.roomId);
     return { ok: true };
   } catch (error) {
     console.error('closeRoom: unexpected failure', error);
@@ -384,9 +405,11 @@ export async function kickMember(input: KickMemberActionInput): Promise<SimpleAc
     }
 
     let targetId: number | null = null;
+    let targetInternalUserId: number | null = null;
     if (parsed.data.targetUserId !== undefined) {
       const target = await getUserFullProfile({ publicId: parsed.data.targetUserId });
       if (target) {
+        targetInternalUserId = target.id;
         targetId = await getActiveMemberId(room.roomId, { userId: target.id });
       }
     } else if (parsed.data.targetGuestToken !== undefined) {
@@ -404,6 +427,14 @@ export async function kickMember(input: KickMemberActionInput): Promise<SimpleAc
       hostUserId: room.hostUserId,
       targetMemberId: targetId,
     });
+
+    // SALLE-07: evict the kicked member's socket and notify the room.
+    publishMemberKicked(
+      room.roomId,
+      targetInternalUserId !== null
+        ? { userId: targetInternalUserId }
+        : { guestToken: parsed.data.targetGuestToken as string },
+    );
 
     return { ok: true };
   } catch (error) {
@@ -438,6 +469,10 @@ export async function transferHost(input: TransferHostActionInput): Promise<Simp
     }
 
     await transferHostQuery(room.roomId, target.id);
+    publishHostChanged(room.roomId, {
+      publicId: target.publicId,
+      username: target.username,
+    });
     return { ok: true };
   } catch (error) {
     if (error instanceof NotHostCandidateError) {
@@ -482,13 +517,24 @@ export async function leaveRoom(input: RoomActionInput): Promise<SimpleActionRes
     }
 
     await markMemberLeft(memberId);
+    publishMemberLeft(
+      room.id,
+      actor.kind === 'user'
+        ? { userId: actor.internalUserId }
+        : { guestToken: actor.guestToken },
+    );
 
     if (actor.kind === 'user' && room.hostUserId === actor.internalUserId) {
       const successor = await findHostSuccessorForRoom(room.id);
       if (successor && successor.userId !== null) {
         await transferHostQuery(room.id, successor.userId);
+        const nextHost = await getUserPublicInfoById(successor.userId);
+        if (nextHost) {
+          publishHostChanged(room.id, nextHost);
+        }
       } else {
         await closeRoomQuery({ roomId: room.id, hostUserId: actor.internalUserId });
+        publishRoomClosed(room.id);
       }
     }
 

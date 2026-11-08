@@ -68,6 +68,13 @@ export type HubIdentity =
   | { kind: 'user'; userId: number; publicId: string; username: string }
   | { kind: 'guest'; guestToken: string; nickname: string };
 
+/**
+ * Lightweight reference to a member used by the notification helpers: the
+ * host actions know the target's internal user id or guest token, but not
+ * necessarily the full identity (a guest's nickname lives in the cookie).
+ */
+export type MemberRef = { userId: number } | { guestToken: string };
+
 export type JoinTarget = { code: string } | { invitationToken: string };
 
 /** Wire-shape room state the store adapts from `getRoomForJoin`. */
@@ -152,6 +159,14 @@ export interface HubConnection {
 
 export const DEFAULT_HEARTBEAT_INTERVAL_MS = 30_000;
 
+/**
+ * Application-level close codes (4000–4999 are reserved for applications).
+ * The client hook reads them to decide whether reconnecting makes sense.
+ */
+export const WS_CLOSE_REPLACED = 4001;
+export const WS_CLOSE_ROOM_CLOSED = 4002;
+export const WS_CLOSE_KICKED = 4003;
+
 export type RoomHubOptions = {
   store: RoomStore;
   /** Join-attempt limiter (defaults to the shared SALLE-10 limiter). */
@@ -169,6 +184,10 @@ type ConnectedMember = {
 
 function memberKey(identity: HubIdentity): string {
   return identity.kind === 'user' ? `user:${identity.userId}` : `guest:${identity.guestToken}`;
+}
+
+function memberRefKey(ref: MemberRef): string {
+  return 'userId' in ref ? `user:${ref.userId}` : `guest:${ref.guestToken}`;
 }
 
 function memberKeyFromRow(row: HubRoomMember): string {
@@ -313,7 +332,7 @@ export class RoomHub {
         ),
       );
       room.delete(key);
-      existing.connection.close(4001, 'replaced');
+      existing.connection.close(WS_CLOSE_REPLACED, 'replaced');
     }
 
     const wire = this.toWireMember(ownRow, state, true, actor);
@@ -439,22 +458,49 @@ export class RoomHub {
    * and is closed; the rest of the room receives `memberKicked`. Called from
    * the `kickMember` server action through `src/realtime/events.ts`.
    */
-  notifyMemberKicked(roomId: number, identity: HubIdentity): void {
+  notifyMemberKicked(roomId: number, ref: MemberRef): void {
     const room = this.rooms.get(roomId);
     if (!room) {
       return;
     }
-    const entry = room.get(memberKey(identity));
+    const key = memberRefKey(ref);
+    const entry = room.get(key);
     if (!entry) {
       return;
     }
     const publicId = this.roomPublicIds.get(roomId);
     entry.connection.send(this.error('kicked', 'you were kicked from the room'));
-    room.delete(memberKey(identity));
-    entry.connection.close(4003, 'kicked');
+    room.delete(key);
+    entry.connection.close(WS_CLOSE_KICKED, 'kicked');
     if (publicId) {
       this.broadcast(room, {
         type: 'memberKicked',
+        roomPublicId: publicId,
+        member: { ...entry.wire, connected: false },
+      });
+    }
+  }
+
+  /**
+   * Evicts a present member whose departure already happened in the database
+   * (the `leaveRoom` server action): removes the connection from the room and
+   * broadcasts `memberLeft` without touching the database again.
+   */
+  notifyMemberLeft(roomId: number, ref: MemberRef): void {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return;
+    }
+    const key = memberRefKey(ref);
+    const entry = room.get(key);
+    if (!entry) {
+      return;
+    }
+    room.delete(key);
+    const publicId = this.roomPublicIds.get(roomId);
+    if (publicId) {
+      this.broadcast(room, {
+        type: 'memberLeft',
         roomPublicId: publicId,
         member: { ...entry.wire, connected: false },
       });
@@ -667,7 +713,7 @@ export class RoomHub {
 
   private clearRoom(roomId: number, room: Map<string, ConnectedMember>): void {
     for (const entry of room.values()) {
-      entry.connection.close(4002, 'room closed');
+      entry.connection.close(WS_CLOSE_ROOM_CLOSED, 'room closed');
     }
     room.clear();
     this.rooms.delete(roomId);

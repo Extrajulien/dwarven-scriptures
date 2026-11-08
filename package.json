@@ -17,9 +17,9 @@
     "zod": "^4.6.7"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx server.ts",
     "build": "next build",
-    "start": "next start",
+    "start": "tsx server.ts",
     "lint": "eslint .",
     "test": "jest",
     "test:watch": "jest --watch",

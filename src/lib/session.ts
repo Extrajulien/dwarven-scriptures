@@ -1,105 +1,30 @@
-import { createHmac, timingSafeEqual } from 'crypto';
 import { cookies } from 'next/headers';
+import {
+  decodeSessionToken,
+  encodeSessionToken,
+  SESSION_COOKIE_NAME,
+  SESSION_TTL_SECONDS,
+  type SessionPayload,
+  type SessionUser,
+} from './session-token';
 
 /**
- * Stateless session management for authenticated users.
+ * Stateless session management for authenticated users: the cookie layer on
+ * top of the pure token codec in [`session-token.ts`](session-token.ts).
  *
- * A session is a small, self-describing token stored in an HttpOnly cookie.
- * The token is `base64url(<json body>)` followed by an HMAC-SHA256 signature
- * over that body, separated by a `.`. Node's built-in `crypto` provides the
- * HMAC, so this carries no dependency — the same reasoning used for scrypt in
- * [`password.ts`](password.ts) and documented in
- * [`doc/auth.md`](../../doc/auth.md).
- *
- * The body holds only public identifiers (`publicId`, `username`) plus an
- * absolute expiry (`exp`, in Unix seconds). Nothing sensitive is ever placed in
- * the token, and the signature is verified with `timingSafeEqual` so tampering
- * and forgery are both rejected.
+ * The token itself is `base64url(<json body>)` followed by an HMAC-SHA256
+ * signature over that body, separated by a `.` — see the codec module for the
+ * format and security rationale (ADR-003, `doc/auth.md`). Keep the two files
+ * in sync: this module only reads/writes the HttpOnly cookie; code that needs
+ * to verify a token outside a Next.js request context (the realtime layer)
+ * imports `session-token.ts` directly, never this file.
  *
  * This module is server-only by convention: it is imported only from server
  * actions and server components. Never import it from a client component.
  */
 
-export const SESSION_COOKIE_NAME = 'session';
-
-/** Session lifetime in seconds. "Remember me" stores the cookie for the same span. */
-export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
-
-export type SessionPayload = {
-  publicId: string;
-  username: string;
-  /** Absolute expiry as Unix seconds. */
-  exp: number;
-};
-
-export type SessionUser = {
-  publicId: string;
-  username: string;
-};
-
-function hmac(body: string, secret: string): Buffer {
-  return createHmac('sha256', secret).update(body).digest();
-}
-
-/** Signs a payload into a `body.signature` token. Exported for unit testing. */
-export function encodeSessionToken(payload: SessionPayload, secret: string): string {
-  const body = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
-  const signature = hmac(body, secret).toString('base64url');
-  return `${body}.${signature}`;
-}
-
-/**
- * Verifies a token and returns its payload, or `null` for any malformed,
- * tampered or expired input. Exported for unit testing.
- */
-export function decodeSessionToken(token: string, secret: string): SessionPayload | null {
-  const separator = token.indexOf('.');
-  // Exactly one dot, with a non-empty body and signature on each side.
-  if (separator <= 0 || separator === token.length - 1 || token.indexOf('.', separator + 1) !== -1) {
-    return null;
-  }
-
-  const body = token.slice(0, separator);
-  const signature = token.slice(separator + 1);
-
-  let expected: Buffer;
-  let provided: Buffer;
-  try {
-    expected = hmac(body, secret);
-    provided = Buffer.from(signature, 'base64url');
-  } catch {
-    return null;
-  }
-
-  if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) {
-    return null;
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
-    if (!isSessionPayload(parsed)) {
-      return null;
-    }
-    if (parsed.exp <= Math.floor(Date.now() / 1000)) {
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function isSessionPayload(value: unknown): value is SessionPayload {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-  const record = value as Record<string, unknown>;
-  return (
-    typeof record.publicId === 'string' &&
-    typeof record.username === 'string' &&
-    typeof record.exp === 'number'
-  );
-}
+export { SESSION_COOKIE_NAME, SESSION_TTL_SECONDS, decodeSessionToken, encodeSessionToken };
+export type { SessionPayload, SessionUser };
 
 function sessionSecret(): string {
   const secret = process.env.SESSION_SECRET;

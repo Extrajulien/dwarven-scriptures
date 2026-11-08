@@ -1,53 +1,41 @@
-import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
+import { randomUUID } from 'crypto';
 import { cookies } from 'next/headers';
-import { z } from 'zod';
+import {
+  decodeGuestToken,
+  encodeGuestToken,
+  GUEST_COOKIE_NAME,
+  GUEST_NICKNAME_MAX_LENGTH,
+  GUEST_NICKNAME_MIN_LENGTH,
+  GUEST_TTL_SECONDS,
+  guestNicknameSchema,
+  type GuestSession,
+  type GuestSessionPayload,
+} from './guest-token';
 
 /**
- * Signed guest session (AUTH-02/03), mirroring `src/lib/session.ts` for users:
- * the same `body.signature` HMAC-SHA256 token, the same HttpOnly cookie
- * options, but its own cookie name and payload.
+ * Signed guest session (AUTH-02/03): the cookie layer on top of the pure
+ * token codec in [`guest-token.ts`](guest-token.ts), mirroring
+ * `src/lib/session.ts` for users: the same `body.signature` HMAC-SHA256
+ * token, the same HttpOnly cookie options, but its own cookie name and
+ * payload.
  *
- * A guest session is deliberately not a user account: it carries a random
- * `guestId` (uuid, generated server-side) and a display nickname, nothing
- * else. The same signing secret as the user session (`SESSION_SECRET`) is
- * reused — the two payloads have disjoint shapes, and a separate secret would
- * add a deployment knob without raising the bar (either secret compromise
- * forges identities anyway).
+ * Code that needs to verify a guest token outside a Next.js request context
+ * (the realtime layer) imports `guest-token.ts` directly, never this file.
  *
  * This module is server-only by convention: it is imported only from server
  * actions and server components. Never import it from a client component.
  */
 
-export const GUEST_COOKIE_NAME = 'guest';
-
-/** Guest session lifetime in seconds (30 days, like the user session). */
-export const GUEST_TTL_SECONDS = 30 * 24 * 60 * 60;
-
-export const GUEST_NICKNAME_MIN_LENGTH = 3;
-export const GUEST_NICKNAME_MAX_LENGTH = 20;
-
-/**
- * The nickname rule required by AUTH-02: 3–20 characters after trimming. The
- * module exports the schema itself so callers (the `setGuestNickname` action)
- * validate with exactly the same rule instead of re-typing it.
- */
-export const guestNicknameSchema = z
-  .string()
-  .trim()
-  .min(GUEST_NICKNAME_MIN_LENGTH)
-  .max(GUEST_NICKNAME_MAX_LENGTH);
-
-export type GuestSessionPayload = {
-  guestId: string;
-  nickname: string;
-  /** Absolute expiry as Unix seconds. */
-  exp: number;
+export {
+  decodeGuestToken,
+  encodeGuestToken,
+  GUEST_COOKIE_NAME,
+  GUEST_NICKNAME_MAX_LENGTH,
+  GUEST_NICKNAME_MIN_LENGTH,
+  GUEST_TTL_SECONDS,
+  guestNicknameSchema,
 };
-
-export type GuestSession = {
-  guestId: string;
-  nickname: string;
-};
+export type { GuestSession, GuestSessionPayload };
 
 /** Raised when `createGuestSession` is given a nickname that violates AUTH-02. */
 export class InvalidGuestNicknameError extends Error {
@@ -57,70 +45,6 @@ export class InvalidGuestNicknameError extends Error {
     );
     this.name = 'InvalidGuestNicknameError';
   }
-}
-
-function hmac(body: string, secret: string): Buffer {
-  return createHmac('sha256', secret).update(body).digest();
-}
-
-/** Signs a payload into a `body.signature` token. Exported for unit testing. */
-export function encodeGuestToken(payload: GuestSessionPayload, secret: string): string {
-  const body = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
-  const signature = hmac(body, secret).toString('base64url');
-  return `${body}.${signature}`;
-}
-
-/**
- * Verifies a token and returns its payload, or `null` for any malformed,
- * tampered or expired input. Exported for unit testing.
- */
-export function decodeGuestToken(token: string, secret: string): GuestSessionPayload | null {
-  const separator = token.indexOf('.');
-  // Exactly one dot, with a non-empty body and signature on each side.
-  if (separator <= 0 || separator === token.length - 1 || token.indexOf('.', separator + 1) !== -1) {
-    return null;
-  }
-
-  const body = token.slice(0, separator);
-  const signature = token.slice(separator + 1);
-
-  let expected: Buffer;
-  let provided: Buffer;
-  try {
-    expected = hmac(body, secret);
-    provided = Buffer.from(signature, 'base64url');
-  } catch {
-    return null;
-  }
-
-  if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) {
-    return null;
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
-    if (!isGuestSessionPayload(parsed)) {
-      return null;
-    }
-    if (parsed.exp <= Math.floor(Date.now() / 1000)) {
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function isGuestSessionPayload(value: unknown): value is GuestSessionPayload {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-  const record = value as Record<string, unknown>;
-  return (
-    typeof record.guestId === 'string' &&
-    typeof record.nickname === 'string' &&
-    typeof record.exp === 'number'
-  );
 }
 
 function guestSecret(): string {

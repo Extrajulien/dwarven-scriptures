@@ -168,6 +168,8 @@ export type JoinRoomParams = {
 
 export type JoinedRoom = {
   roomPublicId: string;
+  /** Internal id of the created membership row (server-side use only). */
+  memberId: number;
   role: string;
   joinedAt: Date;
 };
@@ -178,24 +180,32 @@ type NormalizedIdentity =
 
 /**
  * Server-only snapshot for the realtime layer: the room plus its present
- * members. Contains internal ids (`roomId`, `memberId`, `userId`) — never
- * serialize this shape to a client. Guests carry only their `guestToken`
- * (cookie id); their nickname lives in the signed cookie, not in the
- * database, so the caller combines the two.
+ * members. Contains internal ids (`roomId`, `memberId`, `userId`,
+ * `hostUserId`) — never serialize this shape to a client. Guests carry only
+ * their `guestToken` (cookie id); their nickname lives in the signed cookie,
+ * not in the database, so the caller combines the two.
  */
 export type RoomJoinState = {
   roomId: number;
   publicId: string;
   code: string;
+  visibility: string;
   status: string;
   capacity: number;
   config: RoomConfig;
+  createdAt: Date;
+  /** Internal host id, used to decide handover on host departure (SALLE-08). */
+  hostUserId: number;
+  hostPublicId: string;
+  hostName: string;
   members: Array<{
     memberId: number;
     role: string;
     userId: number | null;
     guestToken: string | null;
+    userPublicId: string | null;
     username: string | null;
+    pfpUrl: string | null;
     joinedAt: Date;
   }>;
 };
@@ -636,6 +646,7 @@ export async function joinRoom(params: JoinRoomParams): Promise<JoinedRoom> {
 
         return {
           roomPublicId: room.publicId,
+          memberId: inserted.id,
           role: inserted.role,
           joinedAt: inserted.joinedAt,
         };
@@ -948,13 +959,26 @@ export async function getRoomForJoin(roomId: number): Promise<RoomJoinState | nu
     return null;
   }
 
+  // Host public identity: the snapshot carries it so clients can render the
+  // host and handover can be announced without leaking the internal id.
+  const [host] = await db
+    .select({ publicId: users.publicId, username: users.username })
+    .from(users)
+    .where(eq(users.id, room.hostUserId))
+    .limit(1);
+  if (!host) {
+    throw new Error(`host user ${room.hostUserId} of room ${room.id} does not exist`);
+  }
+
   const members = await db
     .select({
       memberId: roomMembers.id,
       role: roomMembers.role,
       userId: roomMembers.userId,
       guestToken: roomMembers.guestToken,
+      userPublicId: users.publicId,
       username: users.username,
+      pfpUrl: users.pfpUrl,
       joinedAt: roomMembers.joinedAt,
     })
     .from(roomMembers)
@@ -965,9 +989,14 @@ export async function getRoomForJoin(roomId: number): Promise<RoomJoinState | nu
     roomId: room.id,
     publicId: room.publicId,
     code: room.code,
+    visibility: room.visibility,
     status: room.status,
     capacity: room.capacity,
     config: room.config,
+    createdAt: room.createdAt,
+    hostUserId: room.hostUserId,
+    hostPublicId: host.publicId,
+    hostName: host.username,
     members,
   };
 }

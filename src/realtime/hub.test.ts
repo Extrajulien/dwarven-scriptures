@@ -539,7 +539,7 @@ describe('host action notifications', () => {
     const bobConn = connection('c2', bob);
     await hub.handleJoin(bobConn, { type: 'joinRoom', code: 'DWRF42' });
 
-    hub.notifyMemberKicked(ROOM_ID, bob);
+    hub.notifyMemberKicked(ROOM_ID, { userId: 8 });
 
     expect(bobConn.last('error')?.code).toBe('kicked');
     expect(bobConn.closed).toBe(true);
@@ -577,7 +577,7 @@ describe('host action notifications', () => {
     hub.notifyHostChanged(ROOM_ID, { publicId: BOB_ID, username: 'bob' });
     hub.notifyConfigUpdated(ROOM_ID, defaultRoomConfig);
     hub.notifyRoomClosed(ROOM_ID);
-    hub.notifyMemberKicked(ROOM_ID, ada);
+    hub.notifyMemberKicked(ROOM_ID, { userId: 7 });
     expect(hub.connectionCount()).toBe(0);
   });
 });
