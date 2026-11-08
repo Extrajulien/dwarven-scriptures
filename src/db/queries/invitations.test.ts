@@ -41,7 +41,7 @@ function chainable(operation: RecordedCall['operation'], call: RecordedCall): Re
       return chain;
     };
 
-  for (const method of ['values', 'set', 'where', 'from', 'for', 'limit', 'innerJoin', 'leftJoin']) {
+  for (const method of ['values', 'set', 'where', 'from', 'for', 'limit', 'innerJoin', 'leftJoin', 'orderBy']) {
     chain[method] = record(method);
   }
 
@@ -91,6 +91,7 @@ import {
   consumeInvitationToken,
   createInvitationLinks,
   getInvitationByToken,
+  listInvitationsForRoom,
   revokeInvitationsForMember,
 } from './invitations';
 
@@ -386,6 +387,59 @@ describe('revokeInvitationsForMember (SALLE-04)', () => {
 
   test('rejects a non-positive member id', async () => {
     await expect(revokeInvitationsForMember(0)).rejects.toThrow(/memberId/);
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe('listInvitationsForRoom (SALLE-04)', () => {
+  test('maps the link status and the bound identity to the public shape', async () => {
+    selectQueue = [
+      [
+        {
+          token: 'tok-unused',
+          status: 'unused',
+          usedByUsername: null,
+          boundUserId: null,
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+        },
+        {
+          token: 'tok-user',
+          status: 'used',
+          usedByUsername: 'ada',
+          boundUserId: 7,
+          createdAt: new Date('2024-01-02T00:00:00Z'),
+        },
+        {
+          token: 'tok-guest',
+          status: 'used',
+          usedByUsername: null,
+          boundUserId: null,
+          createdAt: new Date('2024-01-03T00:00:00Z'),
+        },
+      ],
+    ];
+
+    const links = await listInvitationsForRoom('11111111-1111-4111-8111-111111111111');
+
+    expect(links).toHaveLength(3);
+    expect(links[0]).toMatchObject({ token: 'tok-unused', status: 'unused', usedByGuest: false });
+    expect(links[1]).toMatchObject({
+      token: 'tok-user',
+      status: 'used',
+      usedByUsername: 'ada',
+      usedByGuest: false,
+    });
+    expect(links[2]).toMatchObject({
+      token: 'tok-guest',
+      status: 'used',
+      usedByUsername: null,
+      usedByGuest: true,
+    });
+    expect(sqlTextOf('select')).toContain('"rooms"."publicId" =');
+  });
+
+  test('rejects a malformed room public id', async () => {
+    await expect(listInvitationsForRoom('')).rejects.toThrow(/roomPublicId/);
     expect(calls).toHaveLength(0);
   });
 });

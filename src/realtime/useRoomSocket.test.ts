@@ -19,6 +19,7 @@ import {
   computeReconnectDelay,
   memberIdentity,
   parseServerMessage,
+  shouldReconnect,
 } from './useRoomSocket';
 
 const ROOM_PUBLIC_ID = '8f9c2a55-3b4a-4c1e-8a2d-9e7f6a5b4c3d';
@@ -204,6 +205,26 @@ describe('applyServerMessage', () => {
     });
     expect(next.status).toBe('closed');
     expect(next.snapshot).toBeNull();
+  });
+
+  test('shouldReconnect refuses closed and fatally rejected states', () => {
+    const closed = applyServerMessage(snapshotState, {
+      type: 'roomClosed',
+      roomPublicId: ROOM_PUBLIC_ID,
+    });
+    expect(shouldReconnect(closed)).toBe(false);
+
+    const kicked = applyServerMessage(snapshotState, { type: 'error', code: 'kicked' });
+    expect(shouldReconnect(kicked)).toBe(false);
+
+    expect(shouldReconnect({ status: 'open', snapshot: null, error: null })).toBe(true);
+    expect(
+      shouldReconnect({
+        status: 'reconnecting',
+        snapshot: null,
+        error: { message: 'invalid frame', fatal: false },
+      }),
+    ).toBe(true);
   });
 
   test('error sets the fatal flag from the code', () => {

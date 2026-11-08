@@ -118,10 +118,13 @@ import {
   createRoom,
   findHostSuccessorForRoom,
   getActiveMemberId,
+  getActiveRoomOfIdentity,
   getRoomByCode,
   getRoomForJoin,
+  getRoomForPage,
   getRoomInternalByPublicId,
   getRoomPublic,
+  getViewerMembership,
   joinRoom,
   kickMember,
   leaveRoom,
@@ -900,5 +903,87 @@ describe('findHostSuccessorForRoom (SALLE-08)', () => {
     ];
 
     await expect(findHostSuccessorForRoom(42)).resolves.toBeNull();
+  });
+});
+
+describe('getRoomForPage (lobby page scaffold)', () => {
+  const ROOM_PAGE_PUBLIC_ID = '11111111-1111-4111-8111-111111111111';
+
+  test('returns the public room view with the host identity and count', async () => {
+    selectQueue = [
+      [
+        {
+          publicId: ROOM_PAGE_PUBLIC_ID,
+          code: 'ABCDEF',
+          visibility: 'public',
+          status: 'en_attente',
+          capacity: 10,
+          config: defaultRoomConfig,
+          hostPublicId: '22222222-2222-4222-8222-222222222222',
+          hostName: 'ada',
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+          participantCount: 3,
+        },
+      ],
+    ];
+
+    const room = await getRoomForPage(ROOM_PAGE_PUBLIC_ID);
+
+    expect(room).toMatchObject({
+      publicId: ROOM_PAGE_PUBLIC_ID,
+      code: 'ABCDEF',
+      hostName: 'ada',
+      participantCount: 3,
+    });
+    expect(room?.participantCount).toBe(3);
+  });
+
+  test('returns null when the room does not exist', async () => {
+    selectQueue = [[]];
+    await expect(getRoomForPage(ROOM_PAGE_PUBLIC_ID)).resolves.toBeNull();
+  });
+
+  test('rejects a malformed public id', async () => {
+    await expect(getRoomForPage('nope')).rejects.toThrow(/publicId/);
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe('getViewerMembership (SALLE-03 gate)', () => {
+  const ROOM_PAGE_PUBLIC_ID = '11111111-1111-4111-8111-111111111111';
+
+  test('returns the membership role for a present member', async () => {
+    selectQueue = [[{ role: 'spectator' }]];
+
+    await expect(
+      getViewerMembership(ROOM_PAGE_PUBLIC_ID, { userId: 7 }),
+    ).resolves.toEqual({ role: 'spectator' });
+    expect(sqlTextOf('select')).toContain('"rooms"."publicId" =');
+    expect(sqlTextOf('select')).toContain('"room_members"."leftAt" is null');
+  });
+
+  test('returns null when the viewer is not a member', async () => {
+    selectQueue = [[]];
+    await expect(
+      getViewerMembership(ROOM_PAGE_PUBLIC_ID, { userId: 7 }),
+    ).resolves.toBeNull();
+  });
+});
+
+describe('getActiveRoomOfIdentity (SALLE-06 current room)', () => {
+  test('returns the public identity of the active room', async () => {
+    selectQueue = [
+      [{ publicId: '11111111-1111-4111-8111-111111111111', code: 'GHJKM2' }],
+    ];
+
+    await expect(getActiveRoomOfIdentity({ userId: 7 })).resolves.toEqual({
+      publicId: '11111111-1111-4111-8111-111111111111',
+      code: 'GHJKM2',
+    });
+  });
+
+  test('returns null when the person is active in no room', async () => {
+    selectQueue = [[]];
+    await expect(getActiveRoomOfIdentity({ guestToken: '33333333-3333-4333-8333-333333333333' })).resolves.toBeNull();
   });
 });

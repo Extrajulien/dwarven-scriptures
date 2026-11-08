@@ -74,6 +74,17 @@ export function parseServerMessage(raw: unknown): ServerMessage | null {
   return parsed.success ? parsed.data : null;
 }
 
+/**
+ * True when a dropped transport should be retried: terminal errors
+ * (`kicked`, `room_full`, …) and a `closed` state (voluntary leave, or a
+ * `roomClosed` message — the room no longer accepts joins) must not schedule
+ * a reconnect, or the client would spam the server (SALLE-10) and flip the
+ * "room closed" screen into a "not found" error.
+ */
+export function shouldReconnect(previous: RoomSocketState): boolean {
+  return previous.error?.fatal !== true && previous.status !== 'closed';
+}
+
 /** Applies one validated server message to the hook's state (pure reducer). */
 export function applyServerMessage(
   previous: RoomSocketState,
@@ -281,8 +292,9 @@ export function useRoomSocket(): UseRoomSocketResult {
         return;
       }
       setState((previous) => {
-        const fatal = previous.error?.fatal ?? false;
-        if (fatal) {
+        if (!shouldReconnect(previous)) {
+          // Voluntary leave, a terminal rejection, or the room closed:
+          // reconnecting would only spam the server.
           return { ...previous, status: 'closed' };
         }
         // Transport drop: schedule a reconnect (plain re-join, Phase 1).

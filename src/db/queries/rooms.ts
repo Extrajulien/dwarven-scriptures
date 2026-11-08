@@ -484,8 +484,7 @@ export async function getRoomPublic(publicId: string): Promise<PublicRoomSummary
 export async function listPublicRooms(filters: {
   textLanguage?: string;
   textComplexity?: string;
-} = {}): Promise<PublicRoomSummary[]> {
-  const conditions = [eq(rooms.status, 'en_attente'), eq(rooms.visibility, 'public')];
+} = {}): Promise<PublicRoomSummary[]> {  const conditions = [eq(rooms.status, 'en_attente'), eq(rooms.visibility, 'public')];
 
   if (filters.textLanguage !== undefined) {
     if (!['fr', 'en'].includes(filters.textLanguage)) {
@@ -531,6 +530,91 @@ export async function listPublicRooms(filters: {
     hostName: row.hostName,
     participantCount: Number(row.participantCount),
   }));
+}
+
+/**
+ * Public view of one room for the lobby page (`/rooms/[publicId]`): the
+ * display fields, the host's public identity and the participant count
+ * (spectators excluded, SALLE-05). Internal ids never appear — the realtime
+ * snapshot is the source of truth once the socket is open, this is the page
+ * scaffold around it.
+ */
+export type RoomForPage = {
+  publicId: string;
+  code: string;
+  visibility: string;
+  status: string;
+  capacity: number;
+  config: RoomConfig;
+  hostPublicId: string;
+  hostName: string;
+  participantCount: number;
+  createdAt: Date;
+};
+
+export async function getRoomForPage(publicId: string): Promise<RoomForPage | null> {
+  if (!UUID_PATTERN.test(publicId)) {
+    throw new InvalidRoomInputError('publicId must be a UUID');
+  }
+
+  const rows = await db
+    .select({
+      publicId: rooms.publicId,
+      code: rooms.code,
+      visibility: rooms.visibility,
+      status: rooms.status,
+      capacity: rooms.capacity,
+      config: rooms.config,
+      hostPublicId: users.publicId,
+      hostName: users.username,
+      createdAt: rooms.createdAt,
+      participantCount: sql<number>`count(*) filter (where ${roomMembers.role} = 'participant' and ${roomMembers.leftAt} is null and ${roomMembers.kicked} = false)`,
+    })
+    .from(rooms)
+    .innerJoin(users, eq(rooms.hostUserId, users.id))
+    .leftJoin(roomMembers, eq(roomMembers.roomId, rooms.id))
+    .where(eq(rooms.publicId, publicId))
+    .groupBy(rooms.id, users.id)
+    .limit(1);
+
+  const row = rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return { ...row, participantCount: Number(row.participantCount) };
+}
+
+/**
+ * The viewer's active membership in one room, or `null` when they are not a
+ * present member. Lets the room page decide between the full lobby and the
+ * join gate (SALLE-03: a code room only opens for members or for people who
+ * prove the code; a private room opens only through an invitation link).
+ */
+export async function getViewerMembership(
+  publicId: string,
+  identity: { userId?: number | null; guestToken?: string | null },
+): Promise<{ role: string } | null> {
+  if (!UUID_PATTERN.test(publicId)) {
+    throw new InvalidRoomInputError('publicId must be a UUID');
+  }
+  const normalised = normalizeIdentity(identity);
+
+  const rows = await db
+    .select({ role: roomMembers.role })
+    .from(roomMembers)
+    .innerJoin(rooms, eq(roomMembers.roomId, rooms.id))
+    .where(
+      and(
+        eq(rooms.publicId, publicId),
+        identityMatch(normalised),
+        isNull(roomMembers.leftAt),
+      ),
+    )
+    .limit(1);
+
+  const row = rows[0];
+  return row ? { role: row.role } : null;
 }
 
 /**

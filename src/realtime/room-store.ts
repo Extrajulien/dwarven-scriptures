@@ -136,14 +136,27 @@ export class PostgresRoomStore implements RoomStore {
    * as the `joinRoomByCode` server action, so action and realtime joins can
    * never disagree; the role is always `participant` (spectators join through
    * the action, Phase 1).
+   *
+   * SALLE-03/04: a code alone never admits to a private room — the answer
+   * stays `room_not_found` whether or not the code is real. An *active
+   * member* reconnecting a private room is not a join: their membership is
+   * the credential (SALLE-06 guarantees one active room per person), so the
+   * hub only re-attaches the connection.
    */
   private async joinByCode(
     input: RoomStoreJoinInput,
     code: string,
   ): Promise<RoomStoreJoinResult> {
     const room = await getRoomByCode(code);
-    if (!room || room.visibility === 'private') {
+    if (!room) {
       return { ok: false, error: 'room_not_found' };
+    }
+
+    if (room.visibility === 'private') {
+      const memberId = await getActiveMemberId(room.id, identityFields(input.identity));
+      return memberId !== null
+        ? { ok: true, roomId: room.id, rejoin: true }
+        : { ok: false, error: 'room_not_found' };
     }
 
     try {

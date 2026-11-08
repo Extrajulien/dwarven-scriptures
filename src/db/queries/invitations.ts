@@ -1,7 +1,7 @@
 import { randomBytes } from 'crypto';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, asc, eq, ne } from 'drizzle-orm';
 import { db } from '..';
-import { invitationLinks, roomMembers, rooms, type InvitationLink } from '../schema';
+import { invitationLinks, roomMembers, rooms, users, type InvitationLink } from '../schema';
 import { NotRoomHostError, RoomNotFoundError } from './rooms';
 
 /**
@@ -310,4 +310,56 @@ export async function getBoundMemberIdentity(
 
   const row = rows[0];
   return row ?? null;
+}
+
+/**
+ * Public display shape of one invitation link (SALLE-04): the token, its
+ * status and — for used links — who consumed it. A guest consumer has no
+ * display name, so `usedByGuest` marks them; users carry their username.
+ * Tokens are join credentials: the page only renders this for the host.
+ */
+export type InvitationLinkForPage = {
+  token: string;
+  status: 'unused' | 'used' | 'revoked';
+  /** Display name of the bound member (users only). */
+  usedByUsername: string | null;
+  /** True when the link is bound to a guest membership. */
+  usedByGuest: boolean;
+  createdAt: Date;
+};
+
+/**
+ * Lists the invitation links of a room by its public id, oldest first
+ * (SALLE-04: "statut visible — non utilisé, ou utilisé par qui").
+ */
+export async function listInvitationsForRoom(
+  roomPublicId: string,
+): Promise<InvitationLinkForPage[]> {
+  if (typeof roomPublicId !== 'string' || roomPublicId.trim().length === 0 || roomPublicId.length > 64) {
+    throw new InvalidInvitationInputError('roomPublicId must be a non-empty string of at most 64 characters');
+  }
+
+  const rows = await db
+    .select({
+      token: invitationLinks.token,
+      status: invitationLinks.status,
+      usedByUsername: users.username,
+      boundUserId: roomMembers.userId,
+      createdAt: invitationLinks.createdAt,
+    })
+    .from(invitationLinks)
+    .innerJoin(rooms, eq(invitationLinks.roomId, rooms.id))
+    .leftJoin(roomMembers, eq(invitationLinks.boundMemberId, roomMembers.id))
+    .leftJoin(users, eq(roomMembers.userId, users.id))
+    .where(eq(rooms.publicId, roomPublicId))
+    .orderBy(asc(invitationLinks.createdAt));
+
+  return rows.map((row) => ({
+    token: row.token,
+    // The CHECK constraint only allows these three values (invitation_links_status_valid).
+    status: row.status as 'unused' | 'used' | 'revoked',
+    usedByUsername: row.usedByUsername,
+    usedByGuest: row.status === 'used' && row.boundUserId === null,
+    createdAt: row.createdAt,
+  }));
 }

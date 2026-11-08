@@ -40,6 +40,7 @@ import {
 import {
   createGuestSession,
   getGuestSession,
+  guestNicknameSchema,
   InvalidGuestNicknameError,
 } from '../../lib/guest-session';
 import {
@@ -720,6 +721,33 @@ function isRedirectError(error: unknown): boolean {
 export type JoinByCodeFormResult =
   | { ok: true; roomPublicId: string }
   | { ok: false; error: RoomActionError; currentRoom: { publicId: string; code: string } | null };
+
+/** Result of the guest nickname form (AUTH-02). */
+export type GuestNicknameFormResult =
+  | { ok: true }
+  | { ok: false; error: 'invalidNickname' | 'unexpected' };
+
+/**
+ * Form-action wrapper for the guest nickname form (AUTH-02): reads the
+ * nickname from `FormData` and writes the signed guest cookie through
+ * `setGuestNickname`. Writing the cookie inside a server action makes Next
+ * re-render the current route, so the lobby appears once the guest is known.
+ */
+export async function guestNicknameFormAction(
+  _previous: GuestNicknameFormResult | null,
+  formData: FormData,
+): Promise<GuestNicknameFormResult> {
+  const parsed = guestNicknameSchema.safeParse(formData.get('nickname'));
+  if (!parsed.success) {
+    return { ok: false, error: 'invalidNickname' };
+  }
+
+  const result = await setGuestNickname({ nickname: parsed.data });
+  if (!result.ok) {
+    return { ok: false, error: result.error === 'invalidNickname' ? 'invalidNickname' : 'unexpected' };
+  }
+  return { ok: true };
+}
 
 /** Result of the home create-room form (SALLE-01/05). */
 export type CreateRoomFormResult =
