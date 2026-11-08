@@ -14,11 +14,14 @@ import { roomConfigSchema } from '../lib/room-config';
  * Direction notes:
  *
  * - Client → server: `joinRoom` (by 6-char code XOR invitation token —
- *   SALLE-02/04), `leaveRoom`, `ping`. Strict objects: unknown keys are
- *   rejected, never ignored.
+ *   SALLE-02/04), `leaveRoom`, `ping`, and the race messages `startRace`
+ *   (host), `raceProgress` (cumulative counters), `quitRace`, `rejoinRace`.
+ *   Strict objects: unknown keys are rejected, never ignored.
  * - Server → client: `roomSnapshot` (the authoritative room + config +
- *   members), the presence events, host/config/closure events, `error` and
- *   `pong`.
+ *   members), the presence events, host/config/closure events, the race
+ *   events (`countdownStarted`, `raceStarted`, `raceTick`,
+ *   `participantFinished`, `participantQuit`, `raceFinished`, `raceAborted`),
+ *   the `raceSnapshot` resume payload (COURSE-08), `error` and `pong`.
  *
  * ## Error codes (server → client)
  *
@@ -31,6 +34,17 @@ import { roomConfigSchema } from '../lib/room-config';
  * | `invalid_input`  | malformed/unknown message, identity missing, nickname mismatch |
  * | `private_room`   | reserved — a private room is only reachable through a valid invitation link; code joins of private rooms answer `room_not_found` by design |
  * | `rate_limited`   | too many join attempts from this IP (SALLE-10)  |
+ *
+ * Race error codes (Phase 2, `src/realtime/race-engine.ts`):
+ *
+ * | code                    | when                                          |
+ * | ----------------------- | --------------------------------------------- |
+ * | `not_host`              | a non-host tried to start the race (SEC-01)   |
+ * | `race_already_running`  | the race is already in DÉCOMPTE/EN_COURSE     |
+ * | `not_in_race`           | the sender is not a racing participant        |
+ * | `invalid_progress`      | non-monotonic, impossible or over-length progress (COURSE-06) |
+ * | `progress_rate_exceeded`| more than ~10 progress messages/s (PERF-02)   |
+ * | `race_not_running`      | race action while the race is not in EN_COURSE|
  */
 
 export const WS_ERROR_CODES = [
@@ -41,6 +55,12 @@ export const WS_ERROR_CODES = [
   'invalid_input',
   'private_room',
   'rate_limited',
+  'not_host',
+  'race_already_running',
+  'not_in_race',
+  'invalid_progress',
+  'progress_rate_exceeded',
+  'race_not_running',
 ] as const;
 
 export const wsErrorCodeSchema = z.enum(WS_ERROR_CODES);
@@ -112,15 +132,72 @@ export const pingMessageSchema = z
   })
   .strict();
 
+/**
+ * The host starts the race (COURSE-02, SEC-01). No payload: the room context
+ * comes from the sender's connection, and the host is authorized server-side
+ * against `rooms.hostUserId`.
+ */
+export const startRaceMessageSchema = z
+  .object({
+    type: z.literal('startRace'),
+  })
+  .strict();
+
+/**
+ * Cumulative progress counters (COURSE-06). The server computes deltas and
+ * rejects non-monotonic counters, counters beyond the text length and
+ * implausible per-message jumps; the client never sends derived values.
+ */
+export const raceProgressMessageSchema = z
+  .object({
+    type: z.literal('raceProgress'),
+    /** Correctly typed characters so far (the validated prefix, spaces included). */
+    validatedChars: z.number().int().min(0),
+    /** Correct keystrokes so far. */
+    correctKeystrokes: z.number().int().min(0),
+    /** Total keystrokes so far (errors included). */
+    totalKeystrokes: z.number().int().min(0),
+  })
+  .strict();
+
+/**
+ * A participant abandons the race (COURSE-07): they instantly become a
+ * spectator of the current race and stay in the room.
+ */
+export const quitRaceMessageSchema = z
+  .object({
+    type: z.literal('quitRace'),
+  })
+  .strict();
+
+/**
+ * Sent by a reconnected client mid-race (COURSE-08, GAME-4): the server
+ * answers with a `raceSnapshot` carrying the race phase, the text and the
+ * member's own cumulative counters.
+ */
+export const rejoinRaceMessageSchema = z
+  .object({
+    type: z.literal('rejoinRace'),
+  })
+  .strict();
+
 export const clientMessageSchema = z.discriminatedUnion('type', [
   joinRoomMessageSchema,
   leaveRoomMessageSchema,
   pingMessageSchema,
+  startRaceMessageSchema,
+  raceProgressMessageSchema,
+  quitRaceMessageSchema,
+  rejoinRaceMessageSchema,
 ]);
 
 export type JoinRoomMessage = z.infer<typeof joinRoomMessageSchema>;
 export type LeaveRoomMessage = z.infer<typeof leaveRoomMessageSchema>;
 export type PingMessage = z.infer<typeof pingMessageSchema>;
+export type StartRaceMessage = z.infer<typeof startRaceMessageSchema>;
+export type RaceProgressMessage = z.infer<typeof raceProgressMessageSchema>;
+export type QuitRaceMessage = z.infer<typeof quitRaceMessageSchema>;
+export type RejoinRaceMessage = z.infer<typeof rejoinRaceMessageSchema>;
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
 
 // ---------------------------------------------------------------- server → client
@@ -244,12 +321,179 @@ export const pongMessageSchema = z
   })
   .strict();
 
+// ---------------------------------------------------------------- race (server → client)
+
+/**
+ * COURSE-03: the race entered DÉCOMPTE — the full text body is revealed from
+ * this very moment (never before). `startAt` is when typing begins (the
+ * countdown end); the time limit is measured from it.
+ */
+export const countdownStartedMessageSchema = z
+  .object({
+    type: z.literal('countdownStarted'),
+    roomPublicId: z.uuid(),
+    /** Typing start — the end of the 3-second countdown. */
+    startAt: z.iso.datetime(),
+    /** Corpus id for coherent mode (as a string), `null` for generated random texts. */
+    textId: z.string().nullable(),
+    /** The full text body, revealed at countdown start. */
+    text: z.string().min(1),
+    /** Characters to type (spaces included; bonus-adjusted length in Phase 4). */
+    totalLength: z.number().int().positive(),
+  })
+  .strict();
+
+/** The countdown ended: typing may begin (COURSE-03). */
+export const raceStartedMessageSchema = z
+  .object({
+    type: z.literal('raceStarted'),
+    roomPublicId: z.uuid(),
+    startAt: z.iso.datetime(),
+  })
+  .strict();
+
+/**
+ * One participant on the track inside a `raceTick`. `position` is the
+ * validated character count; `wpm` is the net WPM (Annexe A) computed by the
+ * server; `finished` covers finished, quit and timed-out participants.
+ */
+export const raceTickParticipantSchema = z
+  .object({
+    participantId: z.uuid(),
+    kind: z.enum(['user', 'guest', 'bot']),
+    displayName: z.string().min(1).max(32),
+    position: z.number().int().min(0),
+    wpm: z.number().min(0),
+    finished: z.boolean(),
+  })
+  .strict();
+
+/**
+ * COURSE-05: aggregated track update, broadcast at most ~4 times per second
+ * (PERF-02's ≤10 msg/s cap is respected with margin; the client interpolates).
+ */
+export const raceTickMessageSchema = z
+  .object({
+    type: z.literal('raceTick'),
+    roomPublicId: z.uuid(),
+    tickAt: z.iso.datetime(),
+    participants: z.array(raceTickParticipantSchema),
+  })
+  .strict();
+
+/** One participant finished (validated the whole text). */
+export const participantFinishedMessageSchema = z
+  .object({
+    type: z.literal('participantFinished'),
+    roomPublicId: z.uuid(),
+    participantId: z.uuid(),
+    /** Finish order among finishers (1 = first), when already computable. */
+    rank: z.number().int().positive().optional(),
+  })
+  .strict();
+
+/** One participant abandoned the race and became a spectator (COURSE-07). */
+export const participantQuitMessageSchema = z
+  .object({
+    type: z.literal('participantQuit'),
+    roomPublicId: z.uuid(),
+    participantId: z.uuid(),
+  })
+  .strict();
+
+/** One ranked result line (COURSE-10, RES-02 groundwork). */
+export const raceResultEntrySchema = z
+  .object({
+    participantId: z.uuid(),
+    displayName: z.string().min(1).max(32),
+    kind: z.enum(['user', 'guest', 'bot']),
+    /** Net WPM (Annexe A: correctly typed chars ÷ 5 ÷ elapsed minutes). */
+    wpm: z.number().min(0),
+    /** Raw WPM (total typed chars ÷ 5 ÷ elapsed minutes). */
+    rawWpm: z.number().min(0),
+    /** Correct keystrokes ÷ total keystrokes × 100. */
+    accuracy: z.number().min(0).max(100),
+    /** totalKeystrokes − correctKeystrokes. */
+    errors: z.number().int().min(0),
+    status: z.enum(['finished', 'timeout', 'quit']),
+    /** Milliseconds after the typing start at which the status was recorded. */
+    finishedAtMs: z.number().int().min(0),
+    rank: z.number().int().positive(),
+  })
+  .strict();
+
+/**
+ * COURSE-09/10: the race is over. Ranking is computed server-side: finishers
+ * by finish time, then timeouts by progression, then quits by progression at
+ * the moment of quitting.
+ */
+export const raceFinishedMessageSchema = z
+  .object({
+    type: z.literal('raceFinished'),
+    roomPublicId: z.uuid(),
+    /** Start-to-finish duration in milliseconds (typing start → `resultats`). */
+    durationMs: z.number().int().min(0),
+    results: z.array(raceResultEntrySchema),
+  })
+  .strict();
+
+/**
+ * GAME-5: the race was aborted by a global condition (AFK timeout or the host
+ * closing the room mid-race). The room returns to `en_attente` and no ranking
+ * is produced.
+ */
+export const raceAbortedMessageSchema = z
+  .object({
+    type: z.literal('raceAborted'),
+    roomPublicId: z.uuid(),
+    /** Machine-readable reason: `afk_timeout` | `host_closed`. */
+    reason: z.string().min(1).max(100),
+  })
+  .strict();
+
+/**
+ * COURSE-08 resume snapshot: sent in answer to `rejoinRace` (mid-race
+ * reconnect). `text` is the full body when the current phase reveals it
+ * (COURSE-03); `progress` is the reconnecting member's own cumulative state,
+ * `null` when the member is not racing (spectator, or already finished/quit).
+ */
+export const raceSnapshotMessageSchema = z
+  .object({
+    type: z.literal('raceSnapshot'),
+    roomPublicId: z.uuid(),
+    phase: z.enum(['decompte', 'en_course', 'resultats']),
+    /** Countdown start (text reveal). */
+    startedAt: z.iso.datetime().nullable(),
+    /** Typing start. */
+    startAt: z.iso.datetime().nullable(),
+    textId: z.string().nullable(),
+    text: z.string().nullable(),
+    totalLength: z.number().int().positive().nullable(),
+    progress: z
+      .object({
+        validatedChars: z.number().int().min(0),
+        correctKeystrokes: z.number().int().min(0),
+        totalKeystrokes: z.number().int().min(0),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
 export const serverMessageSchema = z.discriminatedUnion('type', [
   roomSnapshotMessageSchema,
   memberPresenceMessageSchema,
   hostChangedMessageSchema,
   configUpdatedMessageSchema,
   roomClosedMessageSchema,
+  countdownStartedMessageSchema,
+  raceStartedMessageSchema,
+  raceTickMessageSchema,
+  participantFinishedMessageSchema,
+  participantQuitMessageSchema,
+  raceFinishedMessageSchema,
+  raceAbortedMessageSchema,
+  raceSnapshotMessageSchema,
   errorMessageSchema,
   pongMessageSchema,
 ]);
@@ -260,6 +504,16 @@ export type MemberPresenceMessage = z.infer<typeof memberPresenceMessageSchema>;
 export type HostChangedMessage = z.infer<typeof hostChangedMessageSchema>;
 export type ConfigUpdatedMessage = z.infer<typeof configUpdatedMessageSchema>;
 export type RoomClosedMessage = z.infer<typeof roomClosedMessageSchema>;
+export type CountdownStartedMessage = z.infer<typeof countdownStartedMessageSchema>;
+export type RaceStartedMessage = z.infer<typeof raceStartedMessageSchema>;
+export type RaceTickParticipant = z.infer<typeof raceTickParticipantSchema>;
+export type RaceTickMessage = z.infer<typeof raceTickMessageSchema>;
+export type ParticipantFinishedMessage = z.infer<typeof participantFinishedMessageSchema>;
+export type ParticipantQuitMessage = z.infer<typeof participantQuitMessageSchema>;
+export type RaceResultEntry = z.infer<typeof raceResultEntrySchema>;
+export type RaceFinishedMessage = z.infer<typeof raceFinishedMessageSchema>;
+export type RaceAbortedMessage = z.infer<typeof raceAbortedMessageSchema>;
+export type RaceSnapshotMessage = z.infer<typeof raceSnapshotMessageSchema>;
 export type ErrorMessage = z.infer<typeof errorMessageSchema>;
 export type PongMessage = z.infer<typeof pongMessageSchema>;
 export type ServerMessage = z.infer<typeof serverMessageSchema>;
