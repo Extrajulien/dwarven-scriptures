@@ -49,6 +49,16 @@ export type GuestSession = {
   nickname: string;
 };
 
+/** Raised when `createGuestSession` is given a nickname that violates AUTH-02. */
+export class InvalidGuestNicknameError extends Error {
+  constructor() {
+    super(
+      `guest nickname must be ${GUEST_NICKNAME_MIN_LENGTH}-${GUEST_NICKNAME_MAX_LENGTH} characters after trimming`,
+    );
+    this.name = 'InvalidGuestNicknameError';
+  }
+}
+
 function hmac(body: string, secret: string): Buffer {
   return createHmac('sha256', secret).update(body).digest();
 }
@@ -133,9 +143,7 @@ function guestSecret(): string {
 export async function createGuestSession(nickname: string): Promise<GuestSession> {
   const parsed = guestNicknameSchema.safeParse(nickname);
   if (!parsed.success) {
-    throw new Error(
-      `guest nickname must be ${GUEST_NICKNAME_MIN_LENGTH}-${GUEST_NICKNAME_MAX_LENGTH} characters after trimming`,
-    );
+    throw new InvalidGuestNicknameError();
   }
 
   const session: GuestSession = {

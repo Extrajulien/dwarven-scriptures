@@ -689,6 +689,35 @@ export async function markMemberLeft(memberId: number): Promise<void> {
 }
 
 /**
+ * Resolves the active membership of a person inside one room to its internal
+ * id, or `null` when they are not present. The action layer uses this to
+ * translate a client-supplied identity (user publicId / guest token) into the
+ * internal member id that `kickMember` and `markMemberLeft` need — internal
+ * ids are never accepted from clients.
+ */
+export async function getActiveMemberId(
+  roomId: number,
+  identity: { userId?: number | null; guestToken?: string | null },
+): Promise<number | null> {
+  assertPositiveInteger(roomId, 'roomId');
+  const normalised = normalizeIdentity(identity);
+
+  const rows = await db
+    .select({ id: roomMembers.id })
+    .from(roomMembers)
+    .where(
+      and(
+        eq(roomMembers.roomId, roomId),
+        identityMatch(normalised),
+        isNull(roomMembers.leftAt),
+      ),
+    )
+    .limit(1);
+
+  return rows[0]?.id ?? null;
+}
+
+/**
  * Loads the present members of a room and applies the SALLE-08 handover rule:
  * the human member present the longest wins the host role, `null` means the
  * room must be closed. Pure decision in `findHostSuccessor`.

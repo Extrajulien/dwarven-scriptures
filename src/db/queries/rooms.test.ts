@@ -117,6 +117,7 @@ import {
   closeRoom,
   createRoom,
   findHostSuccessorForRoom,
+  getActiveMemberId,
   getRoomByCode,
   getRoomForJoin,
   getRoomInternalByPublicId,
@@ -643,6 +644,23 @@ describe('leaveRoom / markMemberLeft', () => {
   test('rejects an invalid identity before touching the database', async () => {
     await expect(leaveRoom(42, {})).rejects.toThrow(/exactly one/);
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe('getActiveMemberId', () => {
+  test('resolves the active membership of a person in a room', async () => {
+    selectQueue = [[{ id: 51 }]];
+
+    await expect(getActiveMemberId(42, { userId: 7 })).resolves.toBe(51);
+    expect(sqlTextOf('select')).toContain('"room_members"."roomId" =');
+    expect(sqlTextOf('select')).toContain('"room_members"."userId" =');
+    expect(sqlTextOf('select')).toContain('"room_members"."leftAt" is null');
+  });
+
+  test('returns null when the person is not present', async () => {
+    selectQueue = [[]];
+
+    await expect(getActiveMemberId(42, { guestToken: '11111111-1111-4111-8111-111111111111' })).resolves.toBeNull();
   });
 });
 
