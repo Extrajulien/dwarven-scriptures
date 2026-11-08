@@ -4,10 +4,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   isFatalErrorCode,
   type JoinTarget,
+  type RaceProgress,
+  type RaceSocketState,
+  type RaceTrackParticipant,
+  type RaceView,
   type RoomSnapshot,
-  type RoomSocketState,
 } from './client-types';
-import { serverMessageSchema, type ServerMessage } from './protocol';
+import {
+  raceProgressMessageSchema,
+  serverMessageSchema,
+  type ServerMessage,
+} from './protocol';
 
 /**
  * React hook for the realtime room socket (TECH-06, GAME-4 groundwork for
@@ -17,17 +24,21 @@ import { serverMessageSchema, type ServerMessage } from './protocol';
  *   Zod protocol schemas (`parseServerMessage`) before it can touch state;
  *   anything invalid is dropped and surfaced as a client-side error.
  * - **Typed, minimal surface:** the hook exposes `status`, `snapshot`,
- *   `error` (all derived from the protocol types) plus `join`, `leave` and
- *   `sendPing`. No raw `WebSocket` escapes the hook.
+ *   `error`, `race` (all derived from the protocol types) plus `join`,
+ *   `leave`, `sendPing` and the race helpers `startRace`, `quitRace`,
+ *   `sendRaceProgress`. No raw `WebSocket` escapes the hook.
  * - **Auto-reconnect:** an unexpected transport drop schedules a reconnect
  *   with exponential backoff + jitter (pure `computeReconnectDelay`); on
- *   reconnect the hook re-sends the same `joinRoom` — Phase 1 reconnection is
- *   a plain re-join by code, COURSE-08's mid-race resume arrives in Phase 2.
+ *   reconnect the hook re-sends the same `joinRoom`, and when the returned
+ *   snapshot shows a race in flight (`decompte`/`en_course`), it sends
+ *   `rejoinRace` too — the server answers with the `raceSnapshot` resume
+ *   payload (COURSE-08, GAME-4).
  * - **Terminal errors** (`kicked`, `room_full`, `rate_limited`, …) stop the
  *   reconnect timer — retrying would only spam the server (SALLE-10).
  *
  * The pure pieces (`computeReconnectDelay`, `buildWsUrl`, `parseServerMessage`,
- * `applyServerMessage`) are exported for unit tests without jsdom.
+ * `applyServerMessage`, `wantsRaceResume`, `markParticipantFinished`) are
+ * exported for unit tests without jsdom.
  */
 
 // ------------------------------------------------------------------ pure parts
@@ -81,21 +92,59 @@ export function parseServerMessage(raw: unknown): ServerMessage | null {
  * a reconnect, or the client would spam the server (SALLE-10) and flip the
  * "room closed" screen into a "not found" error.
  */
-export function shouldReconnect(previous: RoomSocketState): boolean {
+export function shouldReconnect(previous: RaceSocketState): boolean {
   return previous.error?.fatal !== true && previous.status !== 'closed';
+}
+
+/**
+ * COURSE-08, GAME-4: after a (re)join whose snapshot shows a race in flight,
+ * the client must ask for the resume snapshot. `resultats` needs no resume
+ * (the results screen is Phase 3), and `en_attente`/`fermee` have no race.
+ */
+export function wantsRaceResume(roomStatus: string): boolean {
+  return roomStatus === 'decompte' || roomStatus === 'en_course';
+}
+
+/** Marks one participant as ended on the track (finish or quit announcement). */
+export function markParticipantFinished(
+  participants: RaceTrackParticipant[],
+  participantId: string,
+): RaceTrackParticipant[] {
+  return participants.map((participant) =>
+    participant.participantId === participantId ? { ...participant, finished: true } : participant,
+  );
+}
+
+function emptyRace(phase: RaceView['phase']): RaceView {
+  return {
+    phase,
+    startedAt: null,
+    startAt: null,
+    textId: null,
+    text: null,
+    totalLength: null,
+    ownProgress: null,
+    participants: [],
+    lastTickAt: null,
+    finishRanks: {},
+    finished: null,
+  };
 }
 
 /** Applies one validated server message to the hook's state (pure reducer). */
 export function applyServerMessage(
-  previous: RoomSocketState,
+  previous: RaceSocketState,
   message: ServerMessage,
-): RoomSocketState {
+): RaceSocketState {
   switch (message.type) {
     case 'roomSnapshot':
       return {
         status: 'open',
         snapshot: { room: message.room, members: message.members },
         error: null,
+        // A fresh authoritative join: any local race view is re-built from
+        // the resume snapshot the server sends after `rejoinRace`.
+        race: null,
       };
 
     case 'memberJoined':
@@ -144,7 +193,110 @@ export function applyServerMessage(
       };
 
     case 'roomClosed':
-      return { status: 'closed', snapshot: null, error: null };
+      return { status: 'closed', snapshot: null, error: null, race: null };
+
+    case 'countdownStarted':
+      // COURSE-03: the text is revealed at countdown start.
+      return {
+        ...previous,
+        race: {
+          ...emptyRace('decompte'),
+          startAt: message.startAt,
+          textId: message.textId,
+          text: message.text,
+          totalLength: message.totalLength,
+          ownProgress: { validatedChars: 0, correctKeystrokes: 0, totalKeystrokes: 0 },
+        },
+      };
+
+    case 'raceStarted':
+      if (!previous.race) {
+        return previous;
+      }
+      return {
+        ...previous,
+        race: { ...previous.race, phase: 'en_course', startAt: message.startAt },
+      };
+
+    case 'raceTick':
+      if (!previous.race) {
+        return previous;
+      }
+      return {
+        ...previous,
+        race: { ...previous.race, participants: message.participants, lastTickAt: message.tickAt },
+      };
+
+    case 'participantFinished': {
+      if (!previous.race) {
+        return previous;
+      }
+      return {
+        ...previous,
+        race: {
+          ...previous.race,
+          participants: markParticipantFinished(previous.race.participants, message.participantId),
+          finishRanks:
+            message.rank !== undefined
+              ? { ...previous.race.finishRanks, [message.participantId]: message.rank }
+              : previous.race.finishRanks,
+        },
+      };
+    }
+
+    case 'participantQuit':
+      if (!previous.race) {
+        return previous;
+      }
+      return {
+        ...previous,
+        race: {
+          ...previous.race,
+          participants: markParticipantFinished(previous.race.participants, message.participantId),
+        },
+      };
+
+    case 'raceFinished':
+      if (!previous.race) {
+        return previous;
+      }
+      return {
+        ...previous,
+        race: {
+          ...previous.race,
+          phase: 'resultats',
+          finished: { durationMs: message.durationMs, results: message.results },
+        },
+      };
+
+    case 'raceAborted':
+      // GAME-5 / host closed: the race is gone and the room waits again.
+      return {
+        ...previous,
+        race: null,
+        snapshot: previous.snapshot
+          ? { ...previous.snapshot, room: { ...previous.snapshot.room, status: 'en_attente' } }
+          : null,
+      };
+
+    case 'raceSnapshot':
+      // COURSE-08: the resume payload re-applies phase, text and the own
+      // counters; the track keeps its last known positions until the next tick.
+      return {
+        ...previous,
+        race: {
+          ...emptyRace(message.phase),
+          startedAt: message.startedAt,
+          startAt: message.startAt,
+          textId: message.textId,
+          text: message.text,
+          totalLength: message.totalLength,
+          ownProgress: message.progress,
+          participants: previous.race?.participants ?? [],
+          lastTickAt: previous.race?.lastTickAt ?? null,
+          finishRanks: previous.race?.finishRanks ?? {},
+        },
+      };
 
     case 'error':
       return {
@@ -157,13 +309,6 @@ export function applyServerMessage(
       };
 
     case 'pong':
-      return previous;
-
-    default:
-      // The race messages (countdownStarted, raceStarted, raceTick,
-      // participantFinished/Quit, raceFinished, raceAborted, raceSnapshot)
-      // are applied by the client-hook unit of the race engine (SP-2B); this
-      // default keeps the reducer exhaustive until that unit lands.
       return previous;
   }
 }
@@ -192,23 +337,30 @@ function upsertMember(members: RoomSnapshot['members'], member: RoomSnapshot['me
 
 // ------------------------------------------------------------------ the hook
 
-const INITIAL_STATE: RoomSocketState = {
+const INITIAL_STATE: RaceSocketState = {
   status: 'idle',
   snapshot: null,
   error: null,
+  race: null,
 };
 
-export type UseRoomSocketResult = RoomSocketState & {
+export type UseRoomSocketResult = RaceSocketState & {
   /** Opens the socket and sends `joinRoom` for the given target. */
   join: (target: JoinTarget) => void;
   /** Sends `leaveRoom`, closes the socket and stops reconnecting. */
   leave: () => void;
   /** Sends a protocol-level `ping` (the server answers `pong`). */
   sendPing: () => void;
+  /** The host starts the race (the server authorizes against the room host). */
+  startRace: () => void;
+  /** Abandons the race and stays in the room as a spectator (COURSE-07). */
+  quitRace: () => void;
+  /** Sends cumulative progress counters (validated before sending). */
+  sendRaceProgress: (progress: RaceProgress) => void;
 };
 
 export function useRoomSocket(): UseRoomSocketResult {
-  const [state, setState] = useState<RoomSocketState>(INITIAL_STATE);
+  const [state, setState] = useState<RaceSocketState>(INITIAL_STATE);
   const socketRef = useRef<WebSocket | null>(null);
   const targetRef = useRef<JoinTarget | null>(null);
   const attemptRef = useRef(0);
@@ -241,11 +393,19 @@ export function useRoomSocket(): UseRoomSocketResult {
     }
   }, [clearReconnectTimer]);
 
+  /** Sends one protocol-valid client message over the live socket, if any. */
+  const send = useCallback((payload: { type: string } & Record<string, unknown>) => {
+    const socket = socketRef.current;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(payload));
+    }
+  }, []);
+
   const open = useCallback((target: JoinTarget) => {
     stoppedRef.current = false;
     targetRef.current = target;
     attemptRef.current = 0;
-    setState({ status: 'connecting', snapshot: null, error: null });
+    setState({ status: 'connecting', snapshot: null, error: null, race: null });
 
     const url = buildWsUrl(
       { protocol: window.location.protocol, host: window.location.host },
@@ -290,6 +450,11 @@ export function useRoomSocket(): UseRoomSocketResult {
         return;
       }
       setState((previous) => applyServerMessage(previous, message));
+      // COURSE-08: a (re)join that lands mid-race asks the server for the
+      // resume snapshot (the server answers with `raceSnapshot`).
+      if (message.type === 'roomSnapshot' && wantsRaceResume(message.room.status)) {
+        socket.send(JSON.stringify({ type: 'rejoinRace' }));
+      }
     };
 
     socket.onclose = () => {
@@ -304,7 +469,8 @@ export function useRoomSocket(): UseRoomSocketResult {
           // reconnecting would only spam the server.
           return { ...previous, status: 'closed' };
         }
-        // Transport drop: schedule a reconnect (plain re-join, Phase 1).
+        // Transport drop: schedule a reconnect. The next join re-applies the
+        // room snapshot; a mid-race resume follows via `rejoinRace`.
         const delay = computeReconnectDelay(attemptRef.current);
         attemptRef.current += 1;
         reconnectTimerRef.current = setTimeout(() => {
@@ -343,7 +509,7 @@ export function useRoomSocket(): UseRoomSocketResult {
     stoppedRef.current = true;
     targetRef.current = null;
     closeSocket();
-    setState({ status: 'closed', snapshot: null, error: null });
+    setState({ status: 'closed', snapshot: null, error: null, race: null });
   }, [closeSocket]);
 
   const sendPing = useCallback(() => {
@@ -353,6 +519,26 @@ export function useRoomSocket(): UseRoomSocketResult {
     }
   }, []);
 
+  const startRace = useCallback(() => {
+    send({ type: 'startRace' });
+  }, [send]);
+
+  const quitRace = useCallback(() => {
+    send({ type: 'quitRace' });
+  }, [send]);
+
+  const sendRaceProgress = useCallback(
+    (progress: RaceProgress) => {
+      // Validate before sending: the socket only ever carries protocol-valid
+      // frames, and a client bug cannot spam the server with junk counters.
+      const parsed = raceProgressMessageSchema.safeParse({ type: 'raceProgress', ...progress });
+      if (parsed.success) {
+        send(parsed.data);
+      }
+    },
+    [send],
+  );
+
   useEffect(() => {
     return () => {
       stoppedRef.current = true;
@@ -361,5 +547,5 @@ export function useRoomSocket(): UseRoomSocketResult {
     };
   }, [clearReconnectTimer, closeSocket]);
 
-  return { ...state, join, leave, sendPing };
+  return { ...state, join, leave, sendPing, startRace, quitRace, sendRaceProgress };
 }

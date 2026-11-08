@@ -1,9 +1,15 @@
-import type { MemberInfo, RoomInfo, WsErrorCode } from './protocol';
+import type {
+  MemberInfo,
+  RaceResultEntry,
+  RaceTickParticipant,
+  RoomInfo,
+  WsErrorCode,
+} from './protocol';
 
 /**
- * Client-facing types for the realtime room socket (used by SP-1C's room UI).
- * Everything here is derived from the Zod-validated protocol types — the hook
- * never exposes raw, unvalidated server data.
+ * Client-facing types for the realtime room socket (used by SP-1C's room UI
+ * and the race screens). Everything here is derived from the Zod-validated
+ * protocol types — the hook never exposes raw, unvalidated server data.
  */
 
 export type ConnectionStatus =
@@ -60,3 +66,52 @@ export function isFatalErrorCode(code: WsErrorCode): boolean {
     code === 'already_in_room'
   );
 }
+
+// ------------------------------------------------------------------ race view
+
+/** Cumulative progress counters (sent by the client, echoed by the resume snapshot). */
+export type RaceProgress = {
+  validatedChars: number;
+  correctKeystrokes: number;
+  totalKeystrokes: number;
+};
+
+/** Phases of an active race as seen by the client (COURSE-01). */
+export type RacePhase = 'decompte' | 'en_course' | 'resultats';
+
+/** One participant on the track, from the aggregated `raceTick`. */
+export type RaceTrackParticipant = RaceTickParticipant;
+
+/** Final standings shown on the results screen (COURSE-10, RES-02 groundwork). */
+export type RaceResultsView = {
+  durationMs: number;
+  results: RaceResultEntry[];
+};
+
+/**
+ * The client's view of the current race, reduced from the validated race
+ * messages: the countdown/`raceStarted` phase and text, the last `raceTick`
+ * aggregation, the finish-order ranks, and the final standings.
+ */
+export type RaceView = {
+  phase: RacePhase;
+  /** Countdown start (the moment the text was revealed, COURSE-03). */
+  startedAt: string | null;
+  /** Typing start (the countdown end). */
+  startAt: string | null;
+  textId: string | null;
+  text: string | null;
+  totalLength: number | null;
+  /** Own cumulative counters; `null` when not racing (spectator/ended). */
+  ownProgress: RaceProgress | null;
+  participants: RaceTrackParticipant[];
+  lastTickAt: string | null;
+  /** participantId → finish rank, from `participantFinished`. */
+  finishRanks: Record<string, number>;
+  finished: RaceResultsView | null;
+};
+
+/** The full hook state: the room socket state plus the active-race view. */
+export type RaceSocketState = RoomSocketState & {
+  race: RaceView | null;
+};
