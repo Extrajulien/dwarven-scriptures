@@ -296,9 +296,9 @@ player who returns within 30 s resumes in place (COURSE-08).
 * **Consequences:** One local Postgres on port 5432 at a time. The production
   URL and environment remain to be confirmed for TECH-05.
 
-### ADR-010 — Real-time transport *(proposed — decision pending)*
+### ADR-010 — Real-time transport: `ws` on a Next.js custom server (single process)
 
-* **Status:** Proposed
+* **Status:** Accepted
 * **Context:** TECH-06 leaves the technology free; checkpoint 1 requires the
   decision as an ADR and live room presence (SALLE-01/02 + JOIN-01). Constraint
   set: server-authoritative progress/ranking/bonuses (COURSE-06), ≤ 10
@@ -311,15 +311,63 @@ player who returns within 30 s resumes in place (COURSE-08).
      control of the protocol; rooms/reconnection hand-written.
   3. **SSE + POST fallback** — simple, one-way only; forces request/response
      semantics for typing events.
-* **Lean:** `ws` (or Socket.IO if message volume proves trivial) with
-  server-issued ticks and client-side interpolation (COURSE-05 wants ~4
-  perceived updates/s from ≤ 10 real messages/s). The transport stays behind an
-  interface so game logic never imports it directly (AGENTS.md).
-* **Open question:** hosting story (Railway WebSockets, separate service, or
-  free-tier real-time provider per TECH-08). The room data layer is now
-  implemented (`joinRoomByCode` server action + `getRoomForJoin` query as the
-  seam for the transport), but the transport decision itself remains open
-  until the realtime layer is built.
+* **Decision:** `ws` (8.x) attached to a **Next.js custom server** — one HTTP
+  server, one process, one port: `server.ts` (repo root) creates the
+  `node:http` server, passes it to Next 16 (`next({ dev, httpServer })`), and
+  a `WebSocketServer` (`noServer: true`) answers upgrades on the `/ws` path.
+  Server actions (admission, host actions) and the in-memory realtime hub
+  therefore share one process and one memory space: the SALLE-10 rate limiter
+  and the room presence registry cannot diverge between two processes. The
+  alternative — a standalone realtime process plus a PostgreSQL
+  LISTEN/NOTIFY bridge — was rejected because it would fork the rate-limit
+  state across processes (the single-instance assumption documented in
+  `src/lib/rate-limit.ts`) and add a bridge, a second port and CORS/proxy
+  complexity for no checkpoint-1 benefit.
+* **Evidence trail (Next 16.3.8 bundled docs, `node_modules/next/dist/docs/`):**
+  * `01-app/02-guides/custom-server.md` documents the custom server with
+    `next({ dev })` → `app.prepare()` → `app.getRequestHandler()` and a
+    documented **`httpServer` option** ("The HTTP Server that Next.js is
+    running behind"). It warns that `output: 'standalone'` cannot be combined
+    with a custom server — this project does not use standalone output
+    (`next.config.ts` is empty), so there is no conflict.
+  * `node_modules/next/dist/esm/server/next.js` — the deprecation list for
+    custom servers (`DEPRECATED_CUSTOM_SERVER_METHOD_GUIDANCE`) covers only
+    `render`, `renderToHTML`, `renderError`, `render404`, `revalidate`,
+    `setAssetPrefix` and the `logError*` methods; `prepare()`,
+    `getRequestHandler()` and `getUpgradeHandler()` are **not** deprecated
+    (the guidance for `render` itself points to `getRequestHandler()`).
+  * `node_modules/next/dist/esm/server/lib/router-server.js` — Next's own
+    upgrade handler only claims dev HMR (`/_next/hmr`) and proxied routes; for
+    unmatched paths it falls through, with the explicit comment: *"If there's
+    no matched output, we don't handle the request as user's custom WS server
+    may be listening on the same path."* A user `ws` server on the same HTTP
+    server is therefore a designed coexistence pattern, not a hack.
+  * `01-app/01-getting-started/17-deploying.md` — "you can also eject to a
+    custom server"; a Railway template exists, matching ADR-009.
+  * `01-app/02-guides/self-hosting.md` — reverse proxy recommended in front of
+    the Node server; graceful shutdown via SIGINT/SIGTERM.
+* **Consequences:**
+  * `npm run dev` / `npm run start` become `tsx server.ts` (dev mode when
+    `NODE_ENV !== 'production'`); `next build` is unchanged and `next start`
+    is no longer used. The custom server file is excluded from the Next build
+    and runs under `tsx`, so it does not go through the Next compiler
+    (per `custom-server.md`).
+  * **Single-instance assumption:** presence, the hub and the rate limiter
+    live in one process's memory. Scaling to several instances would require a
+    shared pub/sub (e.g. PostgreSQL LISTEN/NOTIFY or Redis) and a shared rate
+    store — deliberately out of scope; one VPS/Railway instance is the
+    deployment target (TECH-05/08).
+  * **HTTPS + WebSocket in production:** the same origin serves both, so the
+    client connects to `wss://<host>/ws`. The reverse proxy (Caddy/nginx, or
+    Railway's proxy) must forward `/ws` upgrades to the Node server — no
+    second port, no CORS. Origin is validated against the `Host` header by
+    default, overridable via `WS_ALLOWED_ORIGINS` (`.env.example`).
+  * The transport stays behind `src/realtime/hub.ts` (room hub interface) and
+    `src/realtime/protocol.ts` (Zod message schemas): the race engine will
+    import the hub, never `ws` (AGENTS.md). Server actions notify the hub
+    through the same in-process seam (`src/realtime/events.ts`).
+  * Reconnection for checkpoint 1 is a plain re-join by code/invitation
+    (COURSE-08's 30-second resume is Phase 2).
 
 ### ADR-011 — Bots *(proposed approach)*
 
