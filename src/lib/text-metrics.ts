@@ -47,7 +47,7 @@ const FACILE_MAX_VOTE_SUM = 1;
 const MOYEN_MAX_VOTE_SUM = 4;
 
 /** Words of this many letters or more count as "long". */
-const LONG_WORD_MIN_LETTERS = 8;
+export const LONG_WORD_MIN_LETTERS = 8;
 
 const LETTERS = /\p{L}/gu;
 
