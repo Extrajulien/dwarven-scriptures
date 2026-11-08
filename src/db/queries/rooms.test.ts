@@ -945,8 +945,14 @@ describe('getRoomForPage (lobby page scaffold)', () => {
     await expect(getRoomForPage(ROOM_PAGE_PUBLIC_ID)).resolves.toBeNull();
   });
 
-  test('rejects a malformed public id', async () => {
-    await expect(getRoomForPage('nope')).rejects.toThrow(/publicId/);
+  test.each([
+    ['00000000-0000-0000-0000-000000000000', 'all-zero uuid (version nibble rejected)'],
+    ['nope', 'plain garbage'],
+    ['', 'empty segment'],
+  ])('returns null for a malformed public id instead of throwing (%s)', async (publicId) => {
+    // Regression: a hand-crafted URL segment must map to notFound(), never
+    // to a 500 — the query is defensive like getRoomByCode.
+    await expect(getRoomForPage(publicId)).resolves.toBeNull();
     expect(calls).toHaveLength(0);
   });
 });

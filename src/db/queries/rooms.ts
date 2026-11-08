@@ -554,7 +554,10 @@ export type RoomForPage = {
 
 export async function getRoomForPage(publicId: string): Promise<RoomForPage | null> {
   if (!UUID_PATTERN.test(publicId)) {
-    throw new InvalidRoomInputError('publicId must be a UUID');
+    // Defensive, like `getRoomByCode`: a malformed id is "no such room",
+    // never an exception — the page maps `null` to notFound(), so a public
+    // route can never 500 on a hand-crafted URL segment.
+    return null;
   }
 
   const rows = await db

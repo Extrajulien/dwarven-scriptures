@@ -51,14 +51,21 @@ function samePerson(a: { userId: number | null; guestToken: string | null }, b: 
   return b.guestToken !== null && a.guestToken === b.guestToken;
 }
 
+/** Shape accepted by `consumeInvitationToken`'s IP assertion (IPv4/IPv6). */
+const IP_VALUE_PATTERN = /^[0-9a-fA-F.:]+$/;
+
 async function clientIp(): Promise<string> {
   const requestHeaders = await headers();
   const forwarded = requestHeaders.get('x-forwarded-for');
-  if (!forwarded) {
-    return 'local';
+  const first = forwarded?.split(',')[0]?.trim() ?? '';
+  if (first.length > 0 && first.length <= 45 && IP_VALUE_PATTERN.test(first)) {
+    return first;
   }
-  const first = forwarded.split(',')[0]?.trim() ?? '';
-  return first.length > 0 && first.length <= 45 ? first : 'local';
+  // No proxy header, or a malformed one: fall back to a loopback address so
+  // the link binding always carries a valid IP — `consumeInvitationToken`
+  // asserts the format, and a plain local request must not end on the
+  // "unexpected" error page.
+  return '127.0.0.1';
 }
 
 /**

@@ -212,6 +212,54 @@ describe('resolveInvitationJoin (SALLE-03/04)', () => {
     });
   });
 
+  test('binds with a loopback IP when no proxy header is present', async () => {
+    userActor();
+    headers.mockResolvedValue({ get: () => null });
+    getInvitationByTokenMock.mockResolvedValue(link());
+    joinRoomMock.mockResolvedValue({
+      roomPublicId: ROOM_PUBLIC_ID,
+      memberId: 9,
+      role: 'participant',
+      joinedAt: new Date('2024-01-01T00:00:00Z'),
+    });
+
+    await expect(resolveInvitationJoin(TOKEN)).resolves.toEqual({
+      kind: 'join',
+      roomPublicId: ROOM_PUBLIC_ID,
+      token: TOKEN,
+    });
+    // Regression: consumeInvitationToken asserts a valid IP format; a plain
+    // local request must not end on the "unexpected" error page.
+    expect(consumeInvitationTokenMock).toHaveBeenCalledWith({
+      token: TOKEN,
+      memberId: 9,
+      ip: '127.0.0.1',
+    });
+  });
+
+  test('ignores a malformed proxy header and binds with the loopback IP', async () => {
+    userActor();
+    headers.mockResolvedValue({ get: () => 'not-an-ip, definitely' });
+    getInvitationByTokenMock.mockResolvedValue(link());
+    joinRoomMock.mockResolvedValue({
+      roomPublicId: ROOM_PUBLIC_ID,
+      memberId: 9,
+      role: 'participant',
+      joinedAt: new Date('2024-01-01T00:00:00Z'),
+    });
+
+    await expect(resolveInvitationJoin(TOKEN)).resolves.toEqual({
+      kind: 'join',
+      roomPublicId: ROOM_PUBLIC_ID,
+      token: TOKEN,
+    });
+    expect(consumeInvitationTokenMock).toHaveBeenCalledWith({
+      token: TOKEN,
+      memberId: 9,
+      ip: '127.0.0.1',
+    });
+  });
+
   test('the bound member reconnects through their used link', async () => {
     userActor();
     getInvitationByTokenMock.mockResolvedValue(
