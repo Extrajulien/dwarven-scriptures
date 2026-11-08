@@ -98,6 +98,7 @@ import {
   updateRoomConfig,
 } from './actions';
 import { defaultRoomConfig } from '../../lib/room-config';
+import type { RoomConfig } from '../../db/schema';
 
 const getSessionMock = getSession as jest.Mock;
 const getGuestSessionMock = getGuestSession as jest.Mock;
@@ -393,7 +394,7 @@ describe('host-only actions (SEC-01)', () => {
     userActor();
     getRoomInternalByPublicIdMock.mockResolvedValue(roomRow);
 
-    const config = {
+    const config: RoomConfig = {
       textLanguage: 'en',
       textComplexity: 'facile',
       textType: 'random',
