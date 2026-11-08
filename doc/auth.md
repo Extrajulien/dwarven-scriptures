@@ -130,6 +130,30 @@ cookie with a database-backed session table (see
 [`doc/database.md`](database.md)) without changing the login action's result
 contract.
 
+## Guest sessions (AUTH-02/03)
+
+Guests — people who join a room without an account — get the same
+`body.signature` HMAC-SHA256 token design as users, but in a separate cookie
+([`src/lib/guest-session.ts`](../src/lib/guest-session.ts)):
+
+| Aspect | Value |
+| ------ | ----- |
+| Cookie name | `guest` |
+| Payload | `{ guestId, nickname, exp }` — `guestId` is a random uuid generated server-side; it doubles as the `room_members.guestToken` that identifies the guest in the database |
+| Signature | HMAC-SHA256, verified with `timingSafeEqual` (same code pattern as `session.ts`) |
+| Lifetime | 30 days (`GUEST_TTL_SECONDS`) |
+| Options | `httpOnly`, `secure` in production, `sameSite: 'lax'`, `path: '/'` |
+| Secret | reuses `SESSION_SECRET` — the two payload shapes are disjoint, so one secret is safe |
+
+The nickname rule (3–20 characters, trimmed) is exported as the Zod schema
+`guestNicknameSchema` and enforced both by the `setGuestNickname` server action
+(`src/app/rooms/actions.ts`) and again inside `createGuestSession` before the
+cookie is written. A guest session is not an account: it never grants a
+`user_stats`/`user_resources` row, it cannot create rooms (`createRoom` requires
+a user session — AUTH-03), and the guest's display name lives only in the
+cookie, not in the database (the realtime layer combines the cookie with the
+`guestToken` column when showing who is present).
+
 ## Name rules
 
 The `username` column stores the **display name**, not a URL slug (this was the

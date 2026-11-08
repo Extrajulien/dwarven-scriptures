@@ -31,7 +31,7 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
   — La cible Railway est documentée dans `doc/database.md` ; l'URL publique reste à confirmer.
 - [ ] **TECH-06** — Visualisation de la progression en temps réel (WebSocket, MQTT ou autre — choix libre, à documenter par ADR dans `doc/ARCHITECTURE.md`).
 - [x] (partiel) **TECH-07** — Toutes les entrées côté serveur validées par un schéma (Zod ou équivalent) : actions serveur, routes API et messages temps réel.
-  — Actions serveur (`src/app/login/actions.ts`, `src/app/register/actions.ts`, `src/app/account/actions.ts`) et routes API OAuth (`src/app/api/auth/[provider]/route.ts`, `src/app/api/auth/[provider]/callback/route.ts`) validées par des schémas Zod v4 — fichiers : `src/lib/login-validation.ts`, `src/lib/register-validation.ts`, `src/lib/profile-validation.ts`, `src/lib/oauth-validation.ts`. Tests : `src/lib/login-validation.test.ts`, `src/lib/register-validation.test.ts`, `src/lib/profile-validation.test.ts`. Messages temps réel : s'appliquera à la couche temps réel (phase suivante).
+  — Actions serveur (`src/app/login/actions.ts`, `src/app/register/actions.ts`, `src/app/account/actions.ts`, `src/app/rooms/actions.ts`) et routes API OAuth (`src/app/api/auth/[provider]/route.ts`, `src/app/api/auth/[provider]/callback/route.ts`) validées par des schémas Zod v4 — fichiers : `src/lib/login-validation.ts`, `src/lib/register-validation.ts`, `src/lib/profile-validation.ts`, `src/lib/oauth-validation.ts`, `src/lib/room-action-validation.ts` (+ `src/lib/room-config.ts` pour la configuration de salle). Tests : `src/lib/login-validation.test.ts`, `src/lib/register-validation.test.ts`, `src/lib/profile-validation.test.ts`, `src/lib/room-config.test.ts`, `src/app/rooms/actions.test.ts`. Messages temps réel : s'appliquera à la couche temps réel (phase suivante).
 - [ ] **TECH-08** — Coûts : serveur à la charge de l'étudiant (ou serveur du cégep) ; tout autre service externe sur forfait gratuit ; le correcteur ne paie rien.
 - [x] **TECH-09** — Intégration continue GitHub Actions : lint, `tsc --noEmit` et tests unitaires à chaque push.
   — Workflow `.github/workflows/ci.yml` (job `ci` sur ubuntu-latest, Node 22, `npm ci` puis `lint` / `typecheck` / `test`) déclenché sur `push` et `pull_request`. L'exécution distante n'a pas pu être vérifiée depuis l'environnement de développement (aucun push effectué).
@@ -55,8 +55,11 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 - [x] **AUTH-01** — Authentification : OAuth Discord **et** GitHub, plus connexion par nom d'utilisateur et mot de passe (utile pour les tests de bout en bout).
   — fichiers : `src/app/(auth)/`, `src/app/login/actions.ts`, `src/app/register/actions.ts`, `src/app/api/auth/[provider]/`, `src/lib/oauth.ts`
   — tests : `src/lib/password.test.ts`, `session.test.ts`, `oauth.test.ts`, `login-validation.test.ts`, `register-validation.test.ts`, formulaires
-- [ ] **AUTH-02** — Un invité choisit un pseudonyme (3 à 20 caractères) avant de rejoindre une salle ; sa session est conservée par un cookie signé.
-- [ ] **AUTH-03** — Un invité ne peut pas créer de salle, n'a ni historique persistant ni photo de profil ; un avatar généré est affiché à la place.
+- [x] (partiel) **AUTH-02** — Un invité choisit un pseudonyme (3 à 20 caractères) avant de rejoindre une salle ; sa session est conservée par un cookie signé.
+  — L'infrastructure serveur est complète : cookie HttpOnly signé `guest` (HMAC-SHA256, 30 jours, `src/lib/guest-session.ts`), pseudonyme validé par schéma Zod 3–20 caractères exporté du module, action `setGuestNickname` (`src/app/rooms/actions.ts`). Tests : `src/lib/guest-session.test.ts`, `src/app/rooms/actions.test.ts`.
+  — Manque : l'UI où l'invité choisit son pseudonyme avant de rejoindre (unité ultérieure).
+- [x] (partiel) **AUTH-03** — Un invité ne peut pas créer de salle, n'a ni historique persistant ni photo de profil ; un avatar généré est affiché à la place.
+  — La création de salle est refusée aux invités côté serveur (`createRoom` exige une session utilisateur, `src/app/rooms/actions.ts`) et un invité n'écrit jamais dans `user_stats` (identifié par `guestToken`, pas par `userId`). Manque : l'avatar généré côté UI.
 - [x] (partiel) **AUTH-04** — Un utilisateur connecté peut téléverser une photo de profil : JPEG/PNG/WebP, 2 Mo max, validée côté serveur, redimensionnée avant l'affichage.
   — L'édition de l'URL d'avatar existe (`updateProfile`) ; le téléversement de fichier est absent.
 - [x] **AUTH-05** — Un utilisateur connecté peut modifier son pseudonyme d'affichage.
@@ -68,23 +71,34 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 
 ## SALLE — Salles et visibilité
 
-- [ ] **SALLE-01** — Un utilisateur connecté peut créer une salle et en devient l'hôte, en tant que participant ou seulement spectateur.
-- [ ] **SALLE-02** — Chaque salle a un code court unique de 6 caractères alphanumériques, sans caractères ambigus (0/O, 1/I/L).
-- [ ] **SALLE-03** — Visibilité de la salle : publique (explorateur + « Faire une course », accès direct ou par code), sur code (accès par code ou lien d'invitation), privée (lien d'invitation seulement).
-- [ ] **SALLE-04** — Liens d'invitation :
-  - [ ] un lien distinct par invité, générable en plusieurs exemplaires, copiable, avec statut visible (non utilisé, ou utilisé par qui) ;
-  - [ ] jeton aléatoire non devinable (≥ 128 bits d'entropie) ;
-  - [ ] usage unique : à la première utilisation, associé à l'adresse IP ; une autre IP est refusée ;
-  - [ ] la personne associée peut réutiliser le lien pour se reconnecter ;
-  - [ ] le lien d'un participant expulsé (SALLE-07) est révoqué ;
-  - [ ] tous les liens deviennent invalides à la fermeture de la salle ;
-  - [ ] le code seul ne suffit pas pour entrer dans une salle privée.
-- [ ] **SALLE-05** — Capacité maximale configurable par l'hôte : minimum 2, maximum 30 participants ; les spectateurs ne comptent pas.
-- [ ] **SALLE-06** — Une personne ne peut être que dans une seule salle à la fois : garantie côté serveur (contrainte en base), proposition de quitter la salle actuelle, pas de doublon pour un deuxième onglet.
-- [ ] **SALLE-07** — L'hôte peut expulser un participant ou un spectateur ; l'expulsé ne peut plus rejoindre cette salle.
-- [ ] **SALLE-08** — Si l'hôte quitte, le rôle passe à la personne humaine connectée présente depuis le plus longtemps ; s'il n'en reste aucune, la salle est fermée.
-- [ ] **SALLE-09** — On ne peut rejoindre une salle qu'en attente ou sur l'écran des résultats ; jamais une course en cours.
-- [ ] **SALLE-10** — Code de salle protégé contre la force brute : limite de tentatives par IP (ex. 10 par minute).
+- [x] (partiel) **SALLE-01** — Un utilisateur connecté peut créer une salle et en devient l'hôte, en tant que participant ou seulement spectateur.
+  — Serveur : `createRoom` (requête `src/db/queries/rooms.ts` + action `src/app/rooms/actions.ts`), hôte = `rooms.hostUserId`, rôle de l'hôte `participant`/`spectateur`. Tests : `src/db/queries/rooms.test.ts`, `src/app/rooms/actions.test.ts`. Manque : l'UI de création.
+- [x] **SALLE-02** — Chaque salle a un code court unique de 6 caractères alphanumériques, sans caractères ambigus (0/O, 1/I/L).
+  — Génération CSPRNG dans `src/lib/room-rules.ts` (`generateRoomCode`), `unique` + CHECK regex `^[A-HJKMNP-Z2-9]{6}$` dans `src/db/schema.ts` (migration `drizzle/0003_boring_meggan.sql`), reprise sur collision dans `createRoom`. Tests : `src/lib/room-rules.test.ts`, `src/db/queries/rooms.test.ts`.
+- [x] (partiel) **SALLE-03** — Visibilité de la salle : publique (explorateur + « Faire une course », accès direct ou par code), sur code (accès par code ou lien d'invitation), privée (lien d'invitation seulement).
+  — Serveur : colonne + CHECK + validation Zod ; `listPublicRooms` ne liste que les salles publiques en attente ; `joinRoomByCode` refuse les salles privées (réponse « salle introuvable » pour ne pas révéler l'existence du code). Manque : l'UI (explorateur, « Faire une course », entrée par lien).
+- [x] (partiel) **SALLE-04** — Liens d'invitation :
+  - [x] (partiel) un lien distinct par invité, générable en plusieurs exemplaires, copiable, avec statut visible (non utilisé, ou utilisé par qui) ;
+    — Jetons distincts par lien, génération par lots (`createInvitationLinks`), statut en base. Manque : l'UI de copie/affichage du statut et de l'identité liée.
+  - [x] jeton aléatoire non devinable (≥ 128 bits d'entropie) ; — 24 octets aléatoires base64url (192 bits), `src/db/queries/invitations.ts`. Test : `src/db/queries/invitations.test.ts`.
+  - [x] usage unique : à la première utilisation, associé à l'adresse IP ; une autre IP est refusée ; — `consumeInvitationToken` lie `boundIp` + `boundMemberId` à la première utilisation ; une autre personne est refusée (contrôle par identité). Test : `src/db/queries/invitations.test.ts`.
+  - [x] la personne associée peut réutiliser le lien pour se reconnecter ; — réutilisation permise par identité (même utilisateur ou même invité), indépendamment de l'IP de reconnexion (choix documenté dans `invitations.ts`).
+  - [x] le lien d'un participant expulsé (SALLE-07) est révoqué ; — `kickMember` révoque les liens du membre dans la même transaction.
+  - [x] tous les liens deviennent invalides à la fermeture de la salle ; — `closeRoom` révoque tous les liens restants dans la même transaction.
+  - [x] le code seul ne suffit pas pour entrer dans une salle privée. — `joinRoomByCode` refuse (`roomNotFound`). Test : `src/app/rooms/actions.test.ts`.
+  — Manque : l'UI des liens (génération, copie, statut).
+- [x] (partiel) **SALLE-05** — Capacité maximale configurable par l'hôte : minimum 2, maximum 30 participants ; les spectateurs ne comptent pas.
+  — Serveur : CHECK 2–30 + `createRoom({capacity})` + comptage SQL des seuls participants présents dans `joinRoom`. Tests : `src/db/queries/rooms.test.ts`. Manque : l'UI de configuration.
+- [x] (partiel) **SALLE-06** — Une personne ne peut être que dans une seule salle à la fois : garantie côté serveur (contrainte en base), proposition de quitter la salle actuelle, pas de doublon pour un deuxième onglet.
+  — Contrainte en base : index uniques partiels `room_members_one_active_user_idx`/`room_members_one_active_guest_idx` (`WHERE leftAt IS NULL`) ; `joinRoom` marque `leftAt` sur l'ancienne salle et refuse la même salle (`AlreadyInRoomError`) ; `createRoom` refuse un hôte déjà actif ailleurs. Tests : `src/db/queries/rooms.test.ts`. Manque : la proposition de quitter la salle actuelle (UI).
+- [x] (partiel) **SALLE-07** — L'hôte peut expulser un participant ou un spectateur ; l'expulsé ne peut plus rejoindre cette salle.
+  — Serveur : `kickMember` (vérification hôte, `kicked = true` + `leftAt`, révocation des liens) ; `joinRoom` refuse tout retour (historique de kick). Tests : `src/db/queries/rooms.test.ts`, `src/app/rooms/actions.test.ts`. Manque : l'UI d'expulsion.
+- [x] **SALLE-08** — Si l'hôte quitte, le rôle passe à la personne humaine connectée présente depuis le plus longtemps ; s'il n'en reste aucune, la salle est fermée.
+  — `findHostSuccessor` (règle pure, `src/lib/room-rules.ts`), orchestration dans l'action `leaveRoom` (`src/app/rooms/actions.ts`) : transfert via `transferHost`, fermeture via `closeRoom` sinon. Les invités sont exclus (seul un compte peut héberger). Tests : `src/lib/room-rules.test.ts`, `src/app/rooms/actions.test.ts`.
+- [x] **SALLE-09** — On ne peut rejoindre une salle qu'en attente ou sur l'écran des résultats ; jamais une course en cours.
+  — `joinRoom` verrouille la salle et refuse tout statut autre que `en_attente`/`resultats` (`RoomNotJoinableError`). Tests : `src/lib/room-rules.test.ts`, `src/db/queries/rooms.test.ts`.
+- [x] **SALLE-10** — Code de salle protégé contre la force brute : limite de tentatives par IP (ex. 10 par minute).
+  — Fenêtre glissante en mémoire (`src/lib/rate-limit.ts`, 10 tentatives / 60 s / IP, horloge injectable), branchée dans `joinRoomByCode` (`src/app/rooms/actions.ts`). Hypothèse mono-instance documentée dans le module. Tests : `src/lib/rate-limit.test.ts`, `src/app/rooms/actions.test.ts`.
 
 ## JOIN — Rejoindre une course
 
@@ -167,7 +181,7 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 ## TEST — Tests
 
 - [x] **TEST-01** — Tests unitaires sur la logique (Jest + Testing Library).
-  — tests : `src/lib/password.test.ts`, `register-validation.test.ts`, `login-validation.test.ts`, `session.test.ts`, `oauth.test.ts`, `src/db/queries/*.test.ts`, `src/sprites/*.test.ts`…
+  — tests : `src/lib/password.test.ts`, `register-validation.test.ts`, `login-validation.test.ts`, `session.test.ts`, `oauth.test.ts`, `src/db/queries/*.test.ts`, `src/sprites/*.test.ts`, `src/lib/room-config.test.ts`, `room-rules.test.ts`, `guest-session.test.ts`, `rate-limit.test.ts`, `src/app/rooms/actions.test.ts`…
   — À étendre au fur et à mesure des fonctionnalités.
 - [ ] **TEST-02** — Tests de bout en bout (end-to-end) avec Playwright.
 - [ ] **TEST-03** — Les tests de bout en bout utilisent la connexion par nom d'utilisateur et mot de passe (AUTH-01), pas OAuth.
@@ -187,7 +201,8 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 
 ## SEC — Sécurité
 
-- [ ] **SEC-01** — Toutes les actions réservées à l'hôte (lancer, configurer, générer des liens, expulser, fermer) sont autorisées côté serveur.
+- [x] (partiel) **SEC-01** — Toutes les actions réservées à l'hôte (lancer, configurer, générer des liens, expulser, fermer) sont autorisées côté serveur.
+  — `updateRoomConfig`, `generateInvitationLinks`, `kickMember` et `closeRoom` vérifient `rooms.hostUserId` côté serveur (dans la transaction, sur la ligne verrouillée — `src/db/queries/rooms.ts`, `invitations.ts` + actions `src/app/rooms/actions.ts`). Tests : `src/db/queries/rooms.test.ts`, `invitations.test.ts`, `src/app/rooms/actions.test.ts`. Manque : « lancer la course » (arrivera avec COURSE-02).
 - [ ] **SEC-02** — Téléversements validés côté serveur : type réel du fichier et taille.
 - [x] **SEC-03** — Mots de passe hachés avec un algorithme adapté (scrypt) et jamais stockés ni journalisés en clair.
   — fichiers : `src/lib/password.ts` — tests : `src/lib/password.test.ts`

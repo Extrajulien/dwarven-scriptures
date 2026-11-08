@@ -42,7 +42,7 @@ are declared there rather than in a separate file.
 
 ## Schema
 
-Six tables, all keyed so that no internal id ever reaches a client: the
+Nine tables, all keyed so that no internal id ever reaches a client: the
 `users.id` `bigserial` is used only for foreign keys, while `publicId` (uuid)
 and `username` are the public identifiers. `username` holds the trimmed
 **display name** (it may contain spaces, is unique and ≤ 32 chars) rather than a
@@ -60,6 +60,9 @@ will only ever receive a passage's `title`/`body`, never a row id.
 | `oauth_accounts`  | `userId` → `users.id` | unique `(provider, providerAccountId)`, `provider`, `providerAccountId`, `createdAt` |
 | `texts`           | `id` bigserial | coherent-mode corpus: `language` (`fr`/`en` CHECK), `title`, `body`, `wordCount` (`> 0` CHECK), `complexity` (`facile`/`moyen`/`difficile` CHECK), metrics `avgWordLength`, `longWordRatio`, `specialCharRatio` (`>= 0` CHECKs), config flags `hasPunctuation`, `hasNumbers`, `hasCapitals`, `hasAccents`, `createdAt`; index on `(language, complexity)` |
 | `word_dictionaries` | `id` bigserial | random-mode word pools: unique `(language, complexity)`, `words` jsonb (string array, `jsonb_array_length >= 100` CHECK), `createdAt` |
+| `rooms`           | `id` bigserial | see [Rooms](#rooms-salle-0110) below |
+| `room_members`    | `id` bigserial | see [Rooms](#rooms-salle-0110) below |
+| `invitation_links` | `id` bigserial | see [Rooms](#rooms-salle-0110) below |
 
 `totalWords`, `totalTimeMs`, `coins`, `correctKeystrokes` and `totalKeystrokes`
 are `bigint` (surfaced as JavaScript `bigint`); `bestWpm` is `numeric(6, 2)`
@@ -100,11 +103,91 @@ lists average ~4, ~7 and ~10 letters per word respectively) rather than
 re-classified with `classifyComplexity`, because frequency of use matters as
 much as length for a word pool.
 
+### Rooms (SALLE-01..10)
+
+The three room tables implement the lobby model. Internal ids (`rooms.id`,
+`room_members.id`, `invitation_links.id`) never reach clients: rooms are
+addressed by `rooms.publicId` (uuid) or their 6-character `code`, members by
+their user `publicId` or guest token.
+
+**`rooms`** — one row per race room (SALLE-01/02/03/05, COURSE-01):
+
+* `code` varchar(6) **unique**, drawn from the alphabet
+  `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (no ambiguous 0/O or 1/I/L — SALLE-02) by
+  `generateRoomCode` in `src/lib/room-rules.ts` (CSPRNG-backed in
+  `src/db/queries/rooms.ts`). A CHECK mirrors the alphabet with the regex
+  `^[A-HJKMNP-Z2-9]{6}$`, so no other code can ever be persisted.
+* `visibility` CHECK `public | code | private` (SALLE-03); `status` CHECK
+  `en_attente | decompte | en_course | resultats | fermee`, default
+  `en_attente` (COURSE-01); `capacity` CHECK 2–30, default 10 (SALLE-05);
+  `hostUserId` FK → `users.id` (`ON DELETE RESTRICT` — a room never vanishes
+  because its host's account did); `closedAt` is set when the room closes.
+* `config` jsonb NOT NULL, default `'{}'::jsonb`: the host-configurable race
+  settings (CONF-01..12). The JSON shape is defined twice, deliberately tied
+  together: the storage type `RoomConfig` in `src/db/schema.ts` and the Zod v4
+  schema in `src/lib/room-config.ts`, which is declared
+  `satisfies z.ZodType<RoomConfig>` so the two cannot drift. Every write goes
+  through the Zod schema (`createRoom` resolves defaults for
+  `null`/`undefined`; `updateRoomConfig` parses strictly and rejects unknown
+  keys), so the column default is only a last resort.
+
+**`room_members`** — one row per presence in a room. A member is exactly one
+of a connected user (`userId` FK → `users.id`, `ON DELETE CASCADE`) or a guest
+(`guestToken` = the uuid from the signed `guest` cookie — AUTH-02); a CHECK
+`(userId is null) <> (guestToken is null)` enforces the XOR. `role` is
+`participant` or `spectator` (the host's own row uses one of these too,
+SALLE-01 — who is host is tracked by `rooms.hostUserId`, never by role),
+`leftAt` marks the end of a presence (leaving, kick, room close, or moving to
+another room) and `kicked` blocks any rejoin (SALLE-07).
+
+The one-active-room rule (SALLE-06) is a **database constraint**, not just
+application logic — two partial unique indexes:
+
+* `room_members_one_active_user_idx` — UNIQUE (`userId`) WHERE `userId IS NOT
+  NULL AND leftAt IS NULL`
+* `room_members_one_active_guest_idx` — UNIQUE (`guestToken`) WHERE
+  `guestToken IS NOT NULL AND leftAt IS NULL`
+
+so a second tab, a second room, or a race between two joins can never produce
+two active rows for the same person. A plain index on `roomId` serves member
+listings. `joinRoom` works *with* the indexes instead of against them: inside
+a transaction that locks the room row, a join of a **different** room first
+sets `leftAt` on the previous active membership (preserving history) and then
+inserts; a join of the **same** room raises `AlreadyInRoomError`. A
+concurrent join that loses the index race retries and adopts the winner's
+outcome. Kicking sets `kicked = true` **and** `leftAt`, so a kicked member is
+free to join other rooms while `joinRoom`'s kick-history check blocks only
+their old room.
+
+**`invitation_links`** — one row per invitation link (SALLE-04). `token` is
+unique text: 24 random bytes base64url (192 bits ≥ the 128-bit floor), so
+links cannot be guessed. `status` CHECK `unused | used | revoked`; the first
+consumption binds `boundIp` (varchar(45)) and `boundMemberId` (FK →
+`room_members.id`, `ON DELETE SET NULL`) together with `usedAt` — a CHECK
+requires a used link to carry all three, and a revoked link to carry
+`revokedAt`. Reuse is allowed **only for the bound member** (same user or same
+guest identity — the identity lives in the membership row, so reconnects work
+from a new IP); anyone else is refused. Kicking a member revokes their links,
+and closing a room revokes every remaining link, both inside the same
+transaction as the kick/close itself (`src/db/queries/rooms.ts`).
+
+### Rate limiting (SALLE-10)
+
+Room-code joins are rate-limited in memory by
+`src/lib/rate-limit.ts` (sliding window, default 10 attempts per 60 s per IP,
+wired into the `joinRoomByCode` server action). The window lives in one
+process: correct for the current single-instance deployment, but if the
+realtime layer later runs as a second process, both processes must share a
+store (Redis/PostgreSQL) — documented in the module header as the single-
+instance assumption.
+
 ## Queries
 
 `src/db/queries/users.ts` owns the core user tables (profiles, stats,
-resources), while `src/db/queries/oauth-accounts.ts` owns `oauth_accounts` and
-the find-or-create entry point used by the OAuth callback.
+resources), `src/db/queries/oauth-accounts.ts` owns `oauth_accounts` and the
+find-or-create entry point used by the OAuth callback, `src/db/queries/rooms.ts`
+owns `rooms`/`room_members` (creation, joins, host actions, presence) and
+`src/db/queries/invitations.ts` owns `invitation_links`.
 
 | Function | Behaviour |
 | -------- | --------- |
@@ -114,6 +197,11 @@ the find-or-create entry point used by the OAuth callback.
 | `adjustUserCoins` | Applies a signed delta with `WHERE (coins + delta) >= 0`, throwing `InsufficientCoinsError` when the guard matches no row and `UserNotFoundError` when the row is absent |
 | `createOrLinkOAuthUser` | Returns the user linked to a provider identity or creates user + both child rows + the `oauth_accounts` link in one transaction; a username collision is retried with a random suffix |
 | `findUserByOAuthAccount` | Looks up the user for a `(provider, providerAccountId)` pair, returning `null` on first sign-in |
+| `createRoom` (rooms) | Inserts the room and the host membership in one transaction; the 6-char code is drawn with a CSPRNG and retried on the rare collision; the config is resolved through the Zod schema; refuses when the host is already active in another room (SALLE-06) |
+| `joinRoom` (rooms) | Locks the room row, checks status (SALLE-09), kick history (SALLE-07) and participant capacity (SALLE-05) in SQL, then inserts — left-marking the previous active membership when the person was in another room, rejecting the same room (SALLE-06); retries a lost unique-index race |
+| `kickMember` / `closeRoom` (rooms) | Host-verified (SEC-01) transactions that also revoke the member's / room's invitation links in the same statement batch (SALLE-04) |
+| `updateRoomConfig` (rooms) | Re-parses the config with the Zod schema and stores it, host-only |
+| `consumeInvitationToken` (invitations) | Locks the link, binds IP + membership on first use, allows reuse only for the bound member, refuses revoked links |
 
 `avgWpm` is `totalWords / (totalTimeMs / 60000)` and is `0` when no time has been
 recorded, so an untouched profile never divides by zero. `avgAccuracy` is

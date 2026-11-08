@@ -8,14 +8,20 @@ design intentions, not implemented code** — do not treat them as done.
 Current state: authentication (password + GitHub/Discord OAuth), the account
 profile screen, the Dwarf-Fortress-inspired UI shell and the Drizzle/PostgreSQL
 data layer (users plus the seeded `texts` corpus and `word_dictionaries` word
-pools) are implemented. Rooms, the real-time layer, the race engine, bots
-and bonuses are not built yet.
+pools) are implemented. The rooms data layer is now implemented too: the
+`rooms`, `room_members` and `invitation_links` tables, the room queries
+(`src/db/queries/rooms.ts`, `invitations.ts`), the pure room rules
+(`src/lib/room-rules.ts`), the host-configurable race settings
+(`src/lib/room-config.ts`), the signed guest cookie (`src/lib/guest-session.ts`),
+rate limiting (`src/lib/rate-limit.ts`) and the Zod-validated server actions
+(`src/app/rooms/actions.ts`). No room UI exists yet, and the real-time layer,
+the race engine, bots and bonuses are still not built.
 
 ## Folder layout
 
 | Path | Role |
 | ---- | ---- |
-| `src/app/` | Next.js App Router pages and route handlers (`(auth)/`, `login/`, `register/`, `account/`, `api/auth/[provider]/`) |
+| `src/app/` | Next.js App Router pages and route handlers (`(auth)/`, `login/`, `register/`, `account/`, `rooms/` server actions, `api/auth/[provider]/`) |
 | `src/components/` | Presentational UI components (auth forms, account screen, theme shell) |
 | `src/data/` | Static UI data (site identity, form labels, mock content) |
 | `src/db/` | Drizzle schema (`schema.ts`), client, migration runner, `queries/` (one module per aggregate) |
@@ -85,17 +91,62 @@ erDiagram
         jsonb words "array, >= 100 entries (CHECK)"
         timestamptz createdAt
     }
+    rooms {
+        bigint id PK
+        uuid publicId UK
+        varchar code "6 chars, unambiguous alphabet, UK (CHECK)"
+        bigint hostUserId FK
+        varchar visibility "public | code | private (CHECK)"
+        varchar status "en_attente | decompte | en_course | resultats | fermee (CHECK)"
+        integer capacity "2-30 (CHECK)"
+        jsonb config "RoomConfig, Zod-validated"
+        timestamptz createdAt
+        timestamptz updatedAt
+        timestamptz closedAt "nullable"
+    }
+    room_members {
+        bigint id PK
+        bigint roomId FK
+        bigint userId FK "nullable, XOR guestToken"
+        varchar guestToken "nullable, XOR userId"
+        varchar role "participant | spectator (CHECK)"
+        timestamptz joinedAt
+        timestamptz leftAt "nullable; present iff null"
+        boolean kicked
+    }
+    invitation_links {
+        bigint id PK
+        bigint roomId FK
+        text token UK ">= 128-bit random"
+        varchar status "unused | used | revoked (CHECK)"
+        varchar boundIp "nullable, set on first use"
+        bigint boundMemberId FK "nullable"
+        timestamptz usedAt "nullable"
+        timestamptz revokedAt "nullable"
+        timestamptz createdAt
+    }
     users ||--|| user_stats : "1:1"
     users ||--|| user_resources : "1:1"
     users ||--o{ oauth_accounts : "has"
+    users ||--o{ rooms : "hosts"
+    users ||--o{ room_members : "joins as"
+    rooms ||--o{ room_members : "contains"
+    rooms ||--o{ invitation_links : "grants"
+    room_members ||--o{ invitation_links : "binds"
 ```
 
 Rules: internal `id`s never reach the client (public ids are `publicId` /
-`username`); `user_stats` carries `wins` plus keystroke counters — accuracy is
-derived at read time (`correct / total * 100`, AUTH-06), not stored as a
+`username` / the room `code`; members are addressed by their user `publicId`
+or guest token); `user_stats` carries `wins` plus keystroke counters — accuracy
+is derived at read time (`correct / total * 100`, AUTH-06), not stored as a
 column; `texts` and `word_dictionaries` are reference data whose complexity is
 justified by measurable metrics (CONF-05, see `doc/database.md`); child rows
-cascade on delete; all counters carry `CHECK >= 0`.
+cascade on delete; all counters carry `CHECK >= 0`. The room tables implement
+SALLE-01..10: the 6-char code alphabet is enforced by CHECK, "one active room
+per person" (SALLE-06) is a database guarantee via two partial unique indexes
+on `room_members` (`WHERE leftAt IS NULL`), the config jsonb is Zod-validated
+on every write (CONF-01..12), and invitation tokens are ≥ 128-bit random
+(SALLE-04) — details in `doc/database.md`.
 
 ### Planned tables (design only)
 
@@ -107,12 +158,15 @@ committed migrations when each feature is built:
   (punctuation/numbers/capitals/accents) for CONF-03/05/07.
 * ~~`word_dictionaries`~~ — **implemented** (see current schema): ≥100-word
   pools per (language, complexity) for random mode (CONF-03).
-* `rooms` — host, 6-char code (SALLE-02 alphabet), visibility, capacity,
-  status; unique constraint enforcing one room per person (SALLE-06).
-* `room_members` — participants/spectators, join time (host handover uses
-  longest-present human, SALLE-08), kick flag (SALLE-07).
-* `invitation_links` — ≥ 128-bit token, status, bound IP, revoked flags
-  (SALLE-04).
+* ~~`rooms`~~ — **implemented** (see current schema): host, 6-char code
+  (SALLE-02 alphabet), visibility, capacity, status, Zod-validated `config`
+  jsonb.
+* ~~`room_members`~~ — **implemented** (see current schema): participants/
+  spectators, join time (host handover uses the longest-present human,
+  SALLE-08), kick flag (SALLE-07), partial unique indexes enforcing one
+  active room per person (SALLE-06).
+* ~~`invitation_links`~~ — **implemented** (see current schema): ≥ 128-bit
+  token, status, bound IP + membership, revoked timestamps (SALLE-04).
 * `races` / `race_participants` — per-race config snapshot, start/end time,
   per-participant progress, errors, WPM series, bonuses received (RES-05),
   quit/status flags (COURSE-06/08/10).
@@ -262,8 +316,10 @@ player who returns within 30 s resumes in place (COURSE-08).
   perceived updates/s from ≤ 10 real messages/s). The transport stays behind an
   interface so game logic never imports it directly (AGENTS.md).
 * **Open question:** hosting story (Railway WebSockets, separate service, or
-  free-tier real-time provider per TECH-08). Decision will be finalized when
-  rooms are implemented.
+  free-tier real-time provider per TECH-08). The room data layer is now
+  implemented (`joinRoomByCode` server action + `getRoomForJoin` query as the
+  seam for the transport), but the transport decision itself remains open
+  until the realtime layer is built.
 
 ### ADR-011 — Bots *(proposed approach)*
 
