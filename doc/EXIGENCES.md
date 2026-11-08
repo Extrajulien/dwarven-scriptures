@@ -178,9 +178,12 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 
 ## I18N — Internationalisation
 
-- [ ] **I18N-01** — Tous les textes de l'interface en français et en anglais : libellés, messages d'erreur, états vides, métadonnées des pages ; aucune chaîne codée en dur.
-- [ ] **I18N-02** — Sélecteur de langue accessible sur toutes les pages ; choix conservé (cookie ou profil) ; langue du navigateur par défaut.
-- [ ] **I18N-03** — Dates et nombres formatés selon la langue choisie.
+- [x] **I18N-01** — Tous les textes de l'interface en français et en anglais : libellés, messages d'erreur, états vides, métadonnées des pages ; aucune chaîne codée en dur.
+  — Dictionnaire plat `src/i18n/messages.ts` (interface `Messages`, sacs fr/en, clés identiques vérifiées par `src/i18n/messages.test.ts`). L'accueil et le chrome, les flux login/register (les actions renvoient des codes d'erreur stables, traduits dans les formulaires), les écrans du compte et les démos de sprites rendent exclusivement via le sac résolu (`getLocale`/`pick` : les composants serveur résolvent, les clients reçoivent le sac par props ; les données restent dans `src/data/*.ts` sous forme de clés). Métadonnées des pages localisées via `generateMetadata`. Balayage du code : plus aucune chaîne visible codée en dur hors de `messages.ts` (les seuls littéraux restants sont des données non traduisibles : glyphes de touches du clavier, noms propres, runes, nombres). Tests : `App.test.tsx`, `LoginForm.test.tsx`, `RegisterForm.test.tsx`, `Navbar.test.tsx`, `messages.test.ts`.
+- [x] **I18N-02** — Sélecteur de langue accessible sur toutes les pages ; choix conservé (cookie ou profil) ; langue du navigateur par défaut.
+  — Sélecteur FR/EN (segmented control « nain », sans émoji) dans la barre de navigation de toutes les pages, y compris les écrans d'authentification et la variante mobile (`src/components/Navbar/LocaleSelector.tsx`, `AuthNavbar.tsx`). Action serveur `setLocale` (`src/i18n/locale-actions.ts`) : valide la valeur avec `isLocale`, écrit le cookie `locale` côté serveur (path `/`, sameSite `lax`, 1 an) et `revalidatePath('/', 'layout')` — l'écriture de cookie déclenche le re-rendu de la page. `<html lang>` piloté par `getLocale()` (cookie → `Accept-Language` → `fr`). Tests : `src/i18n/locale-actions.test.ts`, `Navbar.test.tsx` + fumée curl bilingue (cookie `locale=fr`/`locale=en` → HTML français/anglais et `<html lang>` correct).
+- [x] **I18N-03** — Dates et nombres formatés selon la langue choisie.
+  — Aides `src/i18n/format.ts` (`Intl.NumberFormat`/`Intl.DateTimeFormat` + `formatGroupedDigits` compatible bigint) ; les statistiques du compte (courses terminées, MPM, mots frappés, pièces, gemmes) et la date « membre depuis » sont formatées avec la locale active. Tests : `src/i18n/format.test.ts` (séparateurs décimaux/de milliers fr/en, formats de dates). — Note : les lignes d'historique fictives de `src/data/accountData.ts` gardent leurs dates « lore » statiques en attendant la table `races` réelle.
 
 ## TEST — Tests
 
