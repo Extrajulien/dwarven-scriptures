@@ -124,11 +124,13 @@ import {
   getRoomForPage,
   getRoomInternalByPublicId,
   getRoomPublic,
+  getRoomPublicRefById,
   getViewerMembership,
   joinRoom,
   kickMember,
   leaveRoom,
   listPublicRooms,
+  listPublicRoomsForPage,
   markMemberLeft,
   NotHostCandidateError,
   NotRoomHostError,
@@ -985,5 +987,67 @@ describe('getActiveRoomOfIdentity (SALLE-06 current room)', () => {
   test('returns null when the person is active in no room', async () => {
     selectQueue = [[]];
     await expect(getActiveRoomOfIdentity({ guestToken: '33333333-3333-4333-8333-333333333333' })).resolves.toBeNull();
+  });
+});
+
+describe('getRoomPublicRefById (invitation route)', () => {
+  test('returns the public reference of the room', async () => {
+    selectQueue = [
+      [{ publicId: '11111111-1111-4111-8111-111111111111', status: 'en_attente' }],
+    ];
+
+    await expect(getRoomPublicRefById(42)).resolves.toEqual({
+      publicId: '11111111-1111-4111-8111-111111111111',
+      status: 'en_attente',
+    });
+  });
+
+  test('returns null for an unknown id', async () => {
+    selectQueue = [[]];
+    await expect(getRoomPublicRefById(42)).resolves.toBeNull();
+  });
+
+  test('rejects a non-positive id', async () => {
+    await expect(getRoomPublicRefById(0)).rejects.toThrow(/roomId/);
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe('listPublicRoomsForPage (JOIN-02 explorer rows)', () => {
+  test('serializes public summaries with the config language and complexity', async () => {
+    selectQueue = [
+      [
+        {
+          publicId: '11111111-1111-4111-8111-111111111111',
+          code: 'ABCDEF',
+          visibility: 'public',
+          status: 'en_attente',
+          capacity: 10,
+          config: { ...defaultRoomConfig, textLanguage: 'en', textComplexity: 'difficile' },
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+          hostName: 'ada',
+          participantCount: 4,
+        },
+      ],
+    ];
+
+    const rooms = await listPublicRoomsForPage({ textLanguage: 'en', textComplexity: 'difficile' });
+
+    expect(rooms).toEqual([
+      {
+        publicId: '11111111-1111-4111-8111-111111111111',
+        code: 'ABCDEF',
+        status: 'en_attente',
+        capacity: 10,
+        hostName: 'ada',
+        participantCount: 4,
+        textLanguage: 'en',
+        textComplexity: 'difficile',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      },
+    ]);
+    // The filters must reach the shared SQL as jsonb comparisons.
+    expect(sqlTextOf('select')).toContain("->>'textLanguage'");
+    expect(sqlTextOf('select')).toContain("->>'textComplexity'");
   });
 });

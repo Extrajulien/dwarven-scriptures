@@ -618,6 +618,62 @@ export async function getViewerMembership(
 }
 
 /**
+ * Public reference of a room by its internal id — the invitation route
+ * (`/i/[token]`) translates the link's internal `roomId` into the public id
+ * it redirects to. Internal ids never reach the client.
+ */
+export async function getRoomPublicRefById(
+  roomId: number,
+): Promise<{ publicId: string; status: string } | null> {
+  assertPositiveInteger(roomId, 'roomId');
+
+  const rows = await db
+    .select({ publicId: rooms.publicId, status: rooms.status })
+    .from(rooms)
+    .where(eq(rooms.id, roomId))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+/**
+ * Serialized public row for the room explorer (JOIN-02): the display fields
+ * plus the text language and complexity extracted from the config. Plain
+ * JSON-safe values only (`createdAt` as ISO string) so server components can
+ * hand the rows to client components unchanged. Reuses `listPublicRooms`, so
+ * the SQL is the same as everywhere else (public rooms in `en_attente` only).
+ */
+export type PublicRoomForPage = {
+  publicId: string;
+  code: string;
+  status: string;
+  capacity: number;
+  hostName: string;
+  participantCount: number;
+  textLanguage: 'fr' | 'en';
+  textComplexity: 'facile' | 'moyen' | 'difficile';
+  createdAt: string;
+};
+
+export async function listPublicRoomsForPage(filters: {
+  textLanguage?: string;
+  textComplexity?: string;
+} = {}): Promise<PublicRoomForPage[]> {
+  const summaries = await listPublicRooms(filters);
+  return summaries.map((room) => ({
+    publicId: room.publicId,
+    code: room.code,
+    status: room.status,
+    capacity: room.capacity,
+    hostName: room.hostName,
+    participantCount: room.participantCount,
+    textLanguage: room.config.textLanguage,
+    textComplexity: room.config.textComplexity,
+    createdAt: room.createdAt.toISOString(),
+  }));
+}
+
+/**
  * Joins a person to a room (SALLE-05/06/07/09).
  *
  * One transaction, with the room row locked, so concurrent joins to the same
