@@ -201,6 +201,31 @@ natural upgrade is a common-password blocklist (Have I Been Pwned) or `zxcvbn`,
 deliberately omitted now to avoid a dependency. A future agent adding login
 should add this.
 
+### Strength bar (client-side, advisory only)
+
+The registration form renders a live strength meter under the password field
+([`src/components/register/PasswordStrengthBar.jsx`](../src/components/register/PasswordStrengthBar.jsx))
+from two pure helpers in
+[`src/lib/password.ts`](../src/lib/password.ts): `passwordStrength` (the
+semantic tier) and `passwordStrengthScore` (a continuous 0–100 fill width). Both
+mirror the server policy and layer a stricter "super safe" tier on top.
+
+| Tier        | Bar    | Score   | Rule |
+| ----------- | ------ | ------- | ---- |
+| `empty`     | dark   | 0%      | no input |
+| `weak`      | red    | 1–49%   | does not yet satisfy the minimum policy (too short, too long, or too little variety) |
+| `acceptable`| yellow | 50–79%  | satisfies the minimum policy (12–128 chars, 2+ classes, ≥ 40 bits) |
+| `strong`    | green  | 80–100% | 16+ chars across 3+ classes with ≥ 60 bits, **or** a 24+ char passphrase with ≥ 80 bits |
+
+The passphrase clause keeps long lowercase + spaces phrases (which the minimum
+policy accepts on purpose) from being stuck at "acceptable". The fill width
+interpolates continuously inside each band, so the bar grows left-to-right
+without jumping at the colour changes. This meter is **advisory only** — the
+server action still re-validates with `validateRegistration` and never trusts
+the client's assessment. Labels live in
+[`src/data/registerData.ts`](../src/data/registerData.ts) (`REGISTER_FORM.strength`),
+following the same English-only placeholder convention as the field errors.
+
 ## Field error codes
 
 `validateRegistration` and the action use these stable codes; the client maps
@@ -227,13 +252,16 @@ i18n layer referenced in AGENTS.md is not built yet).
 ## Tests
 
 * [`src/lib/password.test.ts`](../src/lib/password.test.ts) — real scrypt
-  hash/verify round-trips and the policy rules.
+  hash/verify round-trips, the policy rules, and the `passwordStrength` /
+  `passwordStrengthScore` tiers and bands.
 * [`src/lib/register-validation.test.ts`](../src/lib/register-validation.test.ts)
   — trimming, length, mismatch and policy mapping.
 * [`src/db/queries/users.test.ts`](../src/db/queries/users.test.ts) — the
   `23505` → `UsernameTakenError` mapping.
 * [`src/components/register/RegisterForm.test.jsx`](../src/components/register/RegisterForm.test.jsx)
-  — the client renders each field error under its input (action is mocked).
+  — the client renders each field error under its input (action is mocked) and
+  the strength bar turns red, then yellow, then green as the password grows
+  stronger.
 * [`src/lib/session.test.ts`](../src/lib/session.test.ts) — token round-trips,
   tamper/expiry/malformed/wrong-secret rejection.
 * [`src/lib/login-validation.test.ts`](../src/lib/login-validation.test.ts) —
