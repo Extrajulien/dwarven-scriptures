@@ -12,6 +12,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -196,6 +197,191 @@ export const userResources = pgTable(
   ],
 );
 
+/**
+ * Alphabet for the 6-character room code (SALLE-02). The ambiguous characters
+ * 0/O and 1/I/L are excluded so codes survive being read aloud or retyped. The
+ * `rooms_code_valid` CHECK below mirrors this exact set — keep the two in sync
+ * (the generator in `src/lib/room-rules.ts` draws from this constant).
+ */
+export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+/** Levels a host can assign to bots (BOT-01). */
+export type BotLevel = 'noob' | 'debutant' | 'intermediaire' | 'expert' | 'impossible';
+
+/**
+ * JSON shape of the host-configurable race configuration stored in
+ * `rooms.config` (CONF-01..12). This type is the storage contract; the Zod
+ * schema that validates it on every write lives in `src/lib/room-config.ts`
+ * and must stay assignable to it.
+ */
+export type RoomConfig = {
+  textLanguage: 'fr' | 'en';
+  textComplexity: 'facile' | 'moyen' | 'difficile';
+  textType: 'coherent' | 'random';
+  wordCount: number;
+  timeLimitSeconds: number | null;
+  errorMode: 'accumulate' | 'stop';
+  options: {
+    punctuation: boolean;
+    numbers: boolean;
+    capitals: boolean;
+    accents: boolean;
+  };
+  bonusesEnabled: boolean;
+  bots: Array<{ level: BotLevel; count: number }>;
+};
+
+/**
+ * A race room (SALLE-01/02/03/05, COURSE-01 groundwork).
+ *
+ * `code` is the human-facing join handle; `publicId` is the external id used
+ * by APIs and the realtime layer. Internal ids never reach clients.
+ */
+export const rooms = pgTable(
+  'rooms',
+  {
+    /** Internal primary key. Foreign keys reference this; never expose it. */
+    id: bigserial({ mode: 'number' }).primaryKey(),
+    /** External identifier used by public APIs and room URLs. */
+    publicId: uuid().defaultRandom().notNull().unique(),
+    /**
+     * Short 6-character join code drawn from {@link ROOM_CODE_ALPHABET}
+     * (SALLE-02). Stored uppercase; the CHECK below rejects anything outside
+     * the alphabet so a bad generator or a direct write can never persist an
+     * ambiguous code.
+     */
+    code: varchar({ length: 6 }).notNull().unique(),
+    /** Owning user. Kept with `restrict` so a room can never silently vanish. */
+    hostUserId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    /** Who may find the room: public listing, code/link, or link only (SALLE-03). */
+    visibility: varchar({ length: 16 }).notNull(),
+    /** Race state machine, COURSE-01. */
+    status: varchar({ length: 16 }).default('en_attente').notNull(),
+    /** Max participants; spectators do not count (SALLE-05). */
+    capacity: integer().default(10).notNull(),
+    /**
+     * Host-configurable race settings, validated by `src/lib/room-config.ts`
+     * before every write (CONF-01..12). The column default is the empty
+     * object only as a last resort — application code always writes a full,
+     * parsed config.
+     */
+    config: jsonb().$type<RoomConfig>().notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp({ mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp({ mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    /** Set when the host closes the room (`status = 'fermee'`). */
+    closedAt: timestamp({ mode: 'date', withTimezone: true }),
+  },
+  (table) => [
+    // Mirrors ROOM_CODE_ALPHABET: A-H, J, K, M, N, P-Z and 2-9 only.
+    check(
+      'rooms_code_valid',
+      sql`${table.code} ~ '^[A-HJKMNP-Z2-9]{6}$'`,
+    ),
+    check('rooms_visibility_valid', sql`${table.visibility} in ('public', 'code', 'private')`),
+    check(
+      'rooms_status_valid',
+      sql`${table.status} in ('en_attente', 'decompte', 'en_course', 'resultats', 'fermee')`,
+    ),
+    check('rooms_capacity_range', sql`${table.capacity} >= 2 and ${table.capacity} <= 30`),
+  ],
+);
+
+/**
+ * One row per person present in a room. A person is either a connected user
+ * (`userId`) or a guest identified by their signed guest-cookie id
+ * (`guestToken`), never both (SALLE-06, AUTH-02).
+ *
+ * `leftAt` marks the end of a presence: leaving, being kicked, or moving to
+ * another room sets it. Only rows with `leftAt IS NULL` count as present, and
+ * the two partial unique indexes below make "one active room per person" a
+ * database guarantee — a second tab, a second room, or a race between two
+ * joins cannot produce two active rows for the same identity.
+ */
+export const roomMembers = pgTable(
+  'room_members',
+  {
+    /** Internal primary key. Foreign keys reference this; never expose it. */
+    id: bigserial({ mode: 'number' }).primaryKey(),
+    roomId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => rooms.id, { onDelete: 'cascade' }),
+    /** Connected user; `null` for guests, who use `guestToken` instead. */
+    userId: bigint({ mode: 'number' }).references(() => users.id, {
+      onDelete: 'cascade',
+    }),
+    /** Guest cookie id (uuid) for guest members; `null` for connected users. */
+    guestToken: varchar({ length: 36 }),
+    /** Host owns the room; participants race; spectators watch (SALLE-01/05). */
+    role: varchar({ length: 16 }).notNull(),
+    joinedAt: timestamp({ mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    /** Set when the member leaves, is kicked, or moves to another room. */
+    leftAt: timestamp({ mode: 'date', withTimezone: true }),
+    /** Kicked members cannot rejoin this room (SALLE-07). */
+    kicked: boolean().default(false).notNull(),
+  },
+  (table) => [
+    check('room_members_role_valid', sql`${table.role} in ('host', 'participant', 'spectator')`),
+    // Exactly one identity: a member is a user XOR a guest.
+    check(
+      'room_members_exactly_one_identity',
+      sql`(${table.userId} is null) <> (${table.guestToken} is null)`,
+    ),
+    // SALLE-06: one active room per connected user.
+    uniqueIndex('room_members_one_active_user_idx')
+      .on(table.userId)
+      .where(sql`${table.userId} is not null and ${table.leftAt} is null`),
+    // SALLE-06: one active room per guest identity.
+    uniqueIndex('room_members_one_active_guest_idx')
+      .on(table.guestToken)
+      .where(sql`${table.guestToken} is not null and ${table.leftAt} is null`),
+    index('room_members_room_id_idx').on(table.roomId),
+  ],
+);
+
+/**
+ * Invitation links (SALLE-04): one row per generated link, with a
+ * cryptographically random token (>= 128 bits of entropy). The first use binds
+ * the link to an IP address and a membership; only that bound member may reuse
+ * it. Kicking a member or closing the room revokes their links.
+ */
+export const invitationLinks = pgTable(
+  'invitation_links',
+  {
+    /** Internal primary key. Foreign keys reference this; never expose it. */
+    id: bigserial({ mode: 'number' }).primaryKey(),
+    roomId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => rooms.id, { onDelete: 'cascade' }),
+    /** base64url random token with >= 128 bits of entropy (SALLE-04). */
+    token: text().notNull().unique(),
+    status: varchar({ length: 16 }).default('unused').notNull(),
+    /** IP address the link was first consumed from; set together with the binding. */
+    boundIp: varchar({ length: 45 }),
+    /** Membership the link is bound to after its first use. */
+    boundMemberId: bigint({ mode: 'number' }).references(() => roomMembers.id, {
+      onDelete: 'set null',
+    }),
+    usedAt: timestamp({ mode: 'date', withTimezone: true }),
+    revokedAt: timestamp({ mode: 'date', withTimezone: true }),
+    createdAt: timestamp({ mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check('invitation_links_status_valid', sql`${table.status} in ('unused', 'used', 'revoked')`),
+    // A used link is always bound to an IP, a membership and a timestamp.
+    check(
+      'invitation_links_used_requires_binding',
+      sql`${table.status} <> 'used' or (${table.boundIp} is not null and ${table.boundMemberId} is not null and ${table.usedAt} is not null)`,
+    ),
+    // A revoked link always records when it was revoked.
+    check(
+      'invitation_links_revoked_requires_timestamp',
+      sql`${table.status} <> 'revoked' or ${table.revokedAt} is not null`,
+    ),
+  ],
+);
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   stats: one(userStats, {
     fields: [users.id],
@@ -229,6 +415,38 @@ export const userResourcesRelations = relations(userResources, ({ one }) => ({
   }),
 }));
 
+export const roomsRelations = relations(rooms, ({ one, many }) => ({
+  host: one(users, {
+    fields: [rooms.hostUserId],
+    references: [users.id],
+  }),
+  members: many(roomMembers),
+  invitationLinks: many(invitationLinks),
+}));
+
+export const roomMembersRelations = relations(roomMembers, ({ one, many }) => ({
+  room: one(rooms, {
+    fields: [roomMembers.roomId],
+    references: [rooms.id],
+  }),
+  user: one(users, {
+    fields: [roomMembers.userId],
+    references: [users.id],
+  }),
+  invitationLinks: many(invitationLinks),
+}));
+
+export const invitationLinksRelations = relations(invitationLinks, ({ one }) => ({
+  room: one(rooms, {
+    fields: [invitationLinks.roomId],
+    references: [rooms.id],
+  }),
+  boundMember: one(roomMembers, {
+    fields: [invitationLinks.boundMemberId],
+    references: [roomMembers.id],
+  }),
+}));
+
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
 export type UserStat = InferSelectModel<typeof userStats>;
@@ -241,6 +459,12 @@ export type Text = InferSelectModel<typeof texts>;
 export type NewText = InferInsertModel<typeof texts>;
 export type WordDictionary = InferSelectModel<typeof wordDictionaries>;
 export type NewWordDictionary = InferInsertModel<typeof wordDictionaries>;
+export type Room = InferSelectModel<typeof rooms>;
+export type NewRoom = InferInsertModel<typeof rooms>;
+export type RoomMember = InferSelectModel<typeof roomMembers>;
+export type NewRoomMember = InferInsertModel<typeof roomMembers>;
+export type InvitationLink = InferSelectModel<typeof invitationLinks>;
+export type NewInvitationLink = InferInsertModel<typeof invitationLinks>;
 
 /**
  * Public projection of a user: the internal `id` is dropped so it cannot leak
