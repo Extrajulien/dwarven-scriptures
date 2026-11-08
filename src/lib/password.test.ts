@@ -9,6 +9,8 @@
 import {
   hashPassword,
   passwordIssues,
+  passwordStrength,
+  passwordStrengthScore,
   shannonEntropyBits,
   verifyPassword,
 } from './password';
@@ -78,5 +80,59 @@ describe('passwordIssues', () => {
     const long = 'aA1!'.repeat(32) + 'a';
     expect(long.length).toBeGreaterThan(128);
     expect(passwordIssues(long)).toEqual(['tooLong']);
+  });
+});
+
+describe('passwordStrength', () => {
+  test('is empty when there is no input', () => {
+    expect(passwordStrength('')).toBe('empty');
+  });
+
+  test('is weak before the minimum policy is met', () => {
+    expect(passwordStrength('short')).toBe('weak');
+    expect(passwordStrength('abcdefghijkl')).toBe('weak'); // single class
+    expect(passwordStrength('aA1!aA1!aA1!')).toBe('weak'); // repetitive
+  });
+
+  test('is acceptable once the minimum policy is met', () => {
+    expect(passwordStrength('Tr0ub4dor&3x!')).toBe('acceptable');
+    // Two classes and long enough to be valid, but not the "super safe" tier.
+    expect(passwordStrength('abcdefgh12345678')).toBe('acceptable');
+  });
+
+  test('is strong for a shorter but richly varied password', () => {
+    expect(passwordStrength('Ab3!Cd4@Ef5#Gh6$')).toBe('strong');
+  });
+
+  test('is strong for a long, varied passphrase', () => {
+    expect(passwordStrength('correct horse battery staple')).toBe('strong');
+  });
+});
+
+describe('passwordStrengthScore', () => {
+  test('is zero for empty input', () => {
+    expect(passwordStrengthScore('')).toBe(0);
+  });
+
+  test('stays in the red band (1–49) while non-compliant', () => {
+    expect(passwordStrengthScore('short')).toBeGreaterThan(0);
+    expect(passwordStrengthScore('short')).toBeLessThan(50);
+    expect(passwordStrengthScore('abcdefghijkl')).toBeLessThan(50);
+    expect(passwordStrengthScore('aA1!aA1!aA1!')).toBeLessThan(50);
+  });
+
+  test('lands in the yellow band (50–79) once compliant', () => {
+    const score = passwordStrengthScore('Tr0ub4dor&3x!');
+    expect(score).toBeGreaterThanOrEqual(50);
+    expect(score).toBeLessThan(80);
+  });
+
+  test('lands in the green band (80–100) once strong', () => {
+    expect(passwordStrengthScore('Ab3!Cd4@Ef5#Gh6$')).toBeGreaterThanOrEqual(80);
+    expect(passwordStrengthScore('correct horse battery staple')).toBeGreaterThanOrEqual(80);
+  });
+
+  test('reaches 100 for a maximally varied password', () => {
+    expect(passwordStrengthScore('Ab1!Cd2@Ef3#Gh4$Ij5%Kl6^Mn7&Op8*')).toBe(100);
   });
 });

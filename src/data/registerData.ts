@@ -31,6 +31,13 @@ export interface RegisterFormData {
   terms: string;
   submit: string;
   submitPending: string;
+  strength: {
+    label: string;
+    empty: string;
+    weak: string;
+    acceptable: string;
+    strong: string;
+  };
   errors: {
     username: Record<string, string>;
     password: Record<string, string>;
@@ -112,6 +119,13 @@ export const REGISTER_FORM: RegisterFormData = {
   terms: 'I swear the Guild Charter oath and accept the stonebound terms',
   submit: '[ ENGRAVE // CREATE ACCOUNT ]',
   submitPending: '[ ENGRAVING… ]',
+  strength: {
+    label: 'Password strength',
+    empty: 'No password',
+    weak: 'Too weak',
+    acceptable: 'Good enough',
+    strong: 'Strong',
+  },
   errors: {
     username: {
       required: 'A name is required.',
