@@ -7,6 +7,7 @@ import { createSession } from '../../../../../lib/session';
 import {
   exchangeCodeForToken,
   fetchProfile,
+  isProviderConfigured,
 } from '../../../../../lib/oauth';
 import {
   oauthCallbackQuerySchema,
@@ -58,6 +59,13 @@ export async function GET(
     !stateMatches(queryParsed.data.state, storedState)
   ) {
     redirect('/login');
+  }
+
+  // The provider answered, but its credentials are not configured on this
+  // deployment (TECH-05): degrade with the localized notice instead of
+  // letting the token exchange throw an unhandled 500.
+  if (!isProviderConfigured(providerParsed.data)) {
+    redirect('/login?oauth=unavailable');
   }
 
   const redirectUri = new URL(

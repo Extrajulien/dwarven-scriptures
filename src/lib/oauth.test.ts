@@ -13,6 +13,7 @@ import {
   exchangeCodeForToken,
   fetchProfile,
   isOAuthProvider,
+  isProviderConfigured,
   sanitizeRedirectPath,
 } from './oauth';
 
@@ -75,6 +76,35 @@ describe('buildDiscordAvatarUrl', () => {
 
   test('returns null when the id is missing', () => {
     expect(buildDiscordAvatarUrl('', 'abc123')).toBeNull();
+  });
+});
+
+describe('isProviderConfigured', () => {
+  test('true when both client credential variables are set', () => {
+    expect(isProviderConfigured('github')).toBe(true);
+    expect(isProviderConfigured('discord')).toBe(true);
+  });
+
+  test.each(['github', 'discord'] as const)(
+    'false for %s when both variables are missing (TECH-05 graceful degradation)',
+    (provider) => {
+      delete process.env[provider === 'github' ? 'GITHUB_CLIENT_ID' : 'DISCORD_CLIENT_ID'];
+      delete process.env[
+        provider === 'github' ? 'GITHUB_CLIENT_SECRET' : 'DISCORD_CLIENT_SECRET'
+      ];
+      expect(isProviderConfigured(provider)).toBe(false);
+    },
+  );
+
+  test('false when only the secret is missing', () => {
+    delete process.env.GITHUB_CLIENT_SECRET;
+    expect(isProviderConfigured('github')).toBe(false);
+  });
+
+  test('false when the variables are empty strings', () => {
+    process.env.GITHUB_CLIENT_ID = '';
+    process.env.GITHUB_CLIENT_SECRET = '';
+    expect(isProviderConfigured('github')).toBe(false);
   });
 });
 

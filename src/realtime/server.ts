@@ -13,6 +13,7 @@ import {
   type HubIdentity,
   type RoomStore,
 } from './hub';
+import { checkOrigin } from './origin';
 import { clientMessageSchema, type ServerMessage } from './protocol';
 import { PostgresRoomStore } from './room-store';
 import { setRealtimeHub } from './events';
@@ -28,9 +29,10 @@ import { setRealtimeHub } from './events';
  *
  * Every socket is bound to a {@link HubConnection}; authentication is read
  * from the signed `session`/`guest` cookies of the upgrade request, the
- * Origin is checked (same-origin by default, allowlist via
- * `WS_ALLOWED_ORIGINS`), and every message is validated with the Zod
- * protocol schemas before it reaches the hub (TECH-07).
+ * Origin is checked (same-origin always accepted, `WS_ALLOWED_ORIGINS`
+ * entries merged on top — see `src/realtime/origin.ts`), and every message
+ * is validated with the Zod protocol schemas before it reaches the hub
+ * (TECH-07).
  */
 
 export const REALTIME_WS_PATH = '/ws';
@@ -115,37 +117,6 @@ function clientIpOf(request: IncomingMessage): string {
     }
   }
   return request.socket.remoteAddress ?? 'local';
-}
-
-/**
- * Origin validation: browsers always send an `Origin` header on WebSocket
- * upgrades. With an explicit allowlist (`WS_ALLOWED_ORIGINS`), the origin
- * must be listed; otherwise it must match the request's own `Host`
- * (same-origin). Missing Origin (native clients, smoke scripts) is allowed.
- * Returns an error string, or `null` when the upgrade may proceed.
- */
-function checkOrigin(
-  request: IncomingMessage,
-  allowedOrigins: string[] | undefined,
-): string | null {
-  const origin = request.headers.origin;
-  if (!origin) {
-    return null;
-  }
-
-  if (allowedOrigins && allowedOrigins.length > 0) {
-    return allowedOrigins.includes(origin) ? null : 'origin not allowed';
-  }
-
-  const host = request.headers.host;
-  if (!host) {
-    return 'missing host header';
-  }
-  try {
-    return new URL(origin).host === host ? null : 'cross-origin request rejected';
-  } catch {
-    return 'malformed origin header';
-  }
 }
 
 function upgradePathname(request: IncomingMessage): string {
@@ -235,7 +206,11 @@ export function createRealtimeServer(
       return;
     }
 
-    const originError = checkOrigin(request, options.allowedOrigins);
+    const originError = checkOrigin(
+      request.headers.origin,
+      request.headers.host,
+      options.allowedOrigins ?? [],
+    );
     if (originError) {
       socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
       socket.destroy();

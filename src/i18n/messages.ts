@@ -405,6 +405,7 @@ export interface Messages {
   'auth.security': string;
   'auth.provider.github': string;
   'auth.provider.discord': string;
+  'oauth.unavailable': string;
   'auth.error.requiredUsername': string;
   'auth.error.requiredPassword': string;
   'auth.error.unexpected': string;
@@ -997,6 +998,8 @@ export const MESSAGES: Record<Locale, Messages> = {
     'auth.security': '• CHIFFREMENT BASALTE 256 BITS • PROTOCOLE DE GUILDE ASCII_V2 •',
     'auth.provider.github': 'Forger avec GitHub',
     'auth.provider.discord': 'Accorder Discord',
+    'oauth.unavailable':
+      'La connexion via un fournisseur externe n’est pas configurée sur ce serveur. Utilisez votre nom d’utilisateur et votre mot de passe.',
     'auth.error.requiredUsername': 'Un nom est requis.',
     'auth.error.requiredPassword': 'Un mot de passe est requis.',
     'auth.error.unexpected': 'Une erreur est survenue. Réessayez.',
@@ -1591,6 +1594,8 @@ export const MESSAGES: Record<Locale, Messages> = {
     'auth.security': '• 256-BIT BASALT ENCRYPTION • GUILD PROTOCOL ASCII_V2 •',
     'auth.provider.github': 'Forge with GitHub',
     'auth.provider.discord': 'Attune Discord',
+    'oauth.unavailable':
+      'External provider sign-in is not configured on this server. Use your username and password instead.',
     'auth.error.requiredUsername': 'A name is required.',
     'auth.error.requiredPassword': 'A password is required.',
     'auth.error.unexpected': 'Something went wrong. Please try again.',

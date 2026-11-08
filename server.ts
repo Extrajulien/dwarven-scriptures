@@ -24,22 +24,15 @@
  */
 
 import * as dotenv from 'dotenv';
+import { resolveHostname, resolvePort } from './src/lib/server-config';
+import { parseAllowedOrigins } from './src/realtime/origin';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
 
-const port = Number.parseInt(process.env.PORT ?? '3000', 10);
-const hostname = process.env.HOSTNAME ?? '0.0.0.0';
+const port = resolvePort(process.env.PORT);
+const hostname = resolveHostname(process.env.HOSTNAME);
 const dev = process.env.NODE_ENV !== 'production';
-
-/** `WS_ALLOWED_ORIGINS`: comma-separated origins allowed to open a socket. */
-function parseAllowedOrigins(): string[] {
-  const raw = process.env.WS_ALLOWED_ORIGINS ?? '';
-  return raw
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter((origin) => origin.length > 0);
-}
 
 async function main(): Promise<void> {
   // Load 'next' first and wait for it: importing the realtime module (whose
@@ -59,7 +52,7 @@ async function main(): Promise<void> {
   const { createRealtimeServer } = await import('./src/realtime/server');
 
   const realtime = createRealtimeServer(server, {
-    allowedOrigins: parseAllowedOrigins(),
+    allowedOrigins: parseAllowedOrigins(process.env.WS_ALLOWED_ORIGINS),
   });
 
   server.on('request', (request, response) => {

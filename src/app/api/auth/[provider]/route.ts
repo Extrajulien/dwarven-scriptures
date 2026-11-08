@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 import {
   buildAuthorizeUrl,
   generateState,
+  isProviderConfigured,
 } from '../../../../lib/oauth';
 import { oauthNextPathSchema, oauthProviderSchema } from '../../../../lib/oauth-validation';
 
@@ -26,6 +27,13 @@ export async function GET(
   const providerParsed = oauthProviderSchema.safeParse(provider);
   if (!providerParsed.success) {
     return new Response('Unknown OAuth provider', { status: 404 });
+  }
+
+  // Password-login-only production (TECH-05): when the provider's client
+  // credentials are not configured, degrade to a friendly localized notice
+  // on /login instead of throwing a 500 from `buildAuthorizeUrl`.
+  if (!isProviderConfigured(providerParsed.data)) {
+    redirect('/login?oauth=unavailable');
   }
 
   const state = generateState();
