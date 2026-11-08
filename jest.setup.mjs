@@ -9,3 +9,6 @@ if (typeof global.requestAnimationFrame !== 'function') {
     setTimeout(() => callback(Date.now()), 0);
   global.cancelAnimationFrame = (handle) => clearTimeout(handle);
 }
+
+const jestSetup = {};
+export default jestSetup;
