@@ -18,6 +18,7 @@ import SectionHeader from '../SectionHeader';
 import UserAvatar from '../UserAvatar';
 import GuestAvatar from './GuestAvatar';
 import InvitationsPanel from './InvitationsPanel';
+import RaceScreen from '../race/RaceScreen';
 
 export type LobbyViewer =
   | { kind: 'user'; publicId: string; username: string }
@@ -97,7 +98,8 @@ export default function RoomLobby({
   messages,
 }: RoomLobbyProps) {
   const router = useRouter();
-  const { status, snapshot, error, join, leave } = useRoomSocket();
+  const { status, snapshot, error, race, join, leave, startRace, quitRace, sendRaceProgress } =
+    useRoomSocket();
 
   const joinedRef = useRef(false);
   const [leftByUser, setLeftByUser] = useState(false);
@@ -272,6 +274,16 @@ export default function RoomLobby({
   );
   const config = room.config;
 
+  // Race screen wiring (COURSE-02/03, GAME-1): the race UI renders for every
+  // room status (launch panel while waiting, countdown/race/results view
+  // otherwise) and the lobby content stays below it. One socket, one hook —
+  // the screen receives the state as props.
+  const viewerIdentityValue = viewer.kind === 'user' ? `user:${viewer.publicId}` : `guest:${viewer.guestToken}`;
+  const ownMember = snapshot.members.find((member) => memberIdentity(member) === viewerIdentityValue);
+  const viewerRole = ownMember?.role ?? 'spectator';
+  const participantCount = snapshot.members.filter((member) => member.role === 'participant').length;
+  const viewerParticipantId = viewer.kind === 'user' ? viewer.publicId : viewer.guestToken;
+
   const configRows: Array<{ label: string; value: string }> = [
     {
       label: messages['lobby.config.language'],
@@ -334,6 +346,20 @@ export default function RoomLobby({
 
   return (
     <div className="flex flex-col gap-space-lg">
+      <RaceScreen
+        roomStatus={room.status}
+        race={race}
+        config={config}
+        viewerRole={viewerRole}
+        isHost={isHost}
+        participantCount={participantCount}
+        viewerParticipantId={viewerParticipantId}
+        messages={messages}
+        onStartRace={startRace}
+        onQuitRace={quitRace}
+        onSendProgress={sendRaceProgress}
+      />
+
       {/* Room header: code, visibility, status, capacity. */}
       <section className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl">
         <SectionHeader

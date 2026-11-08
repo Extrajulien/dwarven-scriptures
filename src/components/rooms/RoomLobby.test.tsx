@@ -8,7 +8,8 @@ import {
 } from '../../app/rooms/actions';
 import { MESSAGES } from '../../i18n/messages';
 import { defaultRoomConfig } from '../../lib/room-config';
-import type { RoomSnapshot, RoomSocketState } from '../../realtime/client-types';
+import type { RaceSocketState, RaceView, RoomSnapshot } from '../../realtime/client-types';
+import type { MemberInfo, RoomStatus } from '../../realtime/protocol';
 import RoomLobby, { type LobbyViewer } from './RoomLobby';
 
 const messages = MESSAGES.fr;
@@ -20,10 +21,13 @@ const JOINED_AT = '2026-11-07T21:00:00.000Z';
 
 const mockJoin = jest.fn();
 const mockLeave = jest.fn();
+const mockStartRace = jest.fn();
+const mockQuitRace = jest.fn();
+const mockSendProgress = jest.fn();
 const mockReplace = jest.fn();
 const mockRefresh = jest.fn();
 
-let socketState: RoomSocketState = { status: 'idle', snapshot: null, error: null };
+let socketState: RaceSocketState = { status: 'idle', snapshot: null, error: null, race: null };
 
 jest.mock('../../realtime/useRoomSocket', () => ({
   useRoomSocket: () => ({
@@ -31,6 +35,9 @@ jest.mock('../../realtime/useRoomSocket', () => ({
     join: mockJoin,
     leave: mockLeave,
     sendPing: jest.fn(),
+    startRace: mockStartRace,
+    quitRace: mockQuitRace,
+    sendRaceProgress: mockSendProgress,
   }),
 }));
 
@@ -51,46 +58,70 @@ const mockedKickMember = jest.mocked(kickMember);
 const mockedLeaveRoom = jest.mocked(leaveRoom);
 const mockedTransferHost = jest.mocked(transferHost);
 
-function makeSnapshot(): RoomSnapshot {
+function makeSnapshot(
+  status: RoomStatus = 'en_attente',
+  members: MemberInfo[] = defaultMembers(),
+): RoomSnapshot {
   return {
     room: {
       publicId: ROOM_ID,
       code: 'DWRF42',
       visibility: 'public',
-      status: 'en_attente',
+      status,
       capacity: 6,
       config: defaultRoomConfig,
       host: { publicId: ADA_ID, username: 'ada' },
       createdAt: '2026-11-07T20:00:00.000Z',
     },
-    members: [
-      {
-        kind: 'user',
-        publicId: ADA_ID,
-        username: 'ada',
-        pfpUrl: null,
-        role: 'participant',
-        joinedAt: JOINED_AT,
-        connected: true,
-      },
-      {
-        kind: 'user',
-        publicId: BOB_ID,
-        username: 'bob',
-        pfpUrl: null,
-        role: 'participant',
-        joinedAt: JOINED_AT,
-        connected: false,
-      },
-      {
-        kind: 'guest',
-        guestToken: GUEST_TOKEN,
-        nickname: null,
-        role: 'spectator',
-        joinedAt: JOINED_AT,
-        connected: false,
-      },
-    ],
+    members,
+  };
+}
+
+function defaultMembers(): MemberInfo[] {
+  return [
+    {
+      kind: 'user',
+      publicId: ADA_ID,
+      username: 'ada',
+      pfpUrl: null,
+      role: 'participant',
+      joinedAt: JOINED_AT,
+      connected: true,
+    },
+    {
+      kind: 'user',
+      publicId: BOB_ID,
+      username: 'bob',
+      pfpUrl: null,
+      role: 'participant',
+      joinedAt: JOINED_AT,
+      connected: false,
+    },
+    {
+      kind: 'guest',
+      guestToken: GUEST_TOKEN,
+      nickname: null,
+      role: 'spectator',
+      joinedAt: JOINED_AT,
+      connected: false,
+    },
+  ];
+}
+
+function makeRace(overrides: Partial<RaceView> = {}): RaceView {
+  return {
+    phase: 'decompte',
+    startedAt: null,
+    startAt: null,
+    textId: null,
+    text: null,
+    totalLength: null,
+    ownProgress: null,
+    participants: [],
+    lastTickAt: null,
+    finishRanks: {},
+    finished: null,
+    ...overrides,
   };
 }
 
@@ -102,8 +133,13 @@ const guestViewer: LobbyViewer = {
   guestToken: '55555555-5555-4555-8555-555555555555',
 };
 
-function renderOpenLobby(viewer: LobbyViewer, invitations: null = null) {
-  socketState = { status: 'open', snapshot: makeSnapshot(), error: null };
+function renderOpenLobby(
+  viewer: LobbyViewer,
+  invitations: null = null,
+  status: RoomStatus = 'en_attente',
+  race: RaceView | null = null,
+) {
+  socketState = { status: 'open', snapshot: makeSnapshot(status), error: null, race };
   return render(
     <RoomLobby
       roomPublicId={ROOM_ID}
@@ -118,7 +154,7 @@ function renderOpenLobby(viewer: LobbyViewer, invitations: null = null) {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  socketState = { status: 'idle', snapshot: null, error: null };
+  socketState = { status: 'idle', snapshot: null, error: null, race: null };
 });
 
 describe('lobby snapshot rendering (SALLE-01, CONF-12)', () => {
@@ -140,7 +176,7 @@ describe('lobby snapshot rendering (SALLE-01, CONF-12)', () => {
   });
 
   test('joins by invitation token when one is provided (SALLE-04)', () => {
-    socketState = { status: 'open', snapshot: makeSnapshot(), error: null };
+    socketState = { status: 'open', snapshot: makeSnapshot(), error: null, race: null };
     render(
       <RoomLobby
         roomPublicId={ROOM_ID}
@@ -243,6 +279,7 @@ describe('leave, kick notice and closed screen', () => {
       status: 'closed',
       snapshot: null,
       error: { code: 'kicked', message: 'you were kicked from the room', fatal: true },
+      race: null,
     };
     render(
       <RoomLobby
@@ -259,7 +296,7 @@ describe('leave, kick notice and closed screen', () => {
   });
 
   test('roomClosed shows the closed screen', () => {
-    socketState = { status: 'closed', snapshot: null, error: null };
+    socketState = { status: 'closed', snapshot: null, error: null, race: null };
     render(
       <RoomLobby
         roomPublicId={ROOM_ID}
@@ -281,6 +318,7 @@ describe('leave, kick notice and closed screen', () => {
       status: 'closed',
       snapshot: null,
       error: { code: 'room_full', message: 'room full', fatal: true },
+      race: null,
     };
     render(
       <RoomLobby
@@ -294,5 +332,89 @@ describe('leave, kick notice and closed screen', () => {
     );
 
     expect(screen.getByText(messages['lobby.error.roomFull'])).toBeInTheDocument();
+  });
+});
+
+describe('race screen integration (COURSE-02/03, GAME-1)', () => {
+  test('en_attente: the host sees the launch panel and can start the race', () => {
+    renderOpenLobby(hostViewer);
+    const startButton = screen.getByRole('button', { name: messages['race.startButton'] });
+    expect(startButton).toBeEnabled();
+    fireEvent.click(startButton);
+    expect(mockStartRace).toHaveBeenCalledTimes(1);
+    // The lobby content (member list, config) stays rendered below.
+    expect(screen.getByText(messages['lobby.configTitle'])).toBeInTheDocument();
+  });
+
+  test('decompte: the countdown overlay and the revealed text render', () => {
+    renderOpenLobby(
+      hostViewer,
+      null,
+      'decompte',
+      makeRace({
+        phase: 'decompte',
+        startAt: new Date(Date.now() + 3_000).toISOString(),
+        text: 'bonjour les nains',
+        totalLength: 17,
+        ownProgress: { validatedChars: 0, correctKeystrokes: 0, totalKeystrokes: 0 },
+      }),
+    );
+    expect(screen.getByTestId('countdown-overlay')).toBeInTheDocument();
+    expect(screen.getByTestId('countdown-number')).toHaveTextContent('3');
+    expect(screen.getByTestId('race-text')).toHaveTextContent('bonjour les nains');
+    expect(screen.queryByTestId('typing-input')).not.toBeInTheDocument();
+  });
+
+  test('en_course: a participant gets the typing zone wired to the hook', () => {
+    renderOpenLobby(
+      memberViewer,
+      null,
+      'en_course',
+      makeRace({
+        phase: 'en_course',
+        startAt: new Date(Date.now() + 3_000).toISOString(),
+        text: 'bonjour',
+        totalLength: 7,
+        ownProgress: { validatedChars: 0, correctKeystrokes: 0, totalKeystrokes: 0 },
+      }),
+    );
+    expect(screen.getByTestId('typing-zone')).toBeInTheDocument();
+
+    fireEvent.keyDown(screen.getByTestId('typing-input'), { key: 'b' });
+    expect(mockSendProgress).toHaveBeenCalledWith({
+      validatedChars: 1,
+      correctKeystrokes: 1,
+      totalKeystrokes: 1,
+    });
+  });
+
+  test('en_course: a spectator viewer sees the badge and no typing zone', () => {
+    const spectatorMembers = defaultMembers().map((member) =>
+      member.kind === 'guest' ? { ...member, role: 'spectator' as const } : member,
+    );
+    socketState = {
+      status: 'open',
+      snapshot: makeSnapshot('en_course', spectatorMembers),
+      error: null,
+      race: makeRace({
+        phase: 'en_course',
+        startAt: new Date(Date.now() + 3_000).toISOString(),
+        text: 'bonjour',
+        totalLength: 7,
+        ownProgress: null,
+      }),
+    };
+    render(
+      <RoomLobby
+        roomPublicId={ROOM_ID}
+        roomCode="DWRF42"
+        invitationToken={null}
+        viewer={guestViewer}
+        initialInvitations={null}
+        messages={messages}
+      />,
+    );
+    expect(screen.getByTestId('spectator-badge')).toBeInTheDocument();
+    expect(screen.queryByTestId('typing-zone')).not.toBeInTheDocument();
   });
 });
