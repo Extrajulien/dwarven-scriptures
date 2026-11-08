@@ -2,6 +2,7 @@
   "name": "typeracer",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@11.19.0",
   "dependencies": {
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^6.9.1",
