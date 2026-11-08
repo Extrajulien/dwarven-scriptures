@@ -319,6 +319,17 @@ describe('joinRoomByCode (SALLE-02/09/10)', () => {
     });
   });
 
+  test('a code alone never admits to a private room (SALLE-03/04)', async () => {
+    userActor();
+    getRoomByCodeMock.mockResolvedValue({ ...roomRow, visibility: 'private' });
+
+    await expect(joinRoomByCode({ code: 'ABCDEF' })).resolves.toEqual({
+      ok: false,
+      error: 'roomNotFound',
+    });
+    expect(joinRoomQueryMock).not.toHaveBeenCalled();
+  });
+
   test('joins a logged-in user and resets their rate window', async () => {
     userActor();
     getRoomByCodeMock.mockResolvedValue(roomRow);

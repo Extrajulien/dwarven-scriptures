@@ -239,6 +239,12 @@ export async function joinRoomByCode(
       return { ok: false, error: 'roomNotFound' };
     }
 
+    // SALLE-03/04: a code alone never admits to a private room, and the
+    // answer stays 'roomNotFound' so the code's validity is not leaked.
+    if (room.visibility === 'private') {
+      return { ok: false, error: 'roomNotFound' };
+    }
+
     const joined = await joinRoomQuery({
       roomId: room.id,
       role: parsed.data.role ?? 'participant',
