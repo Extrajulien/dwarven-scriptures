@@ -1,13 +1,14 @@
 import { CHRONICLES } from '../data/homepageData';
+import type { Messages } from '../i18n/messages';
 import SectionHeader from './SectionHeader';
 
-export default function ChronicleFeed() {
+export default function ChronicleFeed({ messages }: { messages: Messages }) {
   return (
     <section className="bg-surface-container-lowest p-space-lg rounded shadow-xl flex flex-col gap-space-md">
       <SectionHeader
-        title="[ GUILD_CHRONICLES ]"
+        title={messages['home.chronicles.title']}
         titleClass="text-on-surface"
-        subtitle="LIVE EXPEDITION TICKER // PROTOCOL ASCII"
+        subtitle={messages['home.chronicles.subtitle']}
         right={<span className="w-2 h-2 rounded-full bg-tertiary animate-ping" />}
       />
 
@@ -21,12 +22,12 @@ export default function ChronicleFeed() {
               <span className={`font-bold ${event.authorClass}`}>
                 {event.author}
               </span>
-              <span>{event.time}</span>
+              <span>{messages[event.timeKey]}</span>
             </div>
             <span className={event.bodyClass}>
               {event.segments.map((segment, index) => (
                 <span key={index} className={segment.className}>
-                  {segment.text}
+                  {messages[segment.textKey]}
                 </span>
               ))}
             </span>
@@ -38,14 +39,14 @@ export default function ChronicleFeed() {
         <span className="text-primary">&gt;</span>
         <input
           className="bg-transparent text-on-surface placeholder:text-outline border-none outline-none w-full font-body-sm text-body-sm"
-          placeholder="Carve entry into the stronghold stone..."
+          placeholder={messages['home.chronicles.placeholder']}
           type="text"
         />
         <button
           type="button"
           className="text-primary hover:text-primary-fixed uppercase font-bold"
         >
-          [POST]
+          {messages['home.chronicles.post']}
         </button>
       </div>
     </section>

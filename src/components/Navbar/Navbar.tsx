@@ -26,7 +26,7 @@ export default function Navbar({
           <div className="flex flex-col">
             <div className="flex items-center gap-space-xs">
               <span className="font-headline-sm text-headline-sm uppercase text-primary">
-                {GUILD.title}
+                {messages[GUILD.nameKey]}
               </span>
               <span className="font-body-sm text-body-sm text-on-surface-variant select-none">
                 {GUILD.runes}
@@ -34,10 +34,10 @@ export default function Navbar({
             </div>
             <div className="flex items-center gap-space-sm mt-space-xs">
               <span className="font-label-sm text-label-sm uppercase bg-surface-container-high text-on-surface-variant px-space-xs py-0.5 rounded">
-                {GUILD.tag}
+                {messages[GUILD.tagKey]}
               </span>
               <span className="font-label-sm text-label-sm uppercase bg-secondary-container text-on-secondary-container px-space-xs py-0.5 rounded shadow-[0_0_8px_rgba(217,119,6,0.35)]">
-                {GUILD.streak}
+                {messages[GUILD.streakKey]}
               </span>
             </div>
           </div>
@@ -50,7 +50,7 @@ export default function Navbar({
               href={link.href}
               className="font-label-md text-label-md uppercase px-space-md py-space-sm text-on-surface-variant hover:text-on-surface transition-colors"
             >
-              {link.label}
+              {messages[link.labelKey]}
             </a>
           ))}
         </nav>
@@ -59,7 +59,7 @@ export default function Navbar({
           {/* I18N-02: visible on every breakpoint (desktop and mobile). */}
           <LocaleSelector locale={locale} messages={messages} />
 
-          <PersonalAccount user={user} />
+          <PersonalAccount user={user} messages={messages} />
         </div>
       </div>
     </header>

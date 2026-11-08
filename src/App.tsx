@@ -46,19 +46,19 @@ export default function App({
       <main className="w-full pt-20 bg-surface min-h-[calc(100vh-3rem)] pb-12">
         <div className="flex flex-col w-full">
           <div className="w-full px-margin-desktop py-space-xl flex flex-col gap-space-xl max-w-[1720px] mx-auto">
-            <GuildBanner />
+            <GuildBanner messages={messages} />
 
             <RaceSection viewer={viewer} notice={notice} messages={messages} />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
               <div className="lg:col-span-8 flex flex-col gap-space-xl">
-                <MinerRoster />
-                <Contracts />
+                <MinerRoster messages={messages} />
+                <Contracts messages={messages} />
               </div>
 
               <div className="lg:col-span-4 flex flex-col gap-space-xl">
-                <PerksPanel />
-                <ChronicleFeed />
+                <PerksPanel messages={messages} />
+                <ChronicleFeed messages={messages} />
               </div>
             </div>
 
@@ -69,7 +69,7 @@ export default function App({
         </div>
       </main>
 
-      <Footer />
+      <Footer messages={messages} />
     </>
   );
 }

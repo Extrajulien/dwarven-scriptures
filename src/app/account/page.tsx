@@ -70,7 +70,7 @@ export default async function AccountPage() {
         </div>
       </main>
 
-      <Footer />
+      <Footer messages={messages} />
     </>
   );
 }

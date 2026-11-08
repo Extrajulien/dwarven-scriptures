@@ -4,48 +4,61 @@ import type {
   RailBountyBody,
   StatusBountyBody,
 } from '../data/homepageData';
+import type { Messages } from '../i18n/messages';
 
-function RailBody({ body }: { body: RailBountyBody }) {
+function RailBody({ body, messages }: { body: RailBountyBody; messages: Messages }) {
   return (
     <div className="bg-surface-container-lowest p-space-sm rounded font-label-sm text-label-sm flex flex-col gap-1">
       <div className="flex justify-between text-outline text-label-sm">
-        <span>{body.start}</span>
-        <span className="text-tertiary">{body.lead}</span>
-        <span>{body.end}</span>
+        <span>{messages[body.startKey]}</span>
+        <span className="text-tertiary">{messages[body.leadKey]}</span>
+        <span>{messages[body.endKey]}</span>
       </div>
       <div className="font-body-sm text-body-sm text-primary tracking-widest overflow-hidden whitespace-nowrap">
-        {body.ascii} <span className="text-secondary">{body.leader}</span>
+        {messages[body.asciiKey]} <span className="text-secondary">{body.leader}</span>
       </div>
     </div>
   );
 }
 
-function StatusBody({ body }: { body: StatusBountyBody }) {
+function StatusBody({ body, messages }: { body: StatusBountyBody; messages: Messages }) {
   return (
     <div className="bg-surface-container-lowest p-space-sm rounded font-label-sm text-label-sm flex items-center justify-between">
       <span className="text-on-surface-variant font-body-sm text-body-sm">
-        {body.text}
+        {messages[body.textKey]}
       </span>
-      <span className="text-secondary font-bold">{body.status}</span>
+      <span className="text-secondary font-bold">{messages[body.statusKey]}</span>
     </div>
   );
 }
 
-function DecryptionBody({ body }: { body: ProgressBountyBody }) {
+function DecryptionBody({
+  body,
+  messages,
+}: {
+  body: ProgressBountyBody;
+  messages: Messages;
+}) {
   return (
     <div className="bg-surface-container-lowest p-space-sm rounded font-label-sm text-label-sm flex flex-col gap-1">
       <div className="flex justify-between text-outline text-label-sm">
-        <span>{body.label}</span>
-        <span className="text-tertiary font-bold">{body.pctLabel}</span>
+        <span>{messages[body.labelKey]}</span>
+        <span className="text-tertiary font-bold">{messages[body.pctLabelKey]}</span>
       </div>
       <div className="font-body-sm text-body-sm text-tertiary tracking-widest overflow-hidden whitespace-nowrap">
-        {body.ascii}
+        {messages[body.asciiKey]}
       </div>
     </div>
   );
 }
 
-export default function BountyCard({ bounty }: { bounty: Bounty }) {
+export default function BountyCard({
+  bounty,
+  messages,
+}: {
+  bounty: Bounty;
+  messages: Messages;
+}) {
   const { body } = bounty;
 
   return (
@@ -57,12 +70,12 @@ export default function BountyCard({ bounty }: { bounty: Bounty }) {
             <h2
               className={`font-headline-sm text-headline-sm uppercase ${bounty.titleClass}`}
             >
-              {bounty.title}
+              {messages[bounty.titleKey]}
             </h2>
             <span
               className={`font-label-sm text-label-sm uppercase ${bounty.metaClass}`}
             >
-              {bounty.meta}
+              {messages[bounty.metaKey]}
             </span>
           </div>
         </div>
@@ -70,20 +83,20 @@ export default function BountyCard({ bounty }: { bounty: Bounty }) {
           <span
             className={`font-label-sm text-label-sm px-space-xs py-0.5 rounded font-bold uppercase ${bounty.rewardClass}`}
           >
-            {bounty.reward}
+            {messages[bounty.rewardKey]}
           </span>
           <button
             type="button"
             className={`bg-surface-container-high px-space-sm py-1 rounded font-label-sm text-label-sm uppercase transition-colors ${bounty.actionClass}`}
           >
-            {bounty.action}
+            {messages[bounty.actionKey]}
           </button>
         </div>
       </div>
 
-      {body.kind === 'rail' && <RailBody body={body} />}
-      {body.kind === 'status' && <StatusBody body={body} />}
-      {body.kind === 'progress' && <DecryptionBody body={body} />}
+      {body.kind === 'rail' && <RailBody body={body} messages={messages} />}
+      {body.kind === 'status' && <StatusBody body={body} messages={messages} />}
+      {body.kind === 'progress' && <DecryptionBody body={body} messages={messages} />}
     </div>
   );
 }

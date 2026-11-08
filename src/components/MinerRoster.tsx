@@ -1,16 +1,17 @@
 import { MINERS, ROSTER_COLUMNS, ROSTER_FILTERS } from '../data/homepageData';
+import type { Messages } from '../i18n/messages';
 import ProgressBar from './ProgressBar';
 import SectionHeader from './SectionHeader';
 
-export default function MinerRoster() {
+export default function MinerRoster({ messages }: { messages: Messages }) {
   return (
     <section className="bg-surface-container-lowest p-space-lg rounded shadow-xl flex flex-col gap-space-md">
       <SectionHeader
-        title="[ CHAMBER // MINER_RANKS_&_TYPIST_ROSTER ]"
-        tag="᚛ᛗᛁᚾᛖᚱᛋ᚜"
+        title={messages['home.roster.title']}
+        tag={messages['home.roster.tag']}
         right={
           <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">
-            REGISTRY: 38 OF 50 STONE SLOTS FILLED
+            {messages['home.roster.registry']}
           </span>
         }
       />
@@ -26,7 +27,7 @@ export default function MinerRoster() {
                 : 'hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm uppercase px-space-sm py-1 rounded transition-colors'
             }
           >
-            {filter.label}
+            {messages[filter.labelKey]}
           </button>
         ))}
       </div>
@@ -36,8 +37,8 @@ export default function MinerRoster() {
           <thead>
             <tr className="bg-surface-container-low text-outline font-label-sm text-label-sm uppercase tracking-wider">
               {ROSTER_COLUMNS.map((column) => (
-                <th key={column.label} className={`py-2.5 px-space-sm ${column.align}`}>
-                  {column.label}
+                <th key={column.labelKey} className={`py-2.5 px-space-sm ${column.align}`}>
+                  {messages[column.labelKey]}
                 </th>
               ))}
             </tr>
@@ -64,13 +65,13 @@ export default function MinerRoster() {
                       <span
                         className={`font-label-sm text-label-sm uppercase ${miner.rankClass}`}
                       >
-                        {miner.rank}
+                        {messages[miner.rankKey]}
                       </span>
                     </div>
                   </div>
                 </td>
                 <td className={`py-3 px-space-sm ${miner.specializationClass}`}>
-                  {miner.specialization}
+                  {messages[miner.specializationKey]}
                 </td>
                 <td className="py-3 px-space-sm text-center">
                   <span
@@ -79,7 +80,7 @@ export default function MinerRoster() {
                     {miner.wpm}
                   </span>
                   <span className="font-label-sm text-label-sm text-outline block">
-                    WPM
+                    {messages['home.roster.wpmUnit']}
                   </span>
                 </td>
                 <td className="py-3 px-space-sm text-center">
@@ -92,7 +93,7 @@ export default function MinerRoster() {
                 <td className="py-3 px-space-sm">
                   <div className="flex flex-col">
                     <span className="font-label-sm text-label-sm text-on-surface">
-                      {miner.stones}
+                      {messages[miner.stonesKey]}
                     </span>
                     <ProgressBar
                       percent={miner.progress.percent}
@@ -108,7 +109,7 @@ export default function MinerRoster() {
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${miner.status.dotClass}`}
                     />
-                    {miner.status.label}
+                    {messages[miner.status.labelKey]}
                   </span>
                 </td>
                 <td className="py-3 px-space-sm text-right">
@@ -116,7 +117,7 @@ export default function MinerRoster() {
                     type="button"
                     className={`bg-surface-container hover:bg-surface-container-high px-space-xs py-1 rounded font-label-sm text-label-sm uppercase shadow-sm ${miner.action.className}`}
                   >
-                    {miner.action.label}
+                    {messages[miner.action.labelKey]}
                   </button>
                 </td>
               </tr>
@@ -126,9 +127,9 @@ export default function MinerRoster() {
       </div>
 
       <div className="flex items-center justify-between text-outline font-label-sm text-label-sm pt-space-xs">
-        <span>SHOWING 4 OF 38 RECOGNIZED GUILD BROTHERS</span>
+        <span>{messages['home.roster.showing']}</span>
         <button type="button" className="text-primary hover:underline uppercase">
-          [EXPAND GUILD ARCHIVE LEDGER →]
+          {messages['home.roster.expand']}
         </button>
       </div>
     </section>

@@ -266,6 +266,132 @@ export interface Messages {
   // ------------------------------------------------------------ page metadata
   'meta.title': string;
   'meta.description': string;
+  // ------------------------------------------------------------ chrome (navbar, footer)
+  'guild.name': string;
+  'guild.tag': string;
+  'guild.streak': string;
+  'nav.mineRace': string;
+  'nav.guildRanks': string;
+  'nav.runeworks': string;
+  'nav.ledgers': string;
+  'nav.login': string;
+  'footer.left': string;
+  'footer.status': string;
+  'footer.optimal': string;
+  // ------------------------------------------------------------ home page (mock content)
+  'home.breadcrumbLeft': string;
+  'home.breadcrumbRight': string;
+  'home.crest.chapter': string;
+  'home.crest.order': string;
+  'home.crest.name': string;
+  'home.crest.motto': string;
+  'home.crest.statsExcavators': string;
+  'home.crest.statsHallTier': string;
+  'home.vault.adamantine.label': string;
+  'home.vault.adamantine.caption': string;
+  'home.vault.magmaFuel.label': string;
+  'home.vault.rawGems.label': string;
+  'home.vault.rawGems.caption': string;
+  'home.vault.hourlyTithe.label': string;
+  'home.vault.hourlyTithe.caption': string;
+  'home.action.contribute': string;
+  'home.action.declareRace': string;
+  'home.action.manageEmblem': string;
+  'home.roster.title': string;
+  'home.roster.tag': string;
+  'home.roster.registry': string;
+  'home.roster.wpmUnit': string;
+  'home.roster.showing': string;
+  'home.roster.expand': string;
+  'home.roster.filterAll': string;
+  'home.roster.filterVeterans': string;
+  'home.roster.filterChampions': string;
+  'home.roster.filterApprentices': string;
+  'home.roster.colIdentity': string;
+  'home.roster.colSpecialization': string;
+  'home.roster.colPeakWpm': string;
+  'home.roster.colAccuracy': string;
+  'home.roster.colStones': string;
+  'home.roster.colStatus': string;
+  'home.roster.colOrders': string;
+  'home.miners.urist.rank': string;
+  'home.miners.urist.specialization': string;
+  'home.miners.urist.stones': string;
+  'home.miners.urist.status': string;
+  'home.miners.urist.action': string;
+  'home.miners.darin.rank': string;
+  'home.miners.darin.specialization': string;
+  'home.miners.darin.stones': string;
+  'home.miners.darin.status': string;
+  'home.miners.darin.action': string;
+  'home.miners.thrum.rank': string;
+  'home.miners.thrum.specialization': string;
+  'home.miners.thrum.stones': string;
+  'home.miners.thrum.status': string;
+  'home.miners.thrum.action': string;
+  'home.miners.kogan.rank': string;
+  'home.miners.kogan.specialization': string;
+  'home.miners.kogan.stones': string;
+  'home.miners.kogan.status': string;
+  'home.miners.kogan.action': string;
+  'home.bounties.title': string;
+  'home.bounties.tag': string;
+  'home.bounties.count': string;
+  'home.bounties.vein.title': string;
+  'home.bounties.vein.meta': string;
+  'home.bounties.vein.reward': string;
+  'home.bounties.vein.action': string;
+  'home.bounties.vein.start': string;
+  'home.bounties.vein.lead': string;
+  'home.bounties.vein.end': string;
+  'home.bounties.vein.ascii': string;
+  'home.bounties.magma.title': string;
+  'home.bounties.magma.meta': string;
+  'home.bounties.magma.reward': string;
+  'home.bounties.magma.action': string;
+  'home.bounties.magma.text': string;
+  'home.bounties.magma.status': string;
+  'home.bounties.decryption.title': string;
+  'home.bounties.decryption.meta': string;
+  'home.bounties.decryption.reward': string;
+  'home.bounties.decryption.action': string;
+  'home.bounties.decryption.label': string;
+  'home.bounties.decryption.pctLabel': string;
+  'home.bounties.decryption.ascii': string;
+  'home.perks.title': string;
+  'home.perks.subtitle': string;
+  'home.perks.basalt.name': string;
+  'home.perks.basalt.status': string;
+  'home.perks.basalt.description': string;
+  'home.perks.basalt.footnote': string;
+  'home.perks.fault.name': string;
+  'home.perks.fault.status': string;
+  'home.perks.fault.description': string;
+  'home.perks.fault.footnote': string;
+  'home.perks.quill.name': string;
+  'home.perks.quill.status': string;
+  'home.perks.quill.description': string;
+  'home.perks.quill.estimate': string;
+  'home.perks.quill.action': string;
+  'home.perks.beast.name': string;
+  'home.perks.beast.status': string;
+  'home.perks.beast.description': string;
+  'home.chronicles.title': string;
+  'home.chronicles.subtitle': string;
+  'home.chronicles.placeholder': string;
+  'home.chronicles.post': string;
+  'home.chronicles.apex.time': string;
+  'home.chronicles.apex.s1': string;
+  'home.chronicles.apex.s2': string;
+  'home.chronicles.apex.s3': string;
+  'home.chronicles.tithe.time': string;
+  'home.chronicles.tithe.s1': string;
+  'home.chronicles.tithe.s2': string;
+  'home.chronicles.tithe.s3': string;
+  'home.chronicles.caveIn.time': string;
+  'home.chronicles.caveIn.s1': string;
+  'home.chronicles.pickaxes.time': string;
+  'home.chronicles.pickaxes.s1': string;
 }
 
 export const MESSAGES: Record<Locale, Messages> = {
@@ -470,6 +596,143 @@ export const MESSAGES: Record<Locale, Messages> = {
     'meta.title': 'Dwarven Scriptures',
     'meta.description':
       'Dwarven Scriptures — une forteresse de guilde compétitive de course de frappe.',
+    // ------------------------------------------------------------ chrome (navbar, footer)
+    'guild.name': 'Dwarven Scriptures',
+    'guild.tag': '[GUILDE : CARRIÈRE DE FERROVEINE — EXPÉDITION N° 84]',
+    'guild.streak': '🔥 SÉRIE : 14 PIERRES',
+    'nav.mineRace': 'Course de mine',
+    'nav.guildRanks': 'Rangs de guilde',
+    'nav.runeworks': 'Atelier de runes',
+    'nav.ledgers': 'Registres',
+    'nav.login': '[Connexion]',
+    'footer.left':
+      '▪ PROFONDEUR : NIVEAU Z -480 (PITON DE MAGMA) ▪ SALLE : N° EXP-84 (LANTERNE PUBLIQUE) ▪ PROTOCOLE : ASCII_SOCKET_v2',
+    'footer.status': 'STATUT : [EXTRACTION SYNCHRONISÉE]',
+    'footer.optimal': '● SYSTÈME OPTIMAL : 112 MPM AU SOMMET',
+    // ------------------------------------------------------------ home page (mock content)
+    'home.breadcrumbLeft': '᚛ QG_DE_GUILDE // EXPÉDITION_N°84 // CITADELLE_DE_GRANIT ᚜',
+    'home.breadcrumbRight': 'STATUT : FORTERESSE_ACTIVE ▪ INDICE_DE_DÉFENSE : 9400 ▪ SCEAU : INTACT',
+    'home.crest.chapter': 'CHAPITRE 84',
+    'home.crest.order': '[ORDRE ANCIEN]',
+    'home.crest.name': 'IRONVEIN QUARRY',
+    'home.crest.motto':
+      '« Frappez les veines les plus profondes, gravez les runes sacrées à la plume de fer. »',
+    'home.crest.statsExcavators': '⚔ 38 EXCAVATEURS ACTIFS',
+    'home.crest.statsHallTier': 'RANG DU PALAIS : GRANDE FORTERESSE',
+    'home.vault.adamantine.label': 'ADAMANTINE',
+    'home.vault.adamantine.caption': 'Lingots entreposés',
+    'home.vault.magmaFuel.label': 'CARBURANT DE MAGMA',
+    'home.vault.rawGems.label': 'GEMMES BRUTES',
+    'home.vault.rawGems.caption': 'Taillées et brutes',
+    'home.vault.hourlyTithe.label': 'DÎME HORAIRE',
+    'home.vault.hourlyTithe.caption': 'Afflux actif',
+    'home.action.contribute': '[CONTRIBUER AU COFFRE]',
+    'home.action.declareRace': '[LANCER UNE NOUVELLE COURSE DE CAVERNE]',
+    'home.action.manageEmblem': '[GÉRER EMBLÈME ET BANNIÈRE]',
+    'home.roster.title': '[ CHAMBRE // RANGS_DES_MINEURS_ET_REGISTRE_DES_TYPISTES ]',
+    'home.roster.tag': '᚛ᛗᛁᚾᛖᚱᛋ᚜',
+    'home.roster.registry': 'REGISTRE : 38 EMPLACEMENTS DE PIERRE OCCUPÉS SUR 50',
+    'home.roster.wpmUnit': 'MPM',
+    'home.roster.showing': '4 FRÈRES DE GUILDE RECONNUS AFFICHÉS SUR 38',
+    'home.roster.expand': '[OUVRIR LE REGISTRE DES ARCHIVES DE LA GUILDE →]',
+    'home.roster.filterAll': '[TOUS LES MINEURS (38)]',
+    'home.roster.filterVeterans': '[GRAVEURS VÉTÉRANS (12)]',
+    'home.roster.filterChampions': '[CHAMPIONS DE FRAPPE (6)]',
+    'home.roster.filterApprentices': '[APPRENTIS (20)]',
+    'home.roster.colIdentity': 'IDENTITÉ DU MINEUR',
+    'home.roster.colSpecialization': 'SPÉCIALISATION',
+    'home.roster.colPeakWpm': 'MPM MAX',
+    'home.roster.colAccuracy': 'PRÉCISION',
+    'home.roster.colStones': 'PIERRES EXTRAITES',
+    'home.roster.colStatus': 'ÉTAT DE CHAMBRE',
+    'home.roster.colOrders': 'ORDRES',
+    'home.miners.urist.rank': '[SURINTENDANT // GRAND OR]',
+    'home.miners.urist.specialization': 'Maître graveur',
+    'home.miners.urist.stones': '148 920 PIERRES',
+    'home.miners.urist.status': 'EN COURSE #MINE-8449',
+    'home.miners.urist.action': '[INSPECTER]',
+    'home.miners.darin.rank': '[CONTREMAÎTRE VÉTÉRAN]',
+    'home.miners.darin.specialization': 'Spécialiste de la pioche',
+    'home.miners.darin.stones': '82 400 PIERRES',
+    'home.miners.darin.status': 'FORGE DES RUNES',
+    'home.miners.darin.action': '[DÉFIER]',
+    'home.miners.thrum.rank': '[CARRIER MASSIF]',
+    'home.miners.thrum.specialization': 'Fendeur de substrat',
+    'home.miners.thrum.stones': '61 120 PIERRES',
+    'home.miners.thrum.status': 'REPOS À LA GRANDE SALLE',
+    'home.miners.thrum.action': '[DÉFIER]',
+    'home.miners.kogan.rank': '[PROSPECTEUR INSTABLE]',
+    'home.miners.kogan.specialization': 'Perceur de tunnel',
+    'home.miners.kogan.stones': '34 500 PIERRES',
+    'home.miners.kogan.status': 'RECONNAISSANCE DU MAGMA',
+    'home.miners.kogan.action': '[SANCTIONNER]',
+    'home.bounties.title': '[ CHAMBRE // CONTRATS_ET_RAIDS_D_EXPÉDITION_ACTIFS ]',
+    'home.bounties.tag': '᚛ᛒᛟᚢᚾᛏᛁᛖᛋ᚜',
+    'home.bounties.count': '3 CONTRATS EN COURS D’EXCAVATION',
+    'home.bounties.vein.title': 'CHAMBRE N° 8849 : COURSE DE LA VEINE D’ADAMANTINE',
+    'home.bounties.vein.meta':
+      '4 TYPISTES DANS LE TUNNEL ▪ VITESSE MAX REQUISE : 90+ MPM ▪ PROFONDEUR TACTIQUE : -520Z',
+    'home.bounties.vein.reward': '+2 500 XP DE GUILDE',
+    'home.bounties.vein.action': '[REJOINDRE LE CONVOI]',
+    'home.bounties.vein.start': '[ENTRÉE : PORTE RUNIQUE]',
+    'home.bounties.vein.lead': 'MENEUR ACTUEL : URIST (82 % EXCAVÉ)',
+    'home.bounties.vein.end': '[CŒUR DE LA VEINE PROFONDE]',
+    'home.bounties.vein.ascii': '[████████████████████████████░░░░░░] 82 %',
+    'home.bounties.magma.title': 'ÉPREUVE DE VITESSE DU PITON DE MAGMA PROFOND (ORDAILE EN SOLO)',
+    'home.bounties.magma.meta': 'EXIGENCE EXTRÊME : >95 MPM ▪ ZÉRO FAUTE (100 % DE PRÉCISION)',
+    'home.bounties.magma.reward': 'PEAU LÉGENDAIRE DE PIOCHE DE MAGMA',
+    'home.bounties.magma.action': '[LANCER L’ÉPREUVE]',
+    'home.bounties.magma.text':
+      'Runes restantes : 420 mots de glyphes de basalte sous pression en fusion.',
+    'home.bounties.magma.status': 'STATUT : NON RÉCLAMÉ AUJOURD’HUI',
+    'home.bounties.decryption.title': 'DÉCRYPTAGE D’UNE ANCIENNE ÉCRITURE RUNIQUE',
+    'home.bounties.decryption.meta':
+      'EXPÉDITION COOPÉRATIVE DE GUILDE ▪ BILINGUE [ANG / LITURGIE LATINE]',
+    'home.bounties.decryption.reward': 'OBJECTIF : 50 000 MOTS',
+    'home.bounties.decryption.action': '[FRAPPER LES RUNES]',
+    'home.bounties.decryption.label': 'PROGRESSION : 39 000 / 50 000 MOTS EXTRAITS',
+    'home.bounties.decryption.pctLabel': '78 % DÉCRYPTÉ',
+    'home.bounties.decryption.ascii': '[====================>          ] 78 % DÉCRYPTÉ',
+    'home.perks.title': '[ AVANTAGES_DE_LA_FORGE_RUNIQUE ]',
+    'home.perks.subtitle': 'RECHERCHES ANCESTRALES ET BONUS',
+    'home.perks.basalt.name': 'Maîtrise du basalte ancien',
+    'home.perks.basalt.status': '[DÉBLOQUÉ]',
+    'home.perks.basalt.description':
+      'Multiplicateur de vitesse MPM de +5 % sur toutes les courses de cavernes volcaniques et de pitons de magma.',
+    'home.perks.basalt.footnote': 'RANG I ▪ APPLIQUÉ À TOUS LES FRÈRES',
+    'home.perks.fault.name': 'Renfort de tolérance aux fautes',
+    'home.perks.fault.status': '[DÉBLOQUÉ]',
+    'home.perks.fault.description':
+      'La pioche résiste à une faute de frappe de plus sans briser l’élan de la série.',
+    'home.perks.fault.footnote': 'RANG II ▪ APPLIQUÉ À TOUS LES FRÈRES',
+    'home.perks.quill.name': 'Plume refroidie au magma',
+    'home.perks.quill.status': 'FORGÉE À 82 %',
+    'home.perks.quill.description':
+      'Aucune latence d’entrée sur les frappes monospaces frénétiques. Runes de dissipation thermique.',
+    'home.perks.quill.estimate': 'ESTIMATION : 4 HEURES RESTANTES',
+    'home.perks.quill.action': '[ALIMENTER EN MINERAI]',
+    'home.perks.beast.name': 'Couperet de la bête oubliée',
+    'home.perks.beast.status': '[VERROUILLÉ : NIV 20]',
+    'home.perks.beast.description':
+      'Rendement d’adamantine de +25 % récolté lors des phases d’affrontement de frappe des Titans.',
+    'home.chronicles.title': '[ CHRONIQUES_DE_LA_GUILDE ]',
+    'home.chronicles.subtitle': 'FIL DES EXPÉDITIONS EN DIRECT // PROTOCOLE ASCII',
+    'home.chronicles.placeholder': 'Gravez une entrée dans la pierre de la forteresse…',
+    'home.chronicles.post': '[PUBLIER]',
+    'home.chronicles.apex.time': 'IL Y A 02 MIN',
+    'home.chronicles.apex.s1': '⚡ Nouveau record de vitesse maximale dans la chambre N° 8849 : ',
+    'home.chronicles.apex.s2': '112 MPM',
+    'home.chronicles.apex.s3': ' avec 0 faute !',
+    'home.chronicles.tithe.time': 'IL Y A 14 MIN',
+    'home.chronicles.tithe.s1': 'Dîme déposée : ',
+    'home.chronicles.tithe.s2': '+400 lingots d’adamantine',
+    'home.chronicles.tithe.s3': ' transférés au coffre.',
+    'home.chronicles.caveIn.time': 'IL Y A 28 MIN',
+    'home.chronicles.caveIn.s1':
+      '⚠ Effondrement mineur dans la sous-veine C ! Une rafale de fautes a réduit la stabilité du tunnel de 4 %.',
+    'home.chronicles.pickaxes.time': 'IL Y A 1 HEURE',
+    'home.chronicles.pickaxes.s1':
+      '3 pioches runiques forgées pour les apprentis typistes qui entrent dans l’épreuve du magma.',
   },
   en: {
     // ------------------------------------------------------------ home race section
@@ -672,5 +935,139 @@ export const MESSAGES: Record<Locale, Messages> = {
     'meta.title': 'Dwarven Scriptures',
     'meta.description':
       'Dwarven Scriptures — a competitive typing-race guild stronghold.',
+    // ------------------------------------------------------------ chrome (navbar, footer)
+    'guild.name': 'Dwarven Scriptures',
+    'guild.tag': '[GUILD: IRONVEIN QUARRY - EXPEDITION #84]',
+    'guild.streak': '🔥 STREAK: 14 STONES',
+    'nav.mineRace': 'Mine Race',
+    'nav.guildRanks': 'Guild Ranks',
+    'nav.runeworks': 'Runeworks',
+    'nav.ledgers': 'Ledgers',
+    'nav.login': '[Login]',
+    'footer.left':
+      '▪ DEPTH: -480 Z-LEVEL (MAGMA CRAG) ▪ ROOM: #EXP-84 (PUBLIC LANTERN) ▪ PROTOCOL: ASCII_SOCKET_v2',
+    'footer.status': 'STATUS: [MINING SYNCHRONIZED]',
+    'footer.optimal': '● SYSTEM OPTIMAL: 112 WPM APEX',
+    // ------------------------------------------------------------ home page (mock content)
+    'home.breadcrumbLeft': '᚛ GUILD_HQ // EXPEDITION_#84 // CITADEL_OF_GRANITE ᚜',
+    'home.breadcrumbRight': 'STATUS: FORTRESS_ACTIVE ▪ DEFENSE_RATING: 9400 ▪ SEAL: INTACT',
+    'home.crest.chapter': 'CHAPTER 84',
+    'home.crest.order': '[ANCIENT ORDER]',
+    'home.crest.name': 'IRONVEIN QUARRY',
+    'home.crest.motto':
+      '\u201CStrike the Deepest Veins, Etch the Sacred Runes with Iron Quill.\u201D',
+    'home.crest.statsExcavators': '⚔ 38 EXCAVATORS ACTIVE',
+    'home.crest.statsHallTier': 'HALL TIER: GRAND STRONGHOLD',
+    'home.vault.adamantine.label': 'ADAMANTINE',
+    'home.vault.adamantine.caption': 'Ingots Stored',
+    'home.vault.magmaFuel.label': 'MAGMA FUEL',
+    'home.vault.rawGems.label': 'RAW GEMS',
+    'home.vault.rawGems.caption': 'Cut & Uncut',
+    'home.vault.hourlyTithe.label': 'HOURLY TITHE',
+    'home.vault.hourlyTithe.caption': 'Active Surge Active',
+    'home.action.contribute': '[CONTRIBUTE TO VAULT]',
+    'home.action.declareRace': '[DECLARE NEW CAVERN RACE]',
+    'home.action.manageEmblem': '[MANAGE EMBLEM & BANNER]',
+    'home.roster.title': '[ CHAMBER // MINER_RANKS_&_TYPIST_ROSTER ]',
+    'home.roster.tag': '᚛ᛗᛁᚾᛖᚱᛋ᚜',
+    'home.roster.registry': 'REGISTRY: 38 OF 50 STONE SLOTS FILLED',
+    'home.roster.wpmUnit': 'WPM',
+    'home.roster.showing': 'SHOWING 4 OF 38 RECOGNIZED GUILD BROTHERS',
+    'home.roster.expand': '[EXPAND GUILD ARCHIVE LEDGER →]',
+    'home.roster.filterAll': '[ALL MINERS (38)]',
+    'home.roster.filterVeterans': '[VETERAN ENGRAVERS (12)]',
+    'home.roster.filterChampions': '[CHAMPION TYPISTS (6)]',
+    'home.roster.filterApprentices': '[APPRENTICES (20)]',
+    'home.roster.colIdentity': 'MINER IDENTITY',
+    'home.roster.colSpecialization': 'SPECIALIZATION',
+    'home.roster.colPeakWpm': 'PEAK WPM',
+    'home.roster.colAccuracy': 'ACCURACY',
+    'home.roster.colStones': 'STONES MINED',
+    'home.roster.colStatus': 'CHAMBER STATUS',
+    'home.roster.colOrders': 'ORDERS',
+    'home.miners.urist.rank': '[OVERSEER // GRAND GOLD]',
+    'home.miners.urist.specialization': 'Master Engraver',
+    'home.miners.urist.stones': '148,920 STONES',
+    'home.miners.urist.status': 'RACING #MINE-8449',
+    'home.miners.urist.action': '[INSPECT]',
+    'home.miners.darin.rank': '[VETERAN FOREMAN]',
+    'home.miners.darin.specialization': 'Pickaxe Specialist',
+    'home.miners.darin.stones': '82,400 STONES',
+    'home.miners.darin.status': 'FORGING RUNES',
+    'home.miners.darin.action': '[CHALLENGE]',
+    'home.miners.thrum.rank': '[HEAVY QUARRIER]',
+    'home.miners.thrum.specialization': 'Bedrock Cleaver',
+    'home.miners.thrum.stones': '61,120 STONES',
+    'home.miners.thrum.status': 'MEAD HALL REST',
+    'home.miners.thrum.action': '[CHALLENGE]',
+    'home.miners.kogan.rank': '[UNSTABLE PROSPECTOR]',
+    'home.miners.kogan.specialization': 'Tunnel Breaker',
+    'home.miners.kogan.stones': '34,500 STONES',
+    'home.miners.kogan.status': 'SCOUTING MAGMA',
+    'home.miners.kogan.action': '[DISCIPLINE]',
+    'home.bounties.title': '[ CHAMBER // ACTIVE_EXPEDITION_CONTRACTS_&_RAIDS ]',
+    'home.bounties.tag': '᚛ᛒᛟᚢᚾᛏᛁᛖᛋ᚜',
+    'home.bounties.count': '3 BOUNTIES UNDER EXCAVATION',
+    'home.bounties.vein.title': 'CHAMBER #8849: ADAMANTINE VEIN RACE',
+    'home.bounties.vein.meta': '4 TYPISTS IN TUNNEL ▪ APEX SPEED REQ: 90+ WPM ▪ TACTICAL DEPTH: -520Z',
+    'home.bounties.vein.reward': '+2,500 GUILD XP',
+    'home.bounties.vein.action': '[JOIN CART]',
+    'home.bounties.vein.start': '[ENTRANCE: RUNIC GATE]',
+    'home.bounties.vein.lead': 'CURRENT LEAD: URIST (82% EXCAVATED)',
+    'home.bounties.vein.end': '[DEEP VEIN CORE]',
+    'home.bounties.vein.ascii': '[████████████████████████████░░░░░░] 82%',
+    'home.bounties.magma.title': 'DEEP MAGMA CRAG SPEED TRIAL (SOLO ORDEAL)',
+    'home.bounties.magma.meta': 'HARDCORE REQUIREMENT: >95 WPM ▪ ZERO FAULTS (100% ACCURACY)',
+    'home.bounties.magma.reward': 'LEGENDARY MAGMA PICKAXE SKIN',
+    'home.bounties.magma.action': '[COMMENCE TRIAL]',
+    'home.bounties.magma.text': 'Runes Remaining: 420 words of basalt glyphs under molten pressure.',
+    'home.bounties.magma.status': 'STATUS: UNCLAIMED TODAY',
+    'home.bounties.decryption.title': 'ANCIENT RUNIC SCRIPTURE DECRYPTION',
+    'home.bounties.decryption.meta': 'COOPERATIVE GUILD DELVE ▪ DUAL LINGUAL [ENG / LATIN LITURGY]',
+    'home.bounties.decryption.reward': 'GOAL: 50,000 WORDS',
+    'home.bounties.decryption.action': '[TYPE RUNES]',
+    'home.bounties.decryption.label': 'PROGRESSION: 39,000 / 50,000 WORDS MINED',
+    'home.bounties.decryption.pctLabel': '78% DECRYPTED',
+    'home.bounties.decryption.ascii': '[====================>          ] 78% DECRYPTED',
+    'home.perks.title': '[ RUNIC_FORGE_PERKS ]',
+    'home.perks.subtitle': 'ANCESTRAL RESEARCH & BUFFS',
+    'home.perks.basalt.name': 'Ancient Basalt Mastery',
+    'home.perks.basalt.status': '[UNLOCKED]',
+    'home.perks.basalt.description':
+      '+5% WPM velocity multiplier across all volcanic cavern and magma crag race courses.',
+    'home.perks.basalt.footnote': 'TIER I ▪ APPLIED TO ALL BROTHERS',
+    'home.perks.fault.name': 'Fault Tolerance Reinforcement',
+    'home.perks.fault.status': '[UNLOCKED]',
+    'home.perks.fault.description':
+      'Pickaxe withstands +1 typo fault without shattering rock streak momentum.',
+    'home.perks.fault.footnote': 'TIER II ▪ APPLIED TO ALL BROTHERS',
+    'home.perks.quill.name': 'Magma-Cooled Quill',
+    'home.perks.quill.status': '82% FORGED',
+    'home.perks.quill.description':
+      'Zero input lag buffering on frantic monospaced keystrokes. Heat dissipation runes.',
+    'home.perks.quill.estimate': 'EST: 4 HOURS REMAINING',
+    'home.perks.quill.action': '[FEED ORE]',
+    'home.perks.beast.name': 'Forgotten Beast Cleaver',
+    'home.perks.beast.status': '[LOCKED: LVL 20]',
+    'home.perks.beast.description':
+      '+25% Adamantine yield harvested from Titan keystroke encounter phases.',
+    'home.chronicles.title': '[ GUILD_CHRONICLES ]',
+    'home.chronicles.subtitle': 'LIVE EXPEDITION TICKER // PROTOCOL ASCII',
+    'home.chronicles.placeholder': 'Carve entry into the stronghold stone...',
+    'home.chronicles.post': '[POST]',
+    'home.chronicles.apex.time': '02 MINS AGO',
+    'home.chronicles.apex.s1': '⚡ New Apex Speed Record set in Chamber #8849: ',
+    'home.chronicles.apex.s2': '112 WPM',
+    'home.chronicles.apex.s3': ' with 0 faults!',
+    'home.chronicles.tithe.time': '14 MINS AGO',
+    'home.chronicles.tithe.s1': 'Tithe deposited: ',
+    'home.chronicles.tithe.s2': '+400 Adamantine Ingots',
+    'home.chronicles.tithe.s3': ' transferred to Vault.',
+    'home.chronicles.caveIn.time': '28 MINS AGO',
+    'home.chronicles.caveIn.s1':
+      '⚠ Minor Cave-in triggered in Sub-Vein C! Typo burst dropped tunnel stability by 4%.',
+    'home.chronicles.pickaxes.time': '1 HOUR AGO',
+    'home.chronicles.pickaxes.s1':
+      'Crafted 3x Rune Pickaxes for apprentice typists entering the magma trial.',
   },
 };

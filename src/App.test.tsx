@@ -24,7 +24,7 @@ test('renders the guild stronghold heading', () => {
 
 test('renders the expedition roster section', () => {
   render(<App messages={MESSAGES.fr} locale="fr" />);
-  expect(screen.getByText(/miner_ranks_&_typist_roster/i)).toBeInTheDocument();
+  expect(screen.getByText(/rangs_des_mineurs_et_registre_des_typistes/i)).toBeInTheDocument();
 });
 
 test('renders the race cavern with quick play, join and the guest create empty state', () => {
