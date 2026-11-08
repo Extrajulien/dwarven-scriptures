@@ -6,16 +6,18 @@ design for the parts that are not built yet. Decisions are written as ADRs
 design intentions, not implemented code** — do not treat them as done.
 
 Current state: authentication (password + GitHub/Discord OAuth), the account
-profile screen, the Dwarf-Fortress-inspired UI shell and the Drizzle/PostgreSQL
+profile screen, the Dwarf-Fortress-inspired UI shell, the Drizzle/PostgreSQL
 data layer (users plus the seeded `texts` corpus and `word_dictionaries` word
-pools) are implemented. The rooms data layer is now implemented too: the
-`rooms`, `room_members` and `invitation_links` tables, the room queries
-(`src/db/queries/rooms.ts`, `invitations.ts`), the pure room rules
-(`src/lib/room-rules.ts`), the host-configurable race settings
-(`src/lib/room-config.ts`), the signed guest cookie (`src/lib/guest-session.ts`),
-rate limiting (`src/lib/rate-limit.ts`) and the Zod-validated server actions
-(`src/app/rooms/actions.ts`). No room UI exists yet, and the real-time layer,
-the race engine, bots and bonuses are still not built.
+pools) and the rooms data layer (`rooms`, `room_members`, `invitation_links`,
+queries, rules, actions) are implemented. The realtime layer is implemented
+for checkpoint 1 (ADR-010, Decision A): a `ws` server on the same HTTP server
+as Next.js (`server.ts` custom server), a Zod-validated protocol
+(`src/realtime/protocol.ts`), a transport-agnostic room hub
+(`src/realtime/hub.ts`) with presence/heartbeat/kick/close/config broadcasts,
+the Postgres adapter (`src/realtime/room-store.ts`), the action→hub bridge
+(`src/realtime/events.ts`) and the typed client hook
+(`src/realtime/useRoomSocket.ts`). No room UI exists yet; the race engine,
+bots and bonuses are still not built.
 
 ## Folder layout
 
@@ -25,8 +27,10 @@ the race engine, bots and bonuses are still not built.
 | `src/components/` | Presentational UI components (auth forms, account screen, theme shell) |
 | `src/data/` | Static UI data (site identity, form labels, mock content) |
 | `src/db/` | Drizzle schema (`schema.ts`), client, migration runner, `queries/` (one module per aggregate) |
-| `src/lib/` | Pure business logic: password hashing, validation, sessions, OAuth |
+| `src/lib/` | Pure business logic: password hashing, validation, sessions, OAuth, token codecs |
+| `src/realtime/` | Realtime layer: `protocol.ts` (Zod schemas), `hub.ts` (transport-agnostic hub), `room-store.ts` (Postgres adapter), `server.ts` (ws wiring), `events.ts` (action→hub bridge), `useRoomSocket.ts` (client hook) |
 | `src/sprites/` | Sprite registry, auto-tiling and tile rendering (the visual identity) |
+| `server.ts` | Custom server entry (ADR-010): one process for Next.js + the `/ws` realtime layer |
 | `drizzle/` | Generated SQL migrations + journal (committed, never hand-edited) |
 | `stitch/` | Design mockup reference text |
 | `doc/` | Documentation |
@@ -386,17 +390,79 @@ player who returns within 30 s resumes in place (COURSE-08).
   (BOT-05); the five level ranges (BOT-01) map to schedule parameters to be
   documented when implemented.
 
-## Planned real-time message flow *(design only)*
+## Real-time message flow
+
+### Implemented (checkpoint 1) — `src/realtime/protocol.ts`
+
+Every message in both directions is validated with a Zod v4 schema (TECH-07).
+Client → server:
+
+* `joinRoom` — by 6-char **code** XOR **invitation token** (SALLE-02/04);
+  optional `nickname` for guests, which must match the signed `guest` cookie
+  (the cookie itself is written by the `setGuestNickname` action over HTTP —
+  a 101 upgrade response cannot carry `Set-Cookie`). Admission applies the
+  same queries as the server actions: status `en_attente`/`resultats` only
+  (SALLE-09), capacity (SALLE-05), kick history (SALLE-07), one-active-room
+  (SALLE-06), rate limit 10/60 s per IP (SALLE-10).
+* `leaveRoom`, `ping`.
+
+Server → client:
+
+* `roomSnapshot` — the authoritative state sent right after a join: room
+  public info (code, visibility, status, capacity), the Zod-validated config
+  (CONF-12), the host's public identity and every present member with public
+  display info (users: `publicId`/username/avatar; guests: token + nickname —
+  `null` until that guest holds a live connection, because nicknames live in
+  the signed cookie, not the database).
+* `memberJoined` / `memberLeft` / `memberKicked` — presence events with the
+  same public member shape (`connected` reflects the live socket).
+* `hostChanged` (SALLE-08), `configUpdated` (CONF-12), `roomClosed` — emitted
+  by the host actions through `src/realtime/events.ts` into the in-process
+  hub (Decision A: one process, so no NOTIFY bridge is needed).
+* `error` with a typed code: `room_not_found`, `room_full`,
+  `already_in_room`, `kicked`, `invalid_input`, `private_room` (reserved),
+  `rate_limited`. `room_not_found` also covers "not joinable right now" and
+  private rooms reached by code (SALLE-03 never reveals existence).
+* `pong`.
+
+Lifecycle rules implemented by the hub (`src/realtime/hub.ts`): one live
+connection per membership (a second connection replaces the first, which is
+closed with `error(already_in_room)` — the newest tab wins); a ws-level
+heartbeat (~30 s ping, dead socket evicted in ~30–60 s) whose eviction applies
+the normal departure path; graceful shutdown closes every socket and marks all
+memberships left. **Phase-1 reconnection is a plain re-join by code/token** —
+COURSE-08's 30-second mid-race resume is Phase 2.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Server (authoritative, one process)
+    participant DB as PostgreSQL
+    C->>S: HTTP: create room / set nickname (server actions)
+    S->>DB: insert room + host membership / guest cookie
+    C->>S: WS upgrade /ws (session or guest cookie, Origin checked)
+    C->>S: joinRoom {code | invitationToken}
+    S->>DB: admission query + membership insert
+    S-->>C: roomSnapshot (room + config + members)
+    S-->>C: memberJoined (to the other members)
+    C->>S: ping
+    S-->>C: pong
+    C->>S: leaveRoom
+    S->>DB: mark left (+ SALLE-08 handover / close)
+    S-->>C: memberLeft (+ hostChanged / roomClosed)
+```
+
+### Planned (Phase 2) — race messages, design only
+
+The flow below extends the implemented protocol once the race engine lands;
+nothing here is built yet:
 
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant S as Server (authoritative)
     participant DB as PostgreSQL
-    C->>S: join room (code / invitation token)
-    S->>DB: validate, insert membership
-    S-->>C: room state + config (CONF-12)
-    S-->>C: presence updates (members join/leave)
+    C->>S: host starts the race (server action)
     S-->>C: countdown sync (3-2-1, text revealed)
     C->>S: progress (validated char index)
     S-->>C: ticks <=10 msg/s: positions, WPM, ranking
