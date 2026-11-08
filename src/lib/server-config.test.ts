@@ -34,14 +34,21 @@ describe('resolvePort (TECH-05)', () => {
 });
 
 describe('resolveHostname (TECH-05)', () => {
-  test('defaults to 0.0.0.0 so the container proxy can reach the process', () => {
+  test('defaults to the dual-stack any address so IPv4 and IPv6 both work', () => {
     expect(resolveHostname(undefined)).toBe(DEFAULT_HOSTNAME);
     expect(resolveHostname('')).toBe(DEFAULT_HOSTNAME);
     expect(resolveHostname('   ')).toBe(DEFAULT_HOSTNAME);
+    expect(DEFAULT_HOSTNAME).toBe('::');
   });
 
-  test('keeps an explicit hostname, trimmed', () => {
+  test('keeps an explicit IP literal, trimmed', () => {
     expect(resolveHostname('127.0.0.1')).toBe('127.0.0.1');
-    expect(resolveHostname('  ::  ')).toBe('::');
+    expect(resolveHostname('  ::1  ')).toBe('::1');
+    expect(resolveHostname('0.0.0.0')).toBe('0.0.0.0');
+  });
+
+  test('rejects hostnames (platform container names resolve to one family only)', () => {
+    expect(resolveHostname('877fb8a387fa')).toBe(DEFAULT_HOSTNAME);
+    expect(resolveHostname('localhost')).toBe(DEFAULT_HOSTNAME);
   });
 });

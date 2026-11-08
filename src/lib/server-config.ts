@@ -6,8 +6,16 @@
  * entry, which starts the whole application when evaluated.
  */
 
+import { isIP } from 'node:net';
+
 export const DEFAULT_PORT = 3000;
-export const DEFAULT_HOSTNAME = '0.0.0.0';
+/**
+ * `::` — the IPv6 any address with Node's default dual-stack behaviour, so
+ * the single socket accepts both IPv4 and IPv6 connections. Railway's edge
+ * proxy dials containers over their IPv6 ULA address, so an IPv4-only
+ * binding answers 502 there (verified via network flow logs, TECH-05).
+ */
+export const DEFAULT_HOSTNAME = '::';
 
 /**
  * Resolves the listen port: the `PORT` environment variable when it parses
@@ -25,11 +33,14 @@ export function resolvePort(raw: string | undefined): number {
 }
 
 /**
- * Resolves the bind hostname: `HOSTNAME` env var or `0.0.0.0` (all
- * interfaces), which is what a container platform such as Railway needs to
- * reach the process. An empty value falls back to the default.
+ * Resolves the bind address: an explicit `HOSTNAME` that is an IP literal
+ * (v4 or v6) is kept, everything else falls back to `::` (all interfaces,
+ * both families). Hostnames are deliberately rejected: platforms such as
+ * Railway set `HOSTNAME` to the container name, which resolves to one
+ * address family only and silently breaks the other (IPv6) side of their
+ * proxying.
  */
 export function resolveHostname(raw: string | undefined): string {
   const trimmed = typeof raw === 'string' ? raw.trim() : '';
-  return trimmed.length > 0 ? trimmed : DEFAULT_HOSTNAME;
+  return isIP(trimmed) !== 0 ? trimmed : DEFAULT_HOSTNAME;
 }
