@@ -2,9 +2,11 @@
 
 import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { loginUser } from '../../app/login/actions';
-import { LOGIN_FORM } from '../../data/loginData';
+import { registerUser } from '../../app/register/actions';
+import { REGISTER_FORM } from '../../data/registerData';
+import type { RegisterFieldErrors } from '../../lib/register-validation';
 import ButtonPrimary from '../ButtonPrimary';
+import PasswordStrengthBar from './PasswordStrengthBar';
 
 function PickaxeIcon() {
   return (
@@ -81,7 +83,7 @@ function HammerIcon() {
   );
 }
 
-function FieldError({ id, message }) {
+function FieldError({ id, message }: { id: string; message: string }) {
   return (
     <p id={id} role="alert" className="text-xs font-medium text-dwarf-magma">
       {message}
@@ -89,28 +91,31 @@ function FieldError({ id, message }) {
   );
 }
 
-export default function LoginForm() {
-  const [state, formAction, pending] = useActionState(loginUser, null);
+export default function RegisterForm() {
+  const [state, formAction, pending] = useActionState(registerUser, null);
   const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState('');
   const router = useRouter();
 
   useEffect(() => {
     if (state && state.ok) {
-      router.replace('/');
+      router.replace('/login');
     }
   }, [state, router]);
 
-  const fieldErrors = state && state.ok === false ? state.fieldErrors : {};
+  const fieldErrors: RegisterFieldErrors =
+    state && state.ok === false ? state.fieldErrors : {};
   const usernameError = fieldErrors.username;
   const passwordError = fieldErrors.password;
-  const formError = state && state.ok === false ? state.formError : undefined;
+  const confirmPasswordError = fieldErrors.confirmPassword;
+  const hasUnexpectedError =
+    state && state.ok === false && state.formError === 'unexpected';
 
   return (
     <form
       className="space-y-4"
-      data-purpose="scribe-login-form"
+      data-purpose="scribe-registration-form"
       action={formAction}
-      noValidate
     >
       {/* Callsign / username field */}
       <div className="space-y-1.5">
@@ -120,12 +125,12 @@ export default function LoginForm() {
             className="flex items-center space-x-1.5 text-xs font-bold uppercase tracking-wide text-dwarf-parchment"
           >
             <span className="font-bold text-dwarf-gold">
-              {LOGIN_FORM.callsign.rune}
+              {REGISTER_FORM.callsign.rune}
             </span>
-            <span>{LOGIN_FORM.callsign.label}</span>
+            <span>{REGISTER_FORM.callsign.label}</span>
           </label>
           <span className="text-label-sm text-dwarf-parchmentMuted">
-            {LOGIN_FORM.callsign.hint}
+            {REGISTER_FORM.callsign.hint}
           </span>
         </div>
         <div className="relative">
@@ -138,7 +143,7 @@ export default function LoginForm() {
             type="text"
             autoComplete="username"
             required
-            placeholder={LOGIN_FORM.callsign.placeholder}
+            placeholder={REGISTER_FORM.callsign.placeholder}
             aria-invalid={usernameError ? true : undefined}
             aria-describedby={usernameError ? 'username-error' : undefined}
             className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-3 font-mono text-sm text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
@@ -147,7 +152,7 @@ export default function LoginForm() {
         {usernameError && (
           <FieldError
             id="username-error"
-            message={LOGIN_FORM.errors.username[usernameError]}
+            message={REGISTER_FORM.errors.username[usernameError]}
           />
         )}
       </div>
@@ -160,12 +165,12 @@ export default function LoginForm() {
             className="flex items-center space-x-1.5 text-xs font-bold uppercase tracking-wide text-dwarf-parchment"
           >
             <span className="font-bold text-dwarf-gold">
-              {LOGIN_FORM.password.rune}
+              {REGISTER_FORM.password.rune}
             </span>
-            <span>{LOGIN_FORM.password.label}</span>
+            <span>{REGISTER_FORM.password.label}</span>
           </label>
           <span className="text-label-sm text-dwarf-parchmentMuted">
-            {LOGIN_FORM.password.hint}
+            {REGISTER_FORM.password.hint}
           </span>
         </div>
         <div className="relative">
@@ -176,9 +181,11 @@ export default function LoginForm() {
             id="cipher-input"
             name="password"
             type={showPassword ? 'text' : 'password'}
-            autoComplete="current-password"
+            autoComplete="new-password"
             required
-            placeholder={LOGIN_FORM.password.placeholder}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder={REGISTER_FORM.password.placeholder}
             aria-invalid={passwordError ? true : undefined}
             aria-describedby={passwordError ? 'password-error' : undefined}
             className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
@@ -194,39 +201,90 @@ export default function LoginForm() {
             <EyeIcon />
           </button>
         </div>
+        <PasswordStrengthBar password={password} />
         {passwordError && (
           <FieldError
             id="password-error"
-            message={LOGIN_FORM.errors.password[passwordError]}
+            message={REGISTER_FORM.errors.password[passwordError]}
           />
         )}
       </div>
 
-      {/* Remember checkbox */}
+      {/* Confirm password field */}
+      <div className="space-y-1.5 pt-1">
+        <div className="flex items-center justify-between text-xs">
+          <label
+            htmlFor="confirm-cipher-input"
+            className="flex items-center space-x-1.5 text-xs font-bold uppercase tracking-wide text-dwarf-parchment"
+          >
+            <span className="font-bold text-dwarf-gold">
+              {REGISTER_FORM.confirmPassword.rune}
+            </span>
+            <span>{REGISTER_FORM.confirmPassword.label}</span>
+          </label>
+          <span className="text-label-sm text-dwarf-parchmentMuted">
+            {REGISTER_FORM.confirmPassword.hint}
+          </span>
+        </div>
+        <div className="relative">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-dwarf-gold">
+            <LockIcon />
+          </div>
+          <input
+            id="confirm-cipher-input"
+            name="confirmPassword"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="new-password"
+            required
+            placeholder={REGISTER_FORM.confirmPassword.placeholder}
+            aria-invalid={confirmPasswordError ? true : undefined}
+            aria-describedby={confirmPasswordError ? 'confirm-password-error' : undefined}
+            className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
+          />
+          <button
+            type="button"
+            aria-label="Toggle confirm password visibility"
+            onClick={() => setShowPassword((visible) => !visible)}
+            className={`absolute inset-y-0 right-0 flex items-center pr-3 transition-colors focus:outline-none ${
+              showPassword ? 'text-dwarf-gold' : 'text-dwarf-parchmentMuted hover:text-dwarf-gold'
+            }`}
+          >
+            <EyeIcon />
+          </button>
+        </div>
+        {confirmPasswordError && (
+          <FieldError
+            id="confirm-password-error"
+            message={REGISTER_FORM.errors.confirmPassword[confirmPasswordError]}
+          />
+        )}
+      </div>
+
+      {/* Terms checkbox */}
       <div className="flex items-center justify-between pt-1">
         <label className="flex cursor-pointer select-none items-center space-x-2">
           <input
             type="checkbox"
-            name="remember_scribe"
+            name="accept_oath"
             className="dwarf-checkbox h-4 w-4 rounded-none border-[#3f382d] bg-[#121110] text-dwarf-gold transition focus:border-dwarf-gold focus:ring-0 focus:ring-offset-0"
           />
           <span className="text-xs tracking-tight text-dwarf-parchmentMuted">
-            {LOGIN_FORM.remember}
+            {REGISTER_FORM.terms}
           </span>
         </label>
       </div>
 
       {/* Primary submit */}
       <div className="pt-2">
-        {formError && (
+        {hasUnexpectedError && (
           <p role="alert" className="mb-3 text-xs font-medium text-dwarf-magma">
-            {LOGIN_FORM.errors.form[formError]}
+            {REGISTER_FORM.errors.form.unexpected}
           </p>
         )}
         <ButtonPrimary type="submit" disabled={pending} className="w-full">
           <HammerIcon />
           <span className="font-bold">
-            {pending ? LOGIN_FORM.submitPending : LOGIN_FORM.submit}
+            {pending ? REGISTER_FORM.submitPending : REGISTER_FORM.submit}
           </span>
         </ButtonPrimary>
       </div>

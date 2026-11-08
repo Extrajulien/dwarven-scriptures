@@ -1,3 +1,4 @@
+import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import RegisterForm from './RegisterForm';
 import { registerUser } from '../../app/register/actions';
@@ -12,16 +13,21 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
 }));
 
+const mockedRegisterUser = jest.mocked(registerUser);
+
 function submitForm() {
   const form = document.querySelector(
     'form[data-purpose="scribe-registration-form"]',
   );
+  if (!form) {
+    throw new Error('scribe-registration-form not found');
+  }
   fireEvent.submit(form);
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
-  registerUser.mockReset();
+  mockedRegisterUser.mockReset();
 });
 
 test('toggles the password field visibility', () => {
@@ -42,7 +48,7 @@ test('toggles the password field visibility', () => {
 });
 
 test('renders a validation error under each invalid field', async () => {
-  registerUser.mockResolvedValueOnce({
+  mockedRegisterUser.mockResolvedValueOnce({
     ok: false,
     fieldErrors: {
       username: 'usernameTaken',
@@ -60,7 +66,7 @@ test('renders a validation error under each invalid field', async () => {
 });
 
 test('renders a generic error when the action reports an unexpected failure', async () => {
-  registerUser.mockResolvedValueOnce({
+  mockedRegisterUser.mockResolvedValueOnce({
     ok: false,
     fieldErrors: {},
     formError: 'unexpected',

@@ -1,4 +1,8 @@
-import { passwordStrength, passwordStrengthScore } from '../../lib/password';
+import {
+  passwordStrength,
+  passwordStrengthScore,
+  type PasswordStrength,
+} from '../../lib/password';
 import { REGISTER_FORM } from '../../data/registerData';
 
 /**
@@ -12,14 +16,14 @@ import { REGISTER_FORM } from '../../data/registerData';
  * - `strong`     → green, 80–100%
  */
 
-const FILL_CLASSES = {
+const FILL_CLASSES: Record<PasswordStrength, string> = {
   empty: 'bg-transparent',
   weak: 'bg-[#dc2626]',
   acceptable: 'bg-dwarf-goldLight',
   strong: 'bg-dwarf-runeBright',
 };
 
-export default function PasswordStrengthBar({ password }) {
+export default function PasswordStrengthBar({ password }: { password: string }) {
   const tier = passwordStrength(password);
   const score = passwordStrengthScore(password);
 
