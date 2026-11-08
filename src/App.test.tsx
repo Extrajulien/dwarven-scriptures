@@ -15,6 +15,11 @@ jest.mock('./db/index', () => ({ db: {} }));
 // (Node-only); keep them out of the jsdom test run too.
 jest.mock('./i18n/locale-actions', () => ({ setLocale: jest.fn() }));
 
+// The navbar now embeds the theme selector (DES-05); provide a context stub.
+jest.mock('./theme/ThemeProvider', () => ({
+  useTheme: () => ({ preference: 'system', theme: 'dark', setPreference: jest.fn() }),
+}));
+
 test('renders the guild stronghold heading', () => {
   render(<App messages={MESSAGES.fr} locale="fr" />);
   expect(

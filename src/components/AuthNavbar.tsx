@@ -1,6 +1,7 @@
 import { SITE } from '../data/site';
 import type { Locale, Messages } from '../i18n/messages';
 import LocaleSelector from './Navbar/LocaleSelector';
+import ThemeSelector from './Navbar/ThemeSelector';
 import ButtonSecondary from './ButtonSecondary';
 
 /**
@@ -28,7 +29,11 @@ export default function AuthNavbar({
           {SITE.name}
         </span>
       </ButtonSecondary>
-      <LocaleSelector locale={locale} messages={messages} />
+      <div className="flex items-center gap-space-md">
+        <LocaleSelector locale={locale} messages={messages} />
+        {/* DES-05: theme selector also reachable from the auth screens. */}
+        <ThemeSelector messages={messages} />
+      </div>
     </header>
   );
 }

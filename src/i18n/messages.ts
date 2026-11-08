@@ -263,6 +263,14 @@ export interface Messages {
   'locale.en': string;
   'locale.switchToFr': string;
   'locale.switchToEn': string;
+  // ------------------------------------------------------------ theme selector (DES-05)
+  'theme.group': string;
+  'theme.light': string;
+  'theme.dark': string;
+  'theme.system': string;
+  'theme.switchToLight': string;
+  'theme.switchToDark': string;
+  'theme.switchToSystem': string;
   // ------------------------------------------------------------ page metadata
   'meta.title': string;
   'meta.description': string;
@@ -835,6 +843,14 @@ export const MESSAGES: Record<Locale, Messages> = {
     'locale.en': 'EN',
     'locale.switchToFr': 'Passer l’interface en français',
     'locale.switchToEn': 'Passer l’interface en anglais',
+    // ------------------------------------------------------------ theme selector (DES-05)
+    'theme.group': 'Thème',
+    'theme.light': 'Thème clair',
+    'theme.dark': 'Thème sombre',
+    'theme.system': 'Thème du système',
+    'theme.switchToLight': 'Passer au thème clair',
+    'theme.switchToDark': 'Passer au thème sombre',
+    'theme.switchToSystem': 'Utiliser le thème du système',
     // ------------------------------------------------------------ page metadata
     'meta.title': 'Dwarven Scriptures',
     'meta.description':
@@ -1424,6 +1440,14 @@ export const MESSAGES: Record<Locale, Messages> = {
     'locale.en': 'EN',
     'locale.switchToFr': 'Switch the interface to French',
     'locale.switchToEn': 'Switch the interface to English',
+    // ------------------------------------------------------------ theme selector (DES-05)
+    'theme.group': 'Theme',
+    'theme.light': 'Light theme',
+    'theme.dark': 'Dark theme',
+    'theme.system': 'System theme',
+    'theme.switchToLight': 'Switch to the light theme',
+    'theme.switchToDark': 'Switch to the dark theme',
+    'theme.switchToSystem': 'Use the system theme',
     // ------------------------------------------------------------ page metadata
     'meta.title': 'Dwarven Scriptures',
     'meta.description':

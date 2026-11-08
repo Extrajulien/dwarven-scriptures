@@ -9,6 +9,11 @@ jest.mock('../../i18n/locale-actions', () => ({
   setLocale: jest.fn(),
 }));
 
+// The navbar now embeds the theme selector (DES-05); provide a context stub.
+jest.mock('../../theme/ThemeProvider', () => ({
+  useTheme: () => ({ preference: 'system', theme: 'dark', setPreference: jest.fn() }),
+}));
+
 /**
  * I18N-02: the navbar renders the FR/EN selector with real labels and marks
  * the active locale.

@@ -1,6 +1,7 @@
 import { GUILD, NAV_LINKS } from '../../data/homepageData';
 import type { Locale, Messages } from '../../i18n/messages';
 import LocaleSelector from './LocaleSelector';
+import ThemeSelector from './ThemeSelector';
 import PersonalAccount from './PersonalAccount';
 
 export type NavUser = { username: string; pfpUrl?: string | null };
@@ -58,6 +59,8 @@ export default function Navbar({
         <div className="flex items-center gap-space-md">
           {/* I18N-02: visible on every breakpoint (desktop and mobile). */}
           <LocaleSelector locale={locale} messages={messages} />
+          {/* DES-05: Light / Dark / System theme selector. */}
+          <ThemeSelector messages={messages} />
 
           <PersonalAccount user={user} messages={messages} />
         </div>
