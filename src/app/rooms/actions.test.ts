@@ -9,19 +9,19 @@
  */
 
 import { headers } from 'next/headers';
-import {
-  createInvitationLinks as createInvitationLinksQuery,
-} from '../../db/queries/invitations';
+import { createInvitationLinks as createInvitationLinksQuery } from '../../db/queries/invitations';
 import {
   AlreadyInRoomError,
   closeRoom as closeRoomQuery,
   createRoom as createRoomQuery,
   findHostSuccessorForRoom,
   getActiveMemberId,
+  getActiveRoomOfIdentity,
   getRoomByCode,
   getRoomInternalByPublicId,
   joinRoom as joinRoomQuery,
   kickMember as kickMemberQuery,
+  listPublicRooms,
   markMemberLeft,
   NotHostCandidateError,
   RoomFullError,
@@ -42,6 +42,15 @@ import { getSession } from '../../lib/session';
 
 jest.mock('next/headers', () => ({
   headers: jest.fn(),
+}));
+
+jest.mock('next/navigation', () => ({
+  redirect: jest.fn((path: string) => {
+    // Mirrors the real control-flow throw of next/navigation's redirect().
+    const error = new Error(`NEXT_REDIRECT to ${path}`) as Error & { digest: string };
+    error.digest = `NEXT_REDIRECT;replace;${path};307;`;
+    throw error;
+  }),
 }));
 
 jest.mock('../../db/index', () => ({ db: {} }));
@@ -75,6 +84,8 @@ jest.mock('../../db/queries/rooms', () => {
     getRoomByCode: jest.fn(),
     getRoomInternalByPublicId: jest.fn(),
     getActiveMemberId: jest.fn(),
+    getActiveRoomOfIdentity: jest.fn(),
+    listPublicRooms: jest.fn(),
     findHostSuccessorForRoom: jest.fn(),
     kickMember: jest.fn(),
     closeRoom: jest.fn(),
@@ -93,13 +104,17 @@ import {
   closeRoom,
   createRoom,
   generateInvitationLinks,
+  joinByCodeFormAction,
   joinRoomByCode,
   kickMember,
+  leaveAndJoinFormAction,
   leaveRoom,
+  quickPlay,
   setGuestNickname,
   transferHost,
   updateRoomConfig,
 } from './actions';
+import { redirect } from 'next/navigation';
 import { defaultRoomConfig } from '../../lib/room-config';
 import type { RoomConfig } from '../../db/schema';
 
@@ -113,6 +128,8 @@ const joinRoomQueryMock = joinRoomQuery as jest.Mock;
 const getRoomByCodeMock = getRoomByCode as jest.Mock;
 const getRoomInternalByPublicIdMock = getRoomInternalByPublicId as jest.Mock;
 const getActiveMemberIdMock = getActiveMemberId as jest.Mock;
+const getActiveRoomOfIdentityMock = getActiveRoomOfIdentity as jest.Mock;
+const listPublicRoomsMock = listPublicRooms as jest.Mock;
 const findHostSuccessorForRoomMock = findHostSuccessorForRoom as jest.Mock;
 const kickMemberQueryMock = kickMemberQuery as jest.Mock;
 const closeRoomQueryMock = closeRoomQuery as jest.Mock;
@@ -122,6 +139,7 @@ const markMemberLeftMock = markMemberLeft as jest.Mock;
 const createInvitationLinksQueryMock = createInvitationLinksQuery as jest.Mock;
 const limiterCheckMock = roomCodeJoinLimiter.check as jest.Mock;
 const limiterResetMock = roomCodeJoinLimiter.reset as jest.Mock;
+const redirectMock = redirect as unknown as jest.Mock;
 
 const ROOM_PUBLIC_ID = '11111111-1111-4111-8111-111111111111';
 const USER_PUBLIC_ID = '22222222-2222-4222-8222-222222222222';
@@ -175,6 +193,11 @@ function noActor(): void {
 beforeEach(() => {
   jest.resetAllMocks();
   limiterCheckMock.mockImplementation(() => undefined);
+  redirectMock.mockImplementation((path: string) => {
+    const error = new Error(`NEXT_REDIRECT to ${path}`) as Error & { digest: string };
+    error.digest = `NEXT_REDIRECT;replace;${path};307;`;
+    throw error;
+  });
   (headers as jest.Mock).mockResolvedValue({
     get: (name: string) => (name === 'x-forwarded-for' ? '203.0.113.7, 10.0.0.1' : null),
   });
@@ -389,7 +412,6 @@ describe('joinRoomByCode (SALLE-02/09/10)', () => {
   test.each([
     [new RoomFullError(10), 'roomFull'],
     [new RoomMemberKickedError(), 'kicked'],
-    [new AlreadyInRoomError(), 'alreadyInRoom'],
     [new RoomNotJoinableError('en_course'), 'roomNotJoinable'],
     [new RoomNotFoundError('x'), 'roomNotFound'],
   ])('maps %p to %s', async (thrown, code) => {
@@ -401,6 +423,20 @@ describe('joinRoomByCode (SALLE-02/09/10)', () => {
       ok: false,
       error: code,
     });
+  });
+
+  test('alreadyInRoom carries the current room identity (SALLE-06)', async () => {
+    userActor();
+    getRoomByCodeMock.mockResolvedValue(roomRow);
+    joinRoomQueryMock.mockRejectedValue(new AlreadyInRoomError());
+    getActiveRoomOfIdentityMock.mockResolvedValue({ publicId: ROOM_PUBLIC_ID, code: 'GHJKM2' });
+
+    await expect(joinRoomByCode({ code: 'ABCDEF' })).resolves.toEqual({
+      ok: false,
+      error: 'alreadyInRoom',
+      currentRoom: { publicId: ROOM_PUBLIC_ID, code: 'GHJKM2' },
+    });
+    expect(getActiveRoomOfIdentityMock).toHaveBeenCalledWith({ userId: 7 });
   });
 });
 
@@ -635,5 +671,185 @@ describe('validation', () => {
     await expect(
       kickMember({ roomPublicId: ROOM_PUBLIC_ID, targetUserId: USER_PUBLIC_ID, targetGuestToken: GUEST_TOKEN }),
     ).resolves.toEqual({ ok: false, error: 'invalidInput' });
+  });
+});
+
+describe('quickPlay (JOIN-03)', () => {
+  const candidate = (overrides: Record<string, unknown> = {}) => ({
+    publicId: ROOM_PUBLIC_ID,
+    code: 'ABCDEF',
+    visibility: 'public',
+    status: 'en_attente',
+    capacity: 10,
+    config: defaultRoomConfig,
+    createdAt: new Date('2024-01-01T00:00:00Z'),
+    hostName: 'ada',
+    participantCount: 4,
+    ...overrides,
+  });
+
+  test('redirects to the best room after joining it for a user', async () => {
+    userActor();
+    listPublicRoomsMock.mockResolvedValue([candidate()]);
+    getRoomInternalByPublicIdMock.mockResolvedValue(roomRow);
+    joinRoomQueryMock.mockResolvedValue({
+      roomPublicId: ROOM_PUBLIC_ID,
+      memberId: 1,
+      role: 'participant',
+      joinedAt: new Date('2024-01-01T00:00:00Z'),
+    });
+
+    await expect(quickPlay()).rejects.toMatchObject({
+      digest: expect.stringContaining(`/rooms/${ROOM_PUBLIC_ID}`),
+    });
+    expect(joinRoomQueryMock).toHaveBeenCalledWith({
+      roomId: 42,
+      role: 'participant',
+      userId: 7,
+      guestToken: null,
+    });
+  });
+
+  test('redirects a guest with no nickname to the room page first (AUTH-02)', async () => {
+    noActor();
+    listPublicRoomsMock.mockResolvedValue([candidate()]);
+
+    await expect(quickPlay()).rejects.toMatchObject({
+      digest: expect.stringContaining(`/rooms/${ROOM_PUBLIC_ID}?quickplay=1`),
+    });
+    expect(joinRoomQueryMock).not.toHaveBeenCalled();
+  });
+
+  test('sends users to the create entry point when no room exists', async () => {
+    userActor();
+    listPublicRoomsMock.mockResolvedValue([]);
+
+    await expect(quickPlay()).rejects.toMatchObject({
+      digest: expect.stringContaining('/?notice=noRooms'),
+    });
+    expect(joinRoomQueryMock).not.toHaveBeenCalled();
+  });
+
+  test('sends guests to the guest empty state when no room exists', async () => {
+    guestActor();
+    listPublicRoomsMock.mockResolvedValue([]);
+
+    await expect(quickPlay()).rejects.toMatchObject({
+      digest: expect.stringContaining('/?notice=noRoomsGuest'),
+    });
+  });
+
+  test('moves on to the next candidate when one filled up meanwhile', async () => {
+    userActor();
+    const first = candidate({ publicId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', participantCount: 9 });
+    const second = candidate({ participantCount: 1 });
+    listPublicRoomsMock.mockResolvedValue([first, second]);
+    getRoomInternalByPublicIdMock
+      .mockResolvedValueOnce({ ...roomRow, publicId: first.publicId })
+      .mockResolvedValueOnce(roomRow);
+    joinRoomQueryMock
+      .mockRejectedValueOnce(new RoomFullError(10))
+      .mockResolvedValueOnce({
+        roomPublicId: ROOM_PUBLIC_ID,
+        memberId: 1,
+        role: 'participant',
+        joinedAt: new Date('2024-01-01T00:00:00Z'),
+      });
+
+    await expect(quickPlay()).rejects.toMatchObject({
+      digest: expect.stringContaining(`/rooms/${ROOM_PUBLIC_ID}`),
+    });
+    expect(joinRoomQueryMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('joinByCodeFormAction (JOIN-01)', () => {
+  function formData(entries: Record<string, string>): FormData {
+    const data = new FormData();
+    for (const [key, value] of Object.entries(entries)) {
+      data.set(key, value);
+    }
+    return data;
+  }
+
+  const previous: { ok: false; error: 'unexpected'; currentRoom: null } = {
+    ok: false,
+    error: 'unexpected',
+    currentRoom: null,
+  };
+
+  test('rejects a malformed code', async () => {
+    noActor();
+    const result = await joinByCodeFormAction(previous, formData({ code: 'abc' }));
+    expect(result).toEqual({ ok: false, error: 'invalidInput', currentRoom: null });
+    expect(getRoomByCodeMock).not.toHaveBeenCalled();
+  });
+
+  test('sets the guest nickname before joining when one is submitted (AUTH-02)', async () => {
+    noActor();
+    createGuestSessionMock.mockResolvedValue({ guestId: GUEST_TOKEN, nickname: 'Nain Curieux' });
+    getGuestSessionMock.mockResolvedValue({ guestId: GUEST_TOKEN, nickname: 'Nain Curieux' });
+    getRoomByCodeMock.mockResolvedValue(roomRow);
+    joinRoomQueryMock.mockResolvedValue({
+      roomPublicId: ROOM_PUBLIC_ID,
+      role: 'participant',
+      joinedAt: new Date('2024-01-01T00:00:00Z'),
+    });
+
+    const result = await joinByCodeFormAction(
+      previous,
+      formData({ code: 'abcdef', nickname: 'Nain Curieux' }),
+    );
+    expect(result).toEqual({ ok: true, roomPublicId: ROOM_PUBLIC_ID });
+    expect(createGuestSessionMock).toHaveBeenCalledWith('Nain Curieux');
+  });
+
+  test('forwards typed join failures with the current room (SALLE-06)', async () => {
+    userActor();
+    getRoomByCodeMock.mockResolvedValue(roomRow);
+    joinRoomQueryMock.mockRejectedValue(new AlreadyInRoomError());
+    getActiveRoomOfIdentityMock.mockResolvedValue({ publicId: ROOM_PUBLIC_ID, code: 'GHJKM2' });
+
+    const result = await joinByCodeFormAction(previous, formData({ code: 'abcdef' }));
+    expect(result).toEqual({
+      ok: false,
+      error: 'alreadyInRoom',
+      currentRoom: { publicId: ROOM_PUBLIC_ID, code: 'GHJKM2' },
+    });
+  });
+});
+
+describe('leaveAndJoinFormAction (SALLE-06)', () => {
+  function formData(entries: Record<string, string>): FormData {
+    const data = new FormData();
+    for (const [key, value] of Object.entries(entries)) {
+      data.set(key, value);
+    }
+    return data;
+  }
+
+  const previous: { ok: false; error: 'unexpected'; currentRoom: null } = {
+    ok: false,
+    error: 'unexpected',
+    currentRoom: null,
+  };
+
+  test('leaves the current room then joins the requested code', async () => {
+    userActor();
+    getRoomInternalByPublicIdMock.mockResolvedValue(roomRow);
+    getActiveMemberIdMock.mockResolvedValue(5);
+    getRoomByCodeMock.mockResolvedValue(roomRow);
+    joinRoomQueryMock.mockResolvedValue({
+      roomPublicId: ROOM_PUBLIC_ID,
+      role: 'participant',
+      joinedAt: new Date('2024-01-01T00:00:00Z'),
+    });
+
+    const result = await leaveAndJoinFormAction(
+      previous,
+      formData({ code: 'abcdef', currentRoomPublicId: ROOM_PUBLIC_ID }),
+    );
+    expect(result).toEqual({ ok: true, roomPublicId: ROOM_PUBLIC_ID });
+    expect(markMemberLeftMock).toHaveBeenCalledWith(5);
   });
 });

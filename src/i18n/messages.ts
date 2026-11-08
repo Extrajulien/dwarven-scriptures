@@ -112,6 +112,7 @@ export interface Messages {
   'createRoom.submitPending': string;
   'createRoom.error.authRequired': string;
   'createRoom.error.alreadyInRoom': string;
+  'createRoom.error.invalidInput': string;
   'createRoom.error.unexpected': string;
   // ------------------------------------------------------------ guest nickname form
   'guestNickname.title': string;
@@ -305,6 +306,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'createRoom.submitPending': 'Fondation en cours…',
     'createRoom.error.authRequired': 'Connectez-vous pour fonder une salle.',
     'createRoom.error.alreadyInRoom': 'Vous êtes déjà dans une salle — quittez-la d’abord.',
+    'createRoom.error.invalidInput': 'Configuration invalide — vérifiez la capacité.',
     'createRoom.error.unexpected': 'Une erreur est survenue. Réessayez.',
     // ------------------------------------------------------------ guest nickname form
     'guestNickname.title': 'CHOISISSEZ VOTRE NOM DE NAIN',
@@ -497,6 +499,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'createRoom.submitPending': 'Forging…',
     'createRoom.error.authRequired': 'Sign in to forge a room.',
     'createRoom.error.alreadyInRoom': 'You are already in a room — leave it first.',
+    'createRoom.error.invalidInput': 'Invalid configuration — check the capacity.',
     'createRoom.error.unexpected': 'Something went wrong. Please try again.',
     // ------------------------------------------------------------ guest nickname form
     'guestNickname.title': 'CHOOSE YOUR DWARF NAME',

@@ -95,6 +95,19 @@ export const joinRoomByCodeActionSchema = z
   })
   .strict();
 
+/**
+ * Home create-room card (SALLE-01/05): the FormData fields arrive as strings,
+ * so the capacity is coerced and bounds-checked here — the same 2–30 range
+ * the action/query re-verify.
+ */
+export const createRoomFormDataSchema = z
+  .object({
+    visibility: roomVisibilitySchema,
+    capacity: z.coerce.number().int().min(2).max(30),
+    hostRole: joinRoleSchema,
+  })
+  .strict();
+
 export type CreateRoomActionInput = z.input<typeof createRoomActionSchema>;
 export type UpdateRoomConfigActionInput = z.input<typeof updateRoomConfigActionSchema>;
 export type KickMemberActionInput = z.input<typeof kickMemberActionSchema>;

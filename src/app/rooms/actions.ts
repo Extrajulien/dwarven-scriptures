@@ -1,6 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { createInvitationLinks as createInvitationLinksQuery } from '../../db/queries/invitations';
 import {
   AlreadyInRoomError,
@@ -8,11 +9,13 @@ import {
   createRoom as createRoomQuery,
   findHostSuccessorForRoom,
   getActiveMemberId,
+  getActiveRoomOfIdentity,
   getRoomByCode,
   getRoomInternalByPublicId,
   InvalidRoomInputError,
   joinRoom as joinRoomQuery,
   kickMember as kickMemberQuery,
+  listPublicRooms,
   markMemberLeft,
   NotHostCandidateError,
   NotRoomHostError,
@@ -25,6 +28,7 @@ import {
   updateRoomConfig as updateRoomConfigQuery,
   type PublicRoom,
 } from '../../db/queries/rooms';
+import { rankQuickPlayRooms } from '../../lib/quickplay';
 import { getUserFullProfile, getUserPublicInfoById } from '../../db/queries/users';
 import {
   publishConfigUpdated,
@@ -40,10 +44,12 @@ import {
 } from '../../lib/guest-session';
 import {
   createRoomActionSchema,
+  createRoomFormDataSchema,
   generateInvitationLinksActionSchema,
   joinRoomByCodeActionSchema,
   kickMemberActionSchema,
   roomActionSchema,
+  roomPublicIdSchema,
   setGuestNicknameActionSchema,
   transferHostActionSchema,
   updateRoomConfigActionSchema,
@@ -103,7 +109,7 @@ export type CreateRoomActionResult =
   | (ActionSuccess & { room: PublicRoom });
 
 export type JoinRoomByCodeActionResult =
-  | ActionFailure
+  | JoinRoomByCodeFailure
   | (ActionSuccess & {
       room: {
         publicId: string;
@@ -113,6 +119,15 @@ export type JoinRoomByCodeActionResult =
         joinedAt: Date;
       };
     });
+
+/**
+ * JOIN-01/SALLE-06: when the join fails with `alreadyInRoom`, the result also
+ * carries the public identity of the room the person is currently in, so the
+ * UI can offer "view your current room" and "leave it and join this one".
+ */
+export type JoinRoomByCodeFailure = ActionFailure & {
+  currentRoom?: { publicId: string; code: string } | null;
+};
 
 export type SetGuestNicknameActionResult =
   | ActionFailure
@@ -245,8 +260,9 @@ export async function joinRoomByCode(
     return { ok: false, error: 'unexpected' };
   }
 
+  let actor: Actor = { kind: 'none' };
   try {
-    const actor = await resolveActor();
+    actor = await resolveActor();
     if (actor.kind === 'none') {
       return { ok: false, error: 'identityRequired' };
     }
@@ -297,7 +313,18 @@ export async function joinRoomByCode(
       return { ok: false, error: 'kicked' };
     }
     if (error instanceof AlreadyInRoomError) {
-      return { ok: false, error: 'alreadyInRoom' };
+      // SALLE-06: the person is already an active member of this room.
+      // Include the current room's public identity so the UI can offer
+      // "view your current room" and "leave it and join this one".
+      let currentRoom: { publicId: string; code: string } | null = null;
+      if (actor.kind !== 'none') {
+        currentRoom = await getActiveRoomOfIdentity(
+          actor.kind === 'user'
+            ? { userId: actor.internalUserId }
+            : { guestToken: actor.guestToken },
+        );
+      }
+      return { ok: false, error: 'alreadyInRoom', currentRoom };
     }
     if (error instanceof InvalidRoomInputError) {
       return { ok: false, error: 'invalidInput' };
@@ -606,4 +633,204 @@ export async function setGuestNickname(
     console.error('setGuestNickname: unexpected failure', error);
     return { ok: false, error: 'unexpected' };
   }
+}
+
+/**
+ * JOIN-03 "Faire une course": joins the joinable public room closest to its
+ * capacity (oldest room wins ties) and redirects to it. With no joinable
+ * room, signed-in users are sent to the create entry point on the home page
+ * and guests to the guest empty state. A guest who has not picked a nickname
+ * yet is redirected to the chosen room first — the lobby collects the name
+ * (AUTH-02) and then joins by code (public rooms admit direct access).
+ *
+ * The redirect never returns to the caller: `redirect()` throws. Candidate
+ * ranking is the pure `rankQuickPlayRooms` function (unit-tested separately);
+ * this action only maps identity and race-lost joins.
+ */
+export async function quickPlay(): Promise<never> {
+  try {
+    const actor = await resolveActor();
+    const rooms = await listPublicRooms();
+    const candidates = rankQuickPlayRooms(rooms);
+
+    if (candidates.length === 0) {
+      redirect(actor.kind === 'user' ? '/?notice=noRooms' : '/?notice=noRoomsGuest');
+    }
+
+    if (actor.kind === 'none') {
+      // Nickname first (AUTH-02): the room page shows the dwarf-name form,
+      // then joins by code.
+      const best = candidates[0];
+      redirect(`/rooms/${best.publicId}?quickplay=1`);
+    }
+
+    for (const candidate of candidates) {
+      try {
+        const room = await getRoomInternalByPublicId(candidate.publicId);
+        if (!room) {
+          continue;
+        }
+        await joinRoomQuery({
+          roomId: room.id,
+          role: 'participant',
+          userId: actor.kind === 'user' ? actor.internalUserId : null,
+          guestToken: actor.kind === 'guest' ? actor.guestToken : null,
+        });
+        redirect(`/rooms/${candidate.publicId}`);
+      } catch (error) {
+        if (error instanceof AlreadyInRoomError) {
+          // Already a member of this room (second attempt): go there.
+          redirect(`/rooms/${candidate.publicId}`);
+        }
+        if (error instanceof RoomFullError || error instanceof RoomNotJoinableError) {
+          // The room filled up or started between listing and joining:
+          // try the next candidate.
+          continue;
+        }
+        if (error instanceof RoomMemberKickedError || error instanceof RoomNotFoundError) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    // Every candidate failed admission between listing and joining.
+    redirect(actor.kind === 'user' ? '/?notice=noRooms' : '/?notice=noRoomsGuest');
+  } catch (error) {
+    // `redirect` throws by design; anything else is a real failure.
+    if (isRedirectError(error)) {
+      throw error;
+    }
+    console.error('quickPlay: unexpected failure', error);
+    redirect('/?notice=noRooms');
+  }
+}
+
+/** True for the control-flow error `next/navigation`'s redirect() throws. */
+function isRedirectError(error: unknown): boolean {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    (error as { digest?: unknown }).digest !== undefined &&
+    String((error as { digest?: unknown }).digest).startsWith('NEXT_REDIRECT')
+  );
+}
+
+/** Result of the join-by-code home form (JOIN-01). */
+export type JoinByCodeFormResult =
+  | { ok: true; roomPublicId: string }
+  | { ok: false; error: RoomActionError; currentRoom: { publicId: string; code: string } | null };
+
+/** Result of the home create-room form (SALLE-01/05). */
+export type CreateRoomFormResult =
+  | { ok: true; roomPublicId: string }
+  | { ok: false; error: RoomActionError };
+
+/**
+ * Form-action wrapper for the home create-room card (SALLE-01/05, AUTH-03):
+ * reads `FormData` (progressive enhancement), validates it with the same
+ * 2–30 capacity bounds as `createRoom`, and forwards the typed result. The
+ * underlying action still refuses guests server-side (AUTH-03) — this
+ * wrapper adds no privilege.
+ */
+export async function createRoomFormAction(
+  _previous: CreateRoomFormResult | null,
+  formData: FormData,
+): Promise<CreateRoomFormResult> {
+  const parsed = createRoomFormDataSchema.safeParse({
+    visibility: formData.get('visibility'),
+    capacity: formData.get('capacity'),
+    hostRole: formData.get('hostRole'),
+  });
+  if (!parsed.success) {
+    return { ok: false, error: 'invalidInput' };
+  }
+
+  const result = await createRoom({
+    visibility: parsed.data.visibility,
+    capacity: parsed.data.capacity,
+    hostRole: parsed.data.hostRole,
+  });
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+  return { ok: true, roomPublicId: result.room.publicId };
+}
+
+/**
+ * Form-action wrapper for the home join-by-code form (JOIN-01). Accepts
+ * `FormData` so it works with progressive enhancement; a guest who has not
+ * picked a nickname yet submits it along with the code and the signed guest
+ * cookie is written first (AUTH-02). Never throws — the UI maps the typed
+ * result.
+ */
+export async function joinByCodeFormAction(
+  _previous: JoinByCodeFormResult | null,
+  formData: FormData,
+): Promise<JoinByCodeFormResult> {
+  const codeValue = formData.get('code');
+  const nicknameValue = formData.get('nickname');
+
+  const parsedCode = joinRoomByCodeActionSchema.safeParse({ code: codeValue });
+  if (!parsedCode.success) {
+    return { ok: false, error: 'invalidInput', currentRoom: null };
+  }
+
+  if (typeof nicknameValue === 'string' && nicknameValue.trim().length > 0) {
+    const guest = await setGuestNickname({ nickname: nicknameValue });
+    if (!guest.ok) {
+      return {
+        ok: false,
+        error: guest.error === 'invalidNickname' ? 'invalidNickname' : 'unexpected',
+        currentRoom: null,
+      };
+    }
+  }
+
+  const result = await joinRoomByCode({ code: parsedCode.data.code });
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: result.error,
+      currentRoom: result.currentRoom ?? null,
+    };
+  }
+  return { ok: true, roomPublicId: result.room.publicId };
+}
+
+/**
+ * SALLE-06 leave-and-join: the person is told they are already in a room,
+ * and the UI offers "leave my current room and join this one". This wrapper
+ * leaves the current room (host handover included, SALLE-08) and then joins
+ * the requested code in one submission.
+ */
+export async function leaveAndJoinFormAction(
+  _previous: JoinByCodeFormResult | null,
+  formData: FormData,
+): Promise<JoinByCodeFormResult> {
+  const codeValue = formData.get('code');
+  const currentRoomPublicIdValue = formData.get('currentRoomPublicId');
+
+  const parsedCode = joinRoomByCodeActionSchema.safeParse({ code: codeValue });
+  if (!parsedCode.success) {
+    return { ok: false, error: 'invalidInput', currentRoom: null };
+  }
+
+  const currentRoom = roomPublicIdSchema.safeParse(currentRoomPublicIdValue);
+  if (currentRoom.success) {
+    const left = await leaveRoom({ roomPublicId: currentRoom.data });
+    if (!left.ok) {
+      return { ok: false, error: left.error, currentRoom: null };
+    }
+  }
+
+  const result = await joinRoomByCode({ code: parsedCode.data.code });
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: result.error,
+      currentRoom: result.currentRoom ?? null,
+    };
+  }
+  return { ok: true, roomPublicId: result.room.publicId };
 }

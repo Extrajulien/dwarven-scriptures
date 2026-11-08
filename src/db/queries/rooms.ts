@@ -729,6 +729,27 @@ export async function getActiveMemberId(
 }
 
 /**
+ * The room a person is currently an active member of, by its public
+ * identifiers — used by the join-by-code flow to show "your current room"
+ * when the person is already in a room (SALLE-06) without leaking internal
+ * ids. Returns `null` when the person is active in no room.
+ */
+export async function getActiveRoomOfIdentity(
+  identity: { userId?: number | null; guestToken?: string | null },
+): Promise<{ publicId: string; code: string } | null> {
+  const normalised = normalizeIdentity(identity);
+
+  const rows = await db
+    .select({ publicId: rooms.publicId, code: rooms.code })
+    .from(roomMembers)
+    .innerJoin(rooms, eq(roomMembers.roomId, rooms.id))
+    .where(and(identityMatch(normalised), isNull(roomMembers.leftAt)))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+/**
  * Loads the present members of a room and applies the SALLE-08 handover rule:
  * the human member present the longest wins the host role, `null` means the
  * room must be closed. Pure decision in `findHostSuccessor`.
