@@ -223,10 +223,14 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 ### Checkpoint 1 (semaine 7 — 15 %)
 
 - [ ] `doc/DEMARCHE-CREATIVE.md` complet (DES-01 à DES-03) : noms envisagés, croquis et logo, moodboard, palette, typographies. Nom et logo définitifs.
-- [ ] `doc/ARCHITECTURE.md` version initiale : diagramme du modèle de données, machine à états d'une course (COURSE-01), ADR sur la technologie temps réel, approche prévue pour les bots.
-- [ ] Application déployée en HTTPS avec : authentification (AUTH-01), base de données et migrations (TECH-04), création d'une salle + rejoindre par code avec liste des présents en temps réel (SALLE-01, SALLE-02, JOIN-01), sélecteurs de langue et de thème (I18N-02, DES-05), identité visuelle appliquée.
-- [ ] Intégration continue fonctionnelle (TECH-09) avec au moins quelques tests unitaires.
-- [ ] `doc/EXIGENCES.md` version initiale : toutes les exigences listées avec leur statut actuel.
+  — Reste à faire par l'humain : croquis/photos du logo à joindre (DES-02) et moodboard 3–5 références (DES-03). Fait : nom « Dwarven scriptures » (humain, DES-01), logo décrit, palettes claire/sombre documentées, typographies.
+- [x] `doc/ARCHITECTURE.md` version initiale : diagramme du modèle de données, machine à états d'une course (COURSE-01), ADR sur la technologie temps réel, approche prévue pour les bots.
+  — ADR-010 temps réel **Accepté** (custom server + `ws`, preuves docs Next 16) ; ADR-011 bots documenté (approche déterministe à graine).
+- [x] Application déployée en HTTPS avec : authentification (AUTH-01), base de données et migrations (TECH-04), création d'une salle + rejoindre par code avec liste des présents en temps réel (SALLE-01, SALLE-02, JOIN-01), sélecteurs de langue et de thème (I18N-02, DES-05), identité visuelle appliquée.
+  — URL vérifiée : https://dwarven-scriptures.up.railway.app (health/pages/wss ping-pong vérifiés). OAuth : code complet, secrets de prod à configurer par l'étudiant (dégradation gracieuse en place).
+- [x] Intégration continue fonctionnelle (TECH-09) avec au moins quelques tests unitaires.
+  — `.github/workflows/ci.yml` (lint + typecheck + 666 tests locaux verts) ; exécution GitHub distante non observée (aucun push effectué).
+- [x] `doc/EXIGENCES.md` version initiale : toutes les exigences listées avec leur statut actuel.
 
 ### Remise finale (semaine 11 — 30 %)
 
