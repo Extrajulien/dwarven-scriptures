@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { usernameSchema } from './register-validation';
 
+export { usernameSchema };
+
 /**
  * Pure validation for the profile edit modal, driven by Zod schemas. It mirrors
  * the username rules the registration form enforces (trimmed, non-empty,
@@ -34,10 +36,13 @@ export function validateUsername(
     return { username };
   }
 
-  const error = parsed.error.issues
-    .map((issue) => issue.message)
-    .find(isUsernameFieldError);
-  return { username, error: error ?? 'required' };
+  return { username, error: usernameError(parsed.error.issues) };
+}
+
+/** Maps username schema issues to the single field error the form renders. */
+export function usernameError(issues: readonly z.ZodIssue[]): UsernameFieldError {
+  const error = issues.map((issue) => issue.message).find(isUsernameFieldError);
+  return error ?? 'required';
 }
 
 function isUsernameFieldError(value: string): value is UsernameFieldError {
