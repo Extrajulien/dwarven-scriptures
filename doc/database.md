@@ -290,11 +290,42 @@ planned E2E tests (TEST-03); it must never be reused for real accounts.
 
 ## Deployment (Railway)
 
-1. Provision a PostgreSQL service and copy its connection string into the
-   deployed environment's `DATABASE_URL`.
-2. Run `npm run db:migrate` (or `npx drizzle-kit migrate`) with that
-   `DATABASE_URL` set — the committed `drizzle/` folder is the migration source.
-3. Never commit the deployed credentials.
+Production is live at `https://dwarven-scriptures.up.railway.app` (project
+`dwarven-scriptures`, environment `production`, region `sfo`). What actually
+worked at checkpoint 1 (2026-11-08):
+
+1. **Infrastructure** — one project with two services: `Postgres` (plugin,
+   `ghcr.io/railwayapp-templates/postgres-ssl:18`, volume-backed) and
+   `dwarven-scriptures` (the app, built by Railpack from the repo). The app's
+   service domain `dwarven-scriptures.up.railway.app` targets port 8080.
+2. **Variables on the app service** — `DATABASE_URL` is the reference
+   `${{Postgres.DATABASE_URL}}` (resolved by Railway; inside the private
+   network it points at `postgres.railway.internal`), plus `SESSION_SECRET`
+   (64 hex chars, generated with `node:crypto`, set via the CLI, never
+   committed), `WS_ALLOWED_ORIGINS=https://dwarven-scriptures.up.railway.app`,
+   `NODE_ENV=production` and `PORT=8080`. Never commit any of these values.
+3. **Build** — Railpack runs `npm ci` + `npm run build` (auto-detected) and
+   starts `npm run start` = `tsx server.ts`. `package.json` pins
+   `"packageManager": "npm@11.19.0"` because Railpack otherwise picks Bun when
+   a stray `bun.lock` sits in the uploaded directory. The build works without
+   `DATABASE_URL` (the pool in `src/db/index.ts` is created lazily on first
+   query), but Railway injects the service variables at build time anyway.
+4. **Deploy** — `railway up --project <id> --service dwarven-scriptures
+   --environment production` (with `RAILWAY_API_TOKEN` set). Deploys of this
+   repo from the local directory are the authorized path; pushes to GitHub are
+   not (AGENTS.md).
+5. **Migrate + seed** — the production `DATABASE_URL` uses the private-network
+   hostname, which is only reachable from inside Railway. From a local
+   machine: temporarily create a TCP proxy on the `Postgres` service (GraphQL
+   `tcpProxyCreate`, application port 5432), redeploy Postgres once to
+   activate it, run `npm run db:migrate` then `npm run db:seed` with a
+   `DATABASE_URL` built from `postgres://postgres:<password>@<proxy-domain>:
+   <proxy-port>/railway`, then delete the proxy (`tcpProxyDelete`) and
+   redeploy Postgres again so the public port closes. Alternative:
+   `railway run npm run db:migrate` once the CLI's SSH tunnel is set up
+   (`railway ssh keys add`). Migrations and the seed are idempotent.
+6. **Never commit the deployed credentials** — including the SESSION_SECRET
+   and any proxy URL.
 
 ## Tests
 

@@ -301,8 +301,16 @@ player who returns within 30 s resumes in place (COURSE-08).
 * **Decision:** Local PostgreSQL 16 via `docker-compose.yml` (volume-backed);
   deployment targeted at Railway with TLS auto-enabled in production
   (`src/db/index.ts` detects `NODE_ENV=production`/`railway`).
-* **Consequences:** One local Postgres on port 5432 at a time. The production
-  URL and environment remain to be confirmed for TECH-05.
+* **Consequences:** One local Postgres on port 5432 at a time. Production
+  reality (checkpoint 1, 2026-11-08): Railway project `dwarven-scriptures`
+  with the `Postgres` plugin (`postgres-ssl:18`, hobby plan, volume-backed) and
+  the app service deployed from this repo via `railway up` (Railpack builds:
+  `npm ci` + `npm run build`, starts `npm run start` = `tsx server.ts`).
+  Public URL **https://dwarven-scriptures.up.railway.app**, TLS at the edge.
+  `DATABASE_URL` is set as the reference `${{Postgres.DATABASE_URL}}`; the
+  account is on the trial plan (see TECH-08 in `doc/EXIGENCES.md` for the
+  honest cost note). The deployment playbook lives in
+  [`doc/database.md`](database.md#deployment-railway).
 
 ### ADR-010 — Real-time transport: `ws` on a Next.js custom server (single process)
 
@@ -373,6 +381,20 @@ player who returns within 30 s resumes in place (COURSE-08).
     Railway's proxy) must forward `/ws` upgrades to the Node server — no
     second port, no CORS. Origin is validated against the `Host` header by
     default, overridable via `WS_ALLOWED_ORIGINS` (`.env.example`).
+    **Verified on Railway (checkpoint 1):** a `wss://dwarven-scriptures
+    .up.railway.app/ws` handshake with the public Origin completes through the
+    proxy and the ping→pong echo works — the single-port upgrade survives the
+    edge untouched. One deployment fix was required: the server must bind the
+    dual-stack any address (`::`, see `src/lib/server-config.ts`), because
+    Railway's edge dials containers over their IPv6 ULA address while the
+    platform's `HOSTNAME` env resolves to IPv4 only (an IPv4-only binding
+    answered 502 on every path).
+  * **Runtime packaging:** `tsx` is a production dependency (the runtime start
+    is `tsx server.ts`), and `package.json` pins `"packageManager":
+    "npm@11.19.0"` so Railpack builds with npm instead of picking Bun from a
+    stray `bun.lock` in the upload. The `DATABASE_URL` import-time throw was
+    moved to first-use (`src/db/index.ts` is a lazy proxy) so `next build`
+    works without the variable at build time.
   * The transport stays behind `src/realtime/hub.ts` (room hub interface) and
     `src/realtime/protocol.ts` (Zod message schemas): the race engine will
     import the hub, never `ws` (AGENTS.md). Server actions notify the hub
