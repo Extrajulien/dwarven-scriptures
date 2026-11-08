@@ -641,6 +641,27 @@ export interface Messages {
   'demo.legendRock': string;
   'demo.legendFloor': string;
   'demo.legendDwarf': string;
+  // ------------------------------------------------------------ race (Phase 2: launch, countdown, typing zone)
+  'race.waitingTitle': string;
+  'race.waitingHost': string;
+  'race.startButton': string;
+  'race.needParticipants': string;
+  'race.countdownGetReady': string;
+  'race.typingInputLabel': string;
+  'race.liveWpmLabel': string;
+  'race.liveAccuracyLabel': string;
+  'race.progressLabel': string;
+  'race.completeNotice': string;
+  'race.spectatorBadge': string;
+  'race.spectatorViewHint': string;
+  'race.quitButton': string;
+  'race.confirmQuitBody': string;
+  'race.resultsTitle': string;
+  'race.resultsProvisional': string;
+  'race.resultsYourRace': string;
+  'race.results.status.finished': string;
+  'race.results.status.timeout': string;
+  'race.results.status.quit': string;
   // ------------------------------------------------------------ chrome accessibility
   'chrome.guildEmblemAlt': string;
   'chrome.siteLogoAlt': string;
@@ -1242,6 +1263,28 @@ export const MESSAGES: Record<Locale, Messages> = {
     'demo.legendRock': 'paroi rocheuse exposée',
     'demo.legendFloor': 'sol extrait (air)',
     'demo.legendDwarf': 'occupant nain',
+    // ------------------------------------------------------------ race (Phase 2 : lancement, décompte, zone de frappe)
+    'race.waitingTitle': 'LANCEMENT DE LA COURSE',
+    'race.waitingHost': 'L’hôte lancera la course.',
+    'race.startButton': 'Lancer la course',
+    'race.needParticipants': 'Il faut au moins 2 participants, dont au moins 1 humain.',
+    'race.countdownGetReady': 'Préparez-vous',
+    'race.typingInputLabel': 'Zone de frappe : tapez le texte affiché',
+    'race.liveWpmLabel': 'MPM',
+    'race.liveAccuracyLabel': 'Précision',
+    'race.progressLabel': 'Progression',
+    'race.completeNotice': 'Texte terminé — en attente des autres coureurs.',
+    'race.spectatorBadge': 'SPECTATEUR',
+    'race.spectatorViewHint': 'Vous suivez la course en spectateur.',
+    'race.quitButton': 'Abandonner la course',
+    'race.confirmQuitBody': 'Abandonner la course ? Vous deviendrez spectateur de la course en cours.',
+    'race.resultsTitle': 'RÉSULTATS (APERÇU)',
+    'race.resultsProvisional':
+      'Aperçu provisoire — l’écran de résultats complet arrive en phase 3.',
+    'race.resultsYourRace': 'VOTRE COURSE',
+    'race.results.status.finished': 'Terminé',
+    'race.results.status.timeout': 'Temps écoulé',
+    'race.results.status.quit': 'Abandon',
     // ------------------------------------------------------------ chrome accessibility
     'chrome.guildEmblemAlt': 'Emblème de la guilde Dwarf Fortress Delve',
     'chrome.siteLogoAlt': 'Logo de Dwarven Scriptures',
@@ -1837,6 +1880,27 @@ export const MESSAGES: Record<Locale, Messages> = {
     'demo.legendRock': 'exposed rock wall',
     'demo.legendFloor': 'mined floor (air)',
     'demo.legendDwarf': 'dwarf occupant',
+    // ------------------------------------------------------------ race (Phase 2: launch, countdown, typing zone)
+    'race.waitingTitle': 'RACE LAUNCH',
+    'race.waitingHost': 'The host will start the race.',
+    'race.startButton': 'Start the race',
+    'race.needParticipants': 'At least 2 participants are needed, including at least 1 human.',
+    'race.countdownGetReady': 'Get ready',
+    'race.typingInputLabel': 'Typing area: type the text shown',
+    'race.liveWpmLabel': 'WPM',
+    'race.liveAccuracyLabel': 'Accuracy',
+    'race.progressLabel': 'Progress',
+    'race.completeNotice': 'Text complete — waiting for the other racers.',
+    'race.spectatorBadge': 'SPECTATOR',
+    'race.spectatorViewHint': 'You are watching this race as a spectator.',
+    'race.quitButton': 'Abandon the race',
+    'race.confirmQuitBody': 'Abandon the race? You will become a spectator of the current race.',
+    'race.resultsTitle': 'RESULTS (PREVIEW)',
+    'race.resultsProvisional': 'Provisional preview — the full results screen arrives in phase 3.',
+    'race.resultsYourRace': 'YOUR RACE',
+    'race.results.status.finished': 'Finished',
+    'race.results.status.timeout': 'Timed out',
+    'race.results.status.quit': 'Quit',
     // ------------------------------------------------------------ chrome accessibility
     'chrome.guildEmblemAlt': 'Dwarf Fortress Delve Guild Emblem',
     'chrome.siteLogoAlt': 'Dwarven Scriptures logo',
