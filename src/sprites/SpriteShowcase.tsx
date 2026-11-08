@@ -3,6 +3,7 @@ import AnimatedSpriteTile from './AnimatedSpriteTile';
 import SpriteTile from './SpriteTile';
 import { ANIMATIONS, type SpriteKey } from './spriteRegistry';
 import { useSpritePreloader } from './useSpritePreloader';
+import type { Messages } from '../i18n/messages';
 
 const TERRAIN_TILES: SpriteKey[] = [
   'terrain.rock.floor',
@@ -53,15 +54,17 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
  * Dev-only demo: renders static tiles, an animated sequence, layered tiles,
  * and the preloader state. Mount it anywhere to verify the registry + renderer.
  */
-export default function SpriteShowcase() {
+export default function SpriteShowcase({ messages }: { messages: Messages }) {
   const { isLoaded, progress, error } = useSpritePreloader();
 
   if (!isLoaded) {
     return (
       <section className="flex flex-col gap-space-md rounded-lg border border-outline-variant bg-surface-container-low p-space-lg">
-        <h3 className="font-headline-sm text-on-surface">Sprite Registry Showcase</h3>
+        <h3 className="font-headline-sm text-on-surface">
+          {messages['demo.showcaseTitle']}
+        </h3>
         <p className="font-body-sm text-on-surface-variant">
-          Preloading sprite sheets… {Math.round(progress * 100)}%
+          {messages['demo.preloading']} {Math.round(progress * 100)}%
         </p>
         <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
           <div
@@ -77,13 +80,13 @@ export default function SpriteShowcase() {
   return (
     <section className="flex flex-col gap-space-xl rounded-lg border border-outline-variant bg-surface-container-low p-space-lg">
       <header className="flex flex-col gap-space-xs">
-        <h2 className="font-headline-md text-primary">Sprite Registry Showcase</h2>
+        <h2 className="font-headline-md text-primary">{messages['demo.showcaseTitle']}</h2>
         <p className="font-body-sm text-on-surface-variant">
-          Dev-only demo of the type-safe sprite registry and CSS sprite-sheet renderer.
+          {messages['demo.showcaseSubtitle']}
         </p>
       </header>
 
-      <Section title="Terrain & Walls">
+      <Section title={messages['demo.sectionTerrain']}>
         <div className="flex flex-wrap gap-space-md">
           {TERRAIN_TILES.map((key) => (
             <SpriteTile key={key} spriteKey={key} scale={2} />
@@ -92,7 +95,7 @@ export default function SpriteShowcase() {
         </div>
       </Section>
 
-      <Section title="Mining Progress (animated)">
+      <Section title={messages['demo.sectionMining']}>
         <div className="flex flex-wrap items-center gap-space-md">
           <AnimatedSpriteTile
             frames={ANIMATIONS.miningProgress}
@@ -108,7 +111,7 @@ export default function SpriteShowcase() {
         </div>
       </Section>
 
-      <Section title="Player Actors">
+      <Section title={messages['demo.sectionActors']}>
         <div className="flex flex-wrap items-end gap-space-md">
           <LabeledTile spriteKey="actor.dwarf-miner-idle" />
           <LabeledTile spriteKey="actor.dwarf-miner-digging" />
@@ -120,13 +123,13 @@ export default function SpriteShowcase() {
               className="border border-outline-variant"
             />
             <span className="max-w-[112px] break-all text-center font-label-sm leading-tight text-on-surface-variant">
-              pickaxe swing (animated)
+              {messages['demo.pickaxeSwing']}
             </span>
           </div>
         </div>
       </Section>
 
-      <Section title="Layered Tiles (children / overlays)">
+      <Section title={messages['demo.sectionLayered']}>
         <div className="flex flex-wrap items-center gap-space-md">
           <div className="flex flex-col items-center gap-space-xs">
             <SpriteTile
@@ -138,7 +141,9 @@ export default function SpriteShowcase() {
                 className="pointer-events-none absolute inset-0 bg-tertiary/25"
               />
             </SpriteTile>
-            <span className="font-label-sm text-on-surface-variant">idle + highlight tint</span>
+            <span className="font-label-sm text-on-surface-variant">
+              {messages['demo.idleHighlight']}
+            </span>
           </div>
 
           <div className="flex flex-col items-center gap-space-xs">
@@ -149,12 +154,14 @@ export default function SpriteShowcase() {
               <SpriteTile spriteKey="terrain.cleared-path" scale={3} className="absolute inset-0" />
               <SpriteTile spriteKey="monster.forgotten-beast.overlay" scale={3} className="relative" />
             </div>
-            <span className="font-label-sm text-on-surface-variant">floor + beast overlay</span>
+            <span className="font-label-sm text-on-surface-variant">
+              {messages['demo.floorBeast']}
+            </span>
           </div>
         </div>
       </Section>
 
-      <Section title="Dynamic Monsters">
+      <Section title={messages['demo.sectionMonsters']}>
         <div className="flex flex-wrap gap-space-md">
           {MONSTER_TILES.map((key) => (
             <LabeledTile key={key} spriteKey={key} />

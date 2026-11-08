@@ -2,6 +2,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import LoginForm from './LoginForm';
 import { loginUser } from '../../app/login/actions';
+import { MESSAGES } from '../../i18n/messages';
 
 const mockReplace = jest.fn();
 
@@ -31,11 +32,11 @@ beforeEach(() => {
 });
 
 test('toggles the password field visibility', () => {
-  render(<LoginForm />);
+  render(<LoginForm messages={MESSAGES.fr} />);
 
-  const passwordInput = screen.getByLabelText(/\[ cipher \]/i);
+  const passwordInput = screen.getByLabelText(/\[ chiffrement \]/i);
   const toggle = screen.getByRole('button', {
-    name: /toggle password visibility/i,
+    name: /afficher ou masquer le mot de passe/i,
   });
 
   expect(passwordInput).toHaveAttribute('type', 'password');
@@ -56,21 +57,51 @@ test('renders required errors under both fields', async () => {
     },
   });
 
-  render(<LoginForm />);
+  render(<LoginForm messages={MESSAGES.fr} />);
   submitForm();
 
-  expect(await screen.findByText('A name is required.')).toBeInTheDocument();
-  expect(screen.getByText('A password is required.')).toBeInTheDocument();
+  expect(await screen.findByText('Un nom est requis.')).toBeInTheDocument();
+  expect(screen.getByText('Un mot de passe est requis.')).toBeInTheDocument();
 });
 
-test('renders the invalid-credentials message', async () => {
+test('renders the localized invalid-credentials message from the code', async () => {
   mockedLoginUser.mockResolvedValueOnce({
     ok: false,
     fieldErrors: {},
     formError: 'invalidCredentials',
   });
 
-  render(<LoginForm />);
+  render(<LoginForm messages={MESSAGES.fr} />);
+  submitForm();
+
+  expect(
+    await screen.findByText('Nom d’utilisateur ou mot de passe incorrect.'),
+  ).toBeInTheDocument();
+});
+
+test('renders the localized unexpected message from the code', async () => {
+  mockedLoginUser.mockResolvedValueOnce({
+    ok: false,
+    fieldErrors: {},
+    formError: 'unexpected',
+  });
+
+  render(<LoginForm messages={MESSAGES.fr} />);
+  submitForm();
+
+  expect(
+    await screen.findByText('Une erreur est survenue. Réessayez.'),
+  ).toBeInTheDocument();
+});
+
+test('renders the English bag for an en session (I18N-01)', async () => {
+  mockedLoginUser.mockResolvedValueOnce({
+    ok: false,
+    fieldErrors: {},
+    formError: 'invalidCredentials',
+  });
+
+  render(<LoginForm messages={MESSAGES.en} />);
   submitForm();
 
   expect(
@@ -78,25 +109,10 @@ test('renders the invalid-credentials message', async () => {
   ).toBeInTheDocument();
 });
 
-test('renders the unexpected message', async () => {
-  mockedLoginUser.mockResolvedValueOnce({
-    ok: false,
-    fieldErrors: {},
-    formError: 'unexpected',
-  });
-
-  render(<LoginForm />);
-  submitForm();
-
-  expect(
-    await screen.findByText('Something went wrong. Please try again.'),
-  ).toBeInTheDocument();
-});
-
 test('redirects to / when the action succeeds', async () => {
   mockedLoginUser.mockResolvedValueOnce({ ok: true });
 
-  render(<LoginForm />);
+  render(<LoginForm messages={MESSAGES.fr} />);
   submitForm();
 
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/'));

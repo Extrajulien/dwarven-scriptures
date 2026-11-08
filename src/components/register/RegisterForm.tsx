@@ -4,14 +4,41 @@ import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { registerUser } from '../../app/register/actions';
 import { REGISTER_FORM } from '../../data/registerData';
-import type { RegisterFieldErrors } from '../../lib/register-validation';
+import type {
+  RegisterFieldErrorCode,
+  RegisterFieldErrors,
+} from '../../lib/register-validation';
+import type { Messages } from '../../i18n/messages';
 import ButtonPrimary from '../ButtonPrimary';
 import PasswordStrengthBar from './PasswordStrengthBar';
+
+/**
+ * Stable error codes from the server action/validation, mapped to localized
+ * text via the message dictionary (I18N-01): the action returns codes only —
+ * never human-readable strings.
+ */
+const USERNAME_ERROR_KEYS: Partial<Record<RegisterFieldErrorCode, keyof Messages>> = {
+  required: 'auth.error.requiredUsername',
+  usernameTooLong: 'auth.register.error.usernameTooLong',
+  usernameTaken: 'auth.register.error.usernameTaken',
+};
+
+const PASSWORD_ERROR_KEYS: Partial<Record<RegisterFieldErrorCode, keyof Messages>> = {
+  required: 'auth.error.requiredPassword',
+  passwordTooShort: 'auth.register.error.passwordTooShort',
+  passwordTooLong: 'auth.register.error.passwordTooLong',
+  passwordWeak: 'auth.register.error.passwordWeak',
+};
+
+const CONFIRM_ERROR_KEYS: Partial<Record<RegisterFieldErrorCode, keyof Messages>> = {
+  required: 'auth.register.error.confirmRequired',
+  passwordsDoNotMatch: 'auth.register.error.passwordsDoNotMatch',
+};
 
 function PickaxeIcon() {
   return (
     <svg
-      className="h-4 w-4 text-[#8a7241]"
+      className="h-4 w-4 text-dwarf-parchmentIcon"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
@@ -30,7 +57,7 @@ function PickaxeIcon() {
 function LockIcon() {
   return (
     <svg
-      className="h-4 w-4 text-[#8a7241]"
+      className="h-4 w-4 text-dwarf-parchmentIcon"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
@@ -73,7 +100,7 @@ function EyeIcon() {
 function HammerIcon() {
   return (
     <svg
-      className="h-4 w-4 text-[#3d2c07] transition-transform duration-150 group-hover:rotate-12"
+      className="h-4 w-4 text-dwarf-goldInk transition-transform duration-150 group-hover:rotate-12"
       fill="currentColor"
       viewBox="0 0 24 24"
       aria-hidden="true"
@@ -91,7 +118,7 @@ function FieldError({ id, message }: { id: string; message: string }) {
   );
 }
 
-export default function RegisterForm() {
+export default function RegisterForm({ messages }: { messages: Messages }) {
   const [state, formAction, pending] = useActionState(registerUser, null);
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState('');
@@ -127,10 +154,10 @@ export default function RegisterForm() {
             <span className="font-bold text-dwarf-gold">
               {REGISTER_FORM.callsign.rune}
             </span>
-            <span>{REGISTER_FORM.callsign.label}</span>
+            <span>{messages[REGISTER_FORM.callsign.labelKey]}</span>
           </label>
           <span className="text-label-sm text-dwarf-parchmentMuted">
-            {REGISTER_FORM.callsign.hint}
+            {messages[REGISTER_FORM.callsign.hintKey]}
           </span>
         </div>
         <div className="relative">
@@ -143,16 +170,16 @@ export default function RegisterForm() {
             type="text"
             autoComplete="username"
             required
-            placeholder={REGISTER_FORM.callsign.placeholder}
+            placeholder={messages[REGISTER_FORM.callsign.placeholderKey]}
             aria-invalid={usernameError ? true : undefined}
             aria-describedby={usernameError ? 'username-error' : undefined}
-            className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-3 font-mono text-sm text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
+            className="w-full rounded border border-dwarf-inputBorder bg-dwarf-inputBg py-2.5 pl-10 pr-3 font-mono text-sm text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
         </div>
         {usernameError && (
           <FieldError
             id="username-error"
-            message={REGISTER_FORM.errors.username[usernameError]}
+            message={messages[USERNAME_ERROR_KEYS[usernameError] ?? 'auth.error.unexpected']}
           />
         )}
       </div>
@@ -167,10 +194,10 @@ export default function RegisterForm() {
             <span className="font-bold text-dwarf-gold">
               {REGISTER_FORM.password.rune}
             </span>
-            <span>{REGISTER_FORM.password.label}</span>
+            <span>{messages[REGISTER_FORM.password.labelKey]}</span>
           </label>
           <span className="text-label-sm text-dwarf-parchmentMuted">
-            {REGISTER_FORM.password.hint}
+            {messages[REGISTER_FORM.password.hintKey]}
           </span>
         </div>
         <div className="relative">
@@ -185,14 +212,14 @@ export default function RegisterForm() {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder={REGISTER_FORM.password.placeholder}
+            placeholder={messages[REGISTER_FORM.password.placeholderKey]}
             aria-invalid={passwordError ? true : undefined}
             aria-describedby={passwordError ? 'password-error' : undefined}
-            className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
+            className="w-full rounded border border-dwarf-inputBorder bg-dwarf-inputBg py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
           <button
             type="button"
-            aria-label="Toggle password visibility"
+            aria-label={messages['auth.register.togglePassword']}
             onClick={() => setShowPassword((visible) => !visible)}
             className={`absolute inset-y-0 right-0 flex items-center pr-3 transition-colors focus:outline-none ${
               showPassword ? 'text-dwarf-gold' : 'text-dwarf-parchmentMuted hover:text-dwarf-gold'
@@ -201,11 +228,11 @@ export default function RegisterForm() {
             <EyeIcon />
           </button>
         </div>
-        <PasswordStrengthBar password={password} />
+        <PasswordStrengthBar password={password} messages={messages} />
         {passwordError && (
           <FieldError
             id="password-error"
-            message={REGISTER_FORM.errors.password[passwordError]}
+            message={messages[PASSWORD_ERROR_KEYS[passwordError] ?? 'auth.error.unexpected']}
           />
         )}
       </div>
@@ -220,10 +247,10 @@ export default function RegisterForm() {
             <span className="font-bold text-dwarf-gold">
               {REGISTER_FORM.confirmPassword.rune}
             </span>
-            <span>{REGISTER_FORM.confirmPassword.label}</span>
+            <span>{messages[REGISTER_FORM.confirmPassword.labelKey]}</span>
           </label>
           <span className="text-label-sm text-dwarf-parchmentMuted">
-            {REGISTER_FORM.confirmPassword.hint}
+            {messages[REGISTER_FORM.confirmPassword.hintKey]}
           </span>
         </div>
         <div className="relative">
@@ -236,14 +263,14 @@ export default function RegisterForm() {
             type={showPassword ? 'text' : 'password'}
             autoComplete="new-password"
             required
-            placeholder={REGISTER_FORM.confirmPassword.placeholder}
+            placeholder={messages[REGISTER_FORM.confirmPassword.placeholderKey]}
             aria-invalid={confirmPasswordError ? true : undefined}
             aria-describedby={confirmPasswordError ? 'confirm-password-error' : undefined}
-            className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
+            className="w-full rounded border border-dwarf-inputBorder bg-dwarf-inputBg py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
           <button
             type="button"
-            aria-label="Toggle confirm password visibility"
+            aria-label={messages['auth.register.toggleConfirmPassword']}
             onClick={() => setShowPassword((visible) => !visible)}
             className={`absolute inset-y-0 right-0 flex items-center pr-3 transition-colors focus:outline-none ${
               showPassword ? 'text-dwarf-gold' : 'text-dwarf-parchmentMuted hover:text-dwarf-gold'
@@ -255,7 +282,7 @@ export default function RegisterForm() {
         {confirmPasswordError && (
           <FieldError
             id="confirm-password-error"
-            message={REGISTER_FORM.errors.confirmPassword[confirmPasswordError]}
+            message={messages[CONFIRM_ERROR_KEYS[confirmPasswordError] ?? 'auth.error.unexpected']}
           />
         )}
       </div>
@@ -266,10 +293,10 @@ export default function RegisterForm() {
           <input
             type="checkbox"
             name="accept_oath"
-            className="dwarf-checkbox h-4 w-4 rounded-none border-[#3f382d] bg-[#121110] text-dwarf-gold transition focus:border-dwarf-gold focus:ring-0 focus:ring-offset-0"
+            className="dwarf-checkbox h-4 w-4 rounded-none border-dwarf-inputBorder bg-dwarf-inputBg text-dwarf-gold transition focus:border-dwarf-gold focus:ring-0 focus:ring-offset-0"
           />
           <span className="text-xs tracking-tight text-dwarf-parchmentMuted">
-            {REGISTER_FORM.terms}
+            {messages[REGISTER_FORM.termsKey]}
           </span>
         </label>
       </div>
@@ -278,13 +305,15 @@ export default function RegisterForm() {
       <div className="pt-2">
         {hasUnexpectedError && (
           <p role="alert" className="mb-3 text-xs font-medium text-dwarf-magma">
-            {REGISTER_FORM.errors.form.unexpected}
+            {messages['auth.error.unexpected']}
           </p>
         )}
         <ButtonPrimary type="submit" disabled={pending} className="w-full">
           <HammerIcon />
           <span className="font-bold">
-            {pending ? REGISTER_FORM.submitPending : REGISTER_FORM.submit}
+            {pending
+              ? messages[REGISTER_FORM.submitPendingKey]
+              : messages[REGISTER_FORM.submitKey]}
           </span>
         </ButtonPrimary>
       </div>

@@ -6,21 +6,35 @@ design for the parts that are not built yet. Decisions are written as ADRs
 design intentions, not implemented code** — do not treat them as done.
 
 Current state: authentication (password + GitHub/Discord OAuth), the account
-profile screen, the Dwarf-Fortress-inspired UI shell and the Drizzle/PostgreSQL
+profile screen, the Dwarf-Fortress-inspired UI shell, the Drizzle/PostgreSQL
 data layer (users plus the seeded `texts` corpus and `word_dictionaries` word
-pools) are implemented. Rooms, the real-time layer, the race engine, bots
-and bonuses are not built yet.
+pools) and the rooms data layer (`rooms`, `room_members`, `invitation_links`,
+queries, rules, actions) are implemented. The realtime layer is implemented
+for checkpoint 1 (ADR-010, Decision A): a `ws` server on the same HTTP server
+as Next.js (`server.ts` custom server), a Zod-validated protocol
+(`src/realtime/protocol.ts`), a transport-agnostic room hub
+(`src/realtime/hub.ts`) with presence/heartbeat/kick/close/config broadcasts,
+the Postgres adapter (`src/realtime/room-store.ts`), the action→hub bridge
+(`src/realtime/events.ts`) and the typed client hook
+(`src/realtime/useRoomSocket.ts`). The room UI exists for checkpoint 1: home
+race section (quick play, join by code, create-room card),
+`/rooms` public explorer with filters and ~5 s auto-refresh,
+`/rooms/[publicId]` lobby (live member list, host controls, invitation
+links), guest nickname flow and the `/i/[token]` invitation endpoint. The
+race engine, bots and bonuses are still not built.
 
 ## Folder layout
 
 | Path | Role |
 | ---- | ---- |
-| `src/app/` | Next.js App Router pages and route handlers (`(auth)/`, `login/`, `register/`, `account/`, `api/auth/[provider]/`) |
+| `src/app/` | Next.js App Router pages and route handlers (`(auth)/`, `login/`, `register/`, `account/`, `rooms/` server actions, `api/auth/[provider]/`) |
 | `src/components/` | Presentational UI components (auth forms, account screen, theme shell) |
 | `src/data/` | Static UI data (site identity, form labels, mock content) |
 | `src/db/` | Drizzle schema (`schema.ts`), client, migration runner, `queries/` (one module per aggregate) |
-| `src/lib/` | Pure business logic: password hashing, validation, sessions, OAuth |
+| `src/lib/` | Pure business logic: password hashing, validation, sessions, OAuth, token codecs |
+| `src/realtime/` | Realtime layer: `protocol.ts` (Zod schemas), `hub.ts` (transport-agnostic hub), `room-store.ts` (Postgres adapter), `server.ts` (ws wiring), `events.ts` (action→hub bridge), `useRoomSocket.ts` (client hook) |
 | `src/sprites/` | Sprite registry, auto-tiling and tile rendering (the visual identity) |
+| `server.ts` | Custom server entry (ADR-010): one process for Next.js + the `/ws` realtime layer |
 | `drizzle/` | Generated SQL migrations + journal (committed, never hand-edited) |
 | `stitch/` | Design mockup reference text |
 | `doc/` | Documentation |
@@ -85,17 +99,62 @@ erDiagram
         jsonb words "array, >= 100 entries (CHECK)"
         timestamptz createdAt
     }
+    rooms {
+        bigint id PK
+        uuid publicId UK
+        varchar code "6 chars, unambiguous alphabet, UK (CHECK)"
+        bigint hostUserId FK
+        varchar visibility "public | code | private (CHECK)"
+        varchar status "en_attente | decompte | en_course | resultats | fermee (CHECK)"
+        integer capacity "2-30 (CHECK)"
+        jsonb config "RoomConfig, Zod-validated"
+        timestamptz createdAt
+        timestamptz updatedAt
+        timestamptz closedAt "nullable"
+    }
+    room_members {
+        bigint id PK
+        bigint roomId FK
+        bigint userId FK "nullable, XOR guestToken"
+        varchar guestToken "nullable, XOR userId"
+        varchar role "participant | spectator (CHECK)"
+        timestamptz joinedAt
+        timestamptz leftAt "nullable; present iff null"
+        boolean kicked
+    }
+    invitation_links {
+        bigint id PK
+        bigint roomId FK
+        text token UK ">= 128-bit random"
+        varchar status "unused | used | revoked (CHECK)"
+        varchar boundIp "nullable, set on first use"
+        bigint boundMemberId FK "nullable"
+        timestamptz usedAt "nullable"
+        timestamptz revokedAt "nullable"
+        timestamptz createdAt
+    }
     users ||--|| user_stats : "1:1"
     users ||--|| user_resources : "1:1"
     users ||--o{ oauth_accounts : "has"
+    users ||--o{ rooms : "hosts"
+    users ||--o{ room_members : "joins as"
+    rooms ||--o{ room_members : "contains"
+    rooms ||--o{ invitation_links : "grants"
+    room_members ||--o{ invitation_links : "binds"
 ```
 
 Rules: internal `id`s never reach the client (public ids are `publicId` /
-`username`); `user_stats` carries `wins` plus keystroke counters — accuracy is
-derived at read time (`correct / total * 100`, AUTH-06), not stored as a
+`username` / the room `code`; members are addressed by their user `publicId`
+or guest token); `user_stats` carries `wins` plus keystroke counters — accuracy
+is derived at read time (`correct / total * 100`, AUTH-06), not stored as a
 column; `texts` and `word_dictionaries` are reference data whose complexity is
 justified by measurable metrics (CONF-05, see `doc/database.md`); child rows
-cascade on delete; all counters carry `CHECK >= 0`.
+cascade on delete; all counters carry `CHECK >= 0`. The room tables implement
+SALLE-01..10: the 6-char code alphabet is enforced by CHECK, "one active room
+per person" (SALLE-06) is a database guarantee via two partial unique indexes
+on `room_members` (`WHERE leftAt IS NULL`), the config jsonb is Zod-validated
+on every write (CONF-01..12), and invitation tokens are ≥ 128-bit random
+(SALLE-04) — details in `doc/database.md`.
 
 ### Planned tables (design only)
 
@@ -107,12 +166,15 @@ committed migrations when each feature is built:
   (punctuation/numbers/capitals/accents) for CONF-03/05/07.
 * ~~`word_dictionaries`~~ — **implemented** (see current schema): ≥100-word
   pools per (language, complexity) for random mode (CONF-03).
-* `rooms` — host, 6-char code (SALLE-02 alphabet), visibility, capacity,
-  status; unique constraint enforcing one room per person (SALLE-06).
-* `room_members` — participants/spectators, join time (host handover uses
-  longest-present human, SALLE-08), kick flag (SALLE-07).
-* `invitation_links` — ≥ 128-bit token, status, bound IP, revoked flags
-  (SALLE-04).
+* ~~`rooms`~~ — **implemented** (see current schema): host, 6-char code
+  (SALLE-02 alphabet), visibility, capacity, status, Zod-validated `config`
+  jsonb.
+* ~~`room_members`~~ — **implemented** (see current schema): participants/
+  spectators, join time (host handover uses the longest-present human,
+  SALLE-08), kick flag (SALLE-07), partial unique indexes enforcing one
+  active room per person (SALLE-06).
+* ~~`invitation_links`~~ — **implemented** (see current schema): ≥ 128-bit
+  token, status, bound IP + membership, revoked timestamps (SALLE-04).
 * `races` / `race_participants` — per-race config snapshot, start/end time,
   per-participant progress, errors, WPM series, bonuses received (RES-05),
   quit/status flags (COURSE-06/08/10).
@@ -239,12 +301,20 @@ player who returns within 30 s resumes in place (COURSE-08).
 * **Decision:** Local PostgreSQL 16 via `docker-compose.yml` (volume-backed);
   deployment targeted at Railway with TLS auto-enabled in production
   (`src/db/index.ts` detects `NODE_ENV=production`/`railway`).
-* **Consequences:** One local Postgres on port 5432 at a time. The production
-  URL and environment remain to be confirmed for TECH-05.
+* **Consequences:** One local Postgres on port 5432 at a time. Production
+  reality (checkpoint 1, 2026-11-08): Railway project `dwarven-scriptures`
+  with the `Postgres` plugin (`postgres-ssl:18`, hobby plan, volume-backed) and
+  the app service deployed from this repo via `railway up` (Railpack builds:
+  `npm ci` + `npm run build`, starts `npm run start` = `tsx server.ts`).
+  Public URL **https://dwarven-scriptures.up.railway.app**, TLS at the edge.
+  `DATABASE_URL` is set as the reference `${{Postgres.DATABASE_URL}}`; the
+  account is on the trial plan (see TECH-08 in `doc/EXIGENCES.md` for the
+  honest cost note). The deployment playbook lives in
+  [`doc/database.md`](database.md#deployment-railway).
 
-### ADR-010 — Real-time transport *(proposed — decision pending)*
+### ADR-010 — Real-time transport: `ws` on a Next.js custom server (single process)
 
-* **Status:** Proposed
+* **Status:** Accepted
 * **Context:** TECH-06 leaves the technology free; checkpoint 1 requires the
   decision as an ADR and live room presence (SALLE-01/02 + JOIN-01). Constraint
   set: server-authoritative progress/ranking/bonuses (COURSE-06), ≤ 10
@@ -257,13 +327,80 @@ player who returns within 30 s resumes in place (COURSE-08).
      control of the protocol; rooms/reconnection hand-written.
   3. **SSE + POST fallback** — simple, one-way only; forces request/response
      semantics for typing events.
-* **Lean:** `ws` (or Socket.IO if message volume proves trivial) with
-  server-issued ticks and client-side interpolation (COURSE-05 wants ~4
-  perceived updates/s from ≤ 10 real messages/s). The transport stays behind an
-  interface so game logic never imports it directly (AGENTS.md).
-* **Open question:** hosting story (Railway WebSockets, separate service, or
-  free-tier real-time provider per TECH-08). Decision will be finalized when
-  rooms are implemented.
+* **Decision:** `ws` (8.x) attached to a **Next.js custom server** — one HTTP
+  server, one process, one port: `server.ts` (repo root) creates the
+  `node:http` server, passes it to Next 16 (`next({ dev, httpServer })`), and
+  a `WebSocketServer` (`noServer: true`) answers upgrades on the `/ws` path.
+  Server actions (admission, host actions) and the in-memory realtime hub
+  therefore share one process and one memory space: the SALLE-10 rate limiter
+  and the room presence registry cannot diverge between two processes. The
+  alternative — a standalone realtime process plus a PostgreSQL
+  LISTEN/NOTIFY bridge — was rejected because it would fork the rate-limit
+  state across processes (the single-instance assumption documented in
+  `src/lib/rate-limit.ts`) and add a bridge, a second port and CORS/proxy
+  complexity for no checkpoint-1 benefit.
+* **Evidence trail (Next 16.3.8 bundled docs, `node_modules/next/dist/docs/`):**
+  * `01-app/02-guides/custom-server.md` documents the custom server with
+    `next({ dev })` → `app.prepare()` → `app.getRequestHandler()` and a
+    documented **`httpServer` option** ("The HTTP Server that Next.js is
+    running behind"). It warns that `output: 'standalone'` cannot be combined
+    with a custom server — this project does not use standalone output
+    (`next.config.ts` is empty), so there is no conflict.
+  * `node_modules/next/dist/esm/server/next.js` — the deprecation list for
+    custom servers (`DEPRECATED_CUSTOM_SERVER_METHOD_GUIDANCE`) covers only
+    `render`, `renderToHTML`, `renderError`, `render404`, `revalidate`,
+    `setAssetPrefix` and the `logError*` methods; `prepare()`,
+    `getRequestHandler()` and `getUpgradeHandler()` are **not** deprecated
+    (the guidance for `render` itself points to `getRequestHandler()`).
+  * `node_modules/next/dist/esm/server/lib/router-server.js` — Next's own
+    upgrade handler only claims dev HMR (`/_next/hmr`) and proxied routes; for
+    unmatched paths it falls through, with the explicit comment: *"If there's
+    no matched output, we don't handle the request as user's custom WS server
+    may be listening on the same path."* A user `ws` server on the same HTTP
+    server is therefore a designed coexistence pattern, not a hack.
+  * `01-app/01-getting-started/17-deploying.md` — "you can also eject to a
+    custom server"; a Railway template exists, matching ADR-009.
+  * `01-app/02-guides/self-hosting.md` — reverse proxy recommended in front of
+    the Node server; graceful shutdown via SIGINT/SIGTERM.
+* **Consequences:**
+  * `npm run dev` / `npm run start` become `tsx server.ts` (dev mode when
+    `NODE_ENV !== 'production'`); `next build` is unchanged and `next start`
+    is no longer used. The custom server file is excluded from the Next build
+    (`custom-server.md`). Verified locally: the full `tsx` CLI is required
+    (`node --import tsx/esm` breaks drizzle-orm's module resolution), `next`
+    must be prepared before the realtime module loads, and the realtime boot
+    graph must not import `next/headers` — the token codecs live in
+    `src/lib/session-token.ts` / `guest-token.ts` for that reason.
+  * **Single-instance assumption:** presence, the hub and the rate limiter
+    live in one process's memory. Scaling to several instances would require a
+    shared pub/sub (e.g. PostgreSQL LISTEN/NOTIFY or Redis) and a shared rate
+    store — deliberately out of scope; one VPS/Railway instance is the
+    deployment target (TECH-05/08).
+  * **HTTPS + WebSocket in production:** the same origin serves both, so the
+    client connects to `wss://<host>/ws`. The reverse proxy (Caddy/nginx, or
+    Railway's proxy) must forward `/ws` upgrades to the Node server — no
+    second port, no CORS. Origin is validated against the `Host` header by
+    default, overridable via `WS_ALLOWED_ORIGINS` (`.env.example`).
+    **Verified on Railway (checkpoint 1):** a `wss://dwarven-scriptures
+    .up.railway.app/ws` handshake with the public Origin completes through the
+    proxy and the ping→pong echo works — the single-port upgrade survives the
+    edge untouched. One deployment fix was required: the server must bind the
+    dual-stack any address (`::`, see `src/lib/server-config.ts`), because
+    Railway's edge dials containers over their IPv6 ULA address while the
+    platform's `HOSTNAME` env resolves to IPv4 only (an IPv4-only binding
+    answered 502 on every path).
+  * **Runtime packaging:** `tsx` is a production dependency (the runtime start
+    is `tsx server.ts`), and `package.json` pins `"packageManager":
+    "npm@11.19.0"` so Railpack builds with npm instead of picking Bun from a
+    stray `bun.lock` in the upload. The `DATABASE_URL` import-time throw was
+    moved to first-use (`src/db/index.ts` is a lazy proxy) so `next build`
+    works without the variable at build time.
+  * The transport stays behind `src/realtime/hub.ts` (room hub interface) and
+    `src/realtime/protocol.ts` (Zod message schemas): the race engine will
+    import the hub, never `ws` (AGENTS.md). Server actions notify the hub
+    through the same in-process seam (`src/realtime/events.ts`).
+  * Reconnection for checkpoint 1 is a plain re-join by code/invitation
+    (COURSE-08's 30-second resume is Phase 2).
 
 ### ADR-011 — Bots *(proposed approach)*
 
@@ -279,17 +416,103 @@ player who returns within 30 s resumes in place (COURSE-08).
   (BOT-05); the five level ranges (BOT-01) map to schedule parameters to be
   documented when implemented.
 
-## Planned real-time message flow *(design only)*
+## Real-time message flow
+
+### Implemented (checkpoint 1) — `src/realtime/protocol.ts`
+
+Every message in both directions is validated with a Zod v4 schema (TECH-07).
+Client → server:
+
+* `joinRoom` — by 6-char **code** XOR **invitation token** (SALLE-02/04);
+  optional `nickname` for guests, which must match the signed `guest` cookie
+  (the cookie itself is written by the `setGuestNickname` action over HTTP —
+  a 101 upgrade response cannot carry `Set-Cookie`). Admission applies the
+  same queries as the server actions: status `en_attente`/`resultats` only
+  (SALLE-09), capacity (SALLE-05), kick history (SALLE-07), one-active-room
+  (SALLE-06), rate limit 10/60 s per IP (SALLE-10).
+* `leaveRoom`, `ping`.
+
+Server → client:
+
+* `roomSnapshot` — the authoritative state sent right after a join: room
+  public info (code, visibility, status, capacity), the Zod-validated config
+  (CONF-12), the host's public identity and every present member with public
+  display info (users: `publicId`/username/avatar; guests: token + nickname —
+  `null` until that guest holds a live connection, because nicknames live in
+  the signed cookie, not the database).
+* `memberJoined` / `memberLeft` / `memberKicked` — presence events with the
+  same public member shape (`connected` reflects the live socket).
+* `hostChanged` (SALLE-08), `configUpdated` (CONF-12), `roomClosed` — emitted
+  by the host actions through `src/realtime/events.ts` into the in-process
+  hub (Decision A: one process, so no NOTIFY bridge is needed).
+* `error` with a typed code: `room_not_found`, `room_full`,
+  `already_in_room`, `kicked`, `invalid_input`, `private_room` (reserved),
+  `rate_limited`. `room_not_found` also covers "not joinable right now" and
+  private rooms reached by code (SALLE-03 never reveals existence).
+* `pong`.
+
+Lifecycle rules implemented by the hub (`src/realtime/hub.ts`): one live
+connection per membership (a second connection replaces the first, which is
+closed with `error(already_in_room)` — the newest tab wins); a ws-level
+heartbeat (~30 s ping, dead socket evicted in ~30–60 s) whose eviction applies
+the normal departure path; graceful shutdown closes every socket and marks all
+memberships left. **Phase-1 reconnection is a plain re-join by code/token** —
+COURSE-08's 30-second mid-race resume is Phase 2. After a `roomClosed` message
+the client hook does not schedule a reconnect (`shouldReconnect` in
+`src/realtime/useRoomSocket.ts`): retrying would only flip the "room closed"
+screen into a "not found" error.
+
+### Invitation endpoint and room-page access model (checkpoint 1)
+
+* `GET /i/[token]` (`src/app/i/[token]/route.ts`) consumes the invitation
+  server-side with the same queries as the realtime store: unknown / revoked /
+  used-by-someone-else tokens redirect to the friendly error page
+  (`/i/error`), the bound member may reuse their own link, and the join +
+  consumption run with the same admission rules (status, capacity, kick,
+  one-active-room). Guests without a nickname are redirected to the room page
+  first — the lobby collects the name (AUTH-02) and then joins by token over
+  the realtime channel, where the link is bound.
+* The room page (`/rooms/[publicId]`) renders by visibility (SALLE-03):
+  public rooms join directly by code; code rooms show a code gate to
+  non-members; private rooms only open with an invitation token — except an
+  *active member reconnecting*, whose membership is the credential
+  (`room-store.ts` lets the hub re-attach such a connection without admitting
+  anyone else; the code still proves nothing).
+* The lobby is driven entirely by the snapshot from `useRoomSocket`:
+  `configUpdated`, `hostChanged`, `memberJoined/Left/Kicked` and `roomClosed`
+  re-render from the authoritative state; a kicked member is redirected home
+  with a notice.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Server (authoritative, one process)
+    participant DB as PostgreSQL
+    C->>S: HTTP: create room / set nickname (server actions)
+    S->>DB: insert room + host membership / guest cookie
+    C->>S: WS upgrade /ws (session or guest cookie, Origin checked)
+    C->>S: joinRoom {code | invitationToken}
+    S->>DB: admission query + membership insert
+    S-->>C: roomSnapshot (room + config + members)
+    S-->>C: memberJoined (to the other members)
+    C->>S: ping
+    S-->>C: pong
+    C->>S: leaveRoom
+    S->>DB: mark left (+ SALLE-08 handover / close)
+    S-->>C: memberLeft (+ hostChanged / roomClosed)
+```
+
+### Planned (Phase 2) — race messages, design only
+
+The flow below extends the implemented protocol once the race engine lands;
+nothing here is built yet:
 
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant S as Server (authoritative)
     participant DB as PostgreSQL
-    C->>S: join room (code / invitation token)
-    S->>DB: validate, insert membership
-    S-->>C: room state + config (CONF-12)
-    S-->>C: presence updates (members join/leave)
+    C->>S: host starts the race (server action)
     S-->>C: countdown sync (3-2-1, text revealed)
     C->>S: progress (validated char index)
     S-->>C: ticks <=10 msg/s: positions, WPM, ranking

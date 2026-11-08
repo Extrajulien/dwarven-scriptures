@@ -63,6 +63,25 @@ export function isOAuthProvider(value: unknown): value is OAuthProviderId {
   );
 }
 
+/**
+ * True when the provider's client credentials are both present in the
+ * environment. The auth routes use this to degrade gracefully (TECH-05):
+ * without credentials they redirect back to `/login` with a localized
+ * notice instead of letting `getClientCredentials` throw a 500. The login
+ * buttons stay visible either way — the redirect loop carries the notice.
+ */
+export function isProviderConfigured(provider: OAuthProviderId): boolean {
+  const config = PROVIDERS[provider];
+  const clientId = process.env[config.clientIdEnv];
+  const clientSecret = process.env[config.clientSecretEnv];
+  return (
+    typeof clientId === 'string' &&
+    clientId.length > 0 &&
+    typeof clientSecret === 'string' &&
+    clientSecret.length > 0
+  );
+}
+
 /** Random CSRF token echoed back by the provider on the callback. */
 export function generateState(): string {
   return randomBytes(24).toString('base64url');

@@ -1,32 +1,38 @@
 // Mock content for the "Deep Delve // Typist Expedition" home page.
-// Values are placeholders until the real-time backend, auth and i18n land.
-// Class strings are Tailwind utilities resolved from tailwind.config.js.
+// All user-visible strings live in `src/i18n/messages.ts` (I18N-01): each
+// text field here is a message key resolved against the active fr/en bag by
+// the rendering component. Only machine values stay in this file: ids,
+// hrefs, icon names, Tailwind class strings, numbers, proper nouns and
+// decorative runes. Class strings are Tailwind utilities resolved from
+// tailwind.config.js.
+import type { Messages } from '../i18n/messages';
 
 export interface GuildInfo {
-  title: string;
+  nameKey: keyof Messages;
+  /** Decorative runes — glyphs, not words, same in both languages. */
   runes: string;
-  tag: string;
-  streak: string;
+  tagKey: keyof Messages;
+  streakKey: keyof Messages;
   logoUrl: string;
 }
 
 export interface NavLink {
-  label: string;
+  labelKey: keyof Messages;
   href: string;
 }
 
 export interface BreadcrumbInfo {
-  left: string;
-  right: string;
+  leftKey: keyof Messages;
+  rightKey: keyof Messages;
 }
 
 export interface CrestInfo {
-  chapter: string;
-  order: string;
-  name: string;
-  motto: string;
+  chapterKey: keyof Messages;
+  orderKey: keyof Messages;
+  nameKey: keyof Messages;
+  mottoKey: keyof Messages;
   level: string;
-  stats: string[];
+  statsKeys: readonly [keyof Messages, keyof Messages];
 }
 
 export interface ProgressData {
@@ -36,9 +42,9 @@ export interface ProgressData {
 
 export interface VaultStat {
   id: string;
-  label: string;
+  labelKey: keyof Messages;
   value: string;
-  caption?: string;
+  captionKey?: keyof Messages;
   icon: string;
   iconClass: string;
   valueClass: string;
@@ -48,30 +54,30 @@ export interface VaultStat {
 
 export interface ActionButtonData {
   id: string;
-  label: string;
+  labelKey: keyof Messages;
   icon: string;
   className: string;
 }
 
 export interface RosterFilter {
   id: string;
-  label: string;
+  labelKey: keyof Messages;
   active?: boolean;
 }
 
 export interface RosterColumn {
-  label: string;
+  labelKey: keyof Messages;
   align: 'text-left' | 'text-center' | 'text-right';
 }
 
 export interface MinerStatus {
-  label: string;
+  labelKey: keyof Messages;
   pillClass: string;
   dotClass: string;
 }
 
 export interface MinerAction {
-  label: string;
+  labelKey: keyof Messages;
   className: string;
 }
 
@@ -79,17 +85,18 @@ export interface Miner {
   id: string;
   initial: string;
   avatarClass: string;
+  /** Proper noun (dwarf name) — kept as data, not translated. */
   name: string;
   nameClass: string;
-  rank: string;
+  rankKey: keyof Messages;
   rankClass: string;
-  specialization: string;
+  specializationKey: keyof Messages;
   specializationClass: string;
   wpm: number;
   wpmClass: string;
   accuracy: string;
   accuracyClass: string;
-  stones: string;
+  stonesKey: keyof Messages;
   progress: ProgressData;
   status: MinerStatus;
   action: MinerAction;
@@ -97,24 +104,25 @@ export interface Miner {
 
 export interface RailBountyBody {
   kind: 'rail';
-  start: string;
-  lead: string;
-  end: string;
-  ascii: string;
+  startKey: keyof Messages;
+  leadKey: keyof Messages;
+  endKey: keyof Messages;
+  asciiKey: keyof Messages;
+  /** Leader marker: a proper noun plus glyphs — kept as data. */
   leader: string;
 }
 
 export interface StatusBountyBody {
   kind: 'status';
-  text: string;
-  status: string;
+  textKey: keyof Messages;
+  statusKey: keyof Messages;
 }
 
 export interface ProgressBountyBody {
   kind: 'progress';
-  label: string;
-  pctLabel: string;
-  ascii: string;
+  labelKey: keyof Messages;
+  pctLabelKey: keyof Messages;
+  asciiKey: keyof Messages;
 }
 
 export type BountyBody = RailBountyBody | StatusBountyBody | ProgressBountyBody;
@@ -122,100 +130,100 @@ export type BountyBody = RailBountyBody | StatusBountyBody | ProgressBountyBody;
 export interface Bounty {
   id: string;
   dotClass: string;
-  title: string;
+  titleKey: keyof Messages;
   titleClass: string;
-  meta: string;
+  metaKey: keyof Messages;
   metaClass: string;
-  reward: string;
+  rewardKey: keyof Messages;
   rewardClass: string;
-  action: string;
+  actionKey: keyof Messages;
   actionClass: string;
   body: BountyBody;
 }
 
 export interface PerkFooter {
-  estimate: string;
-  action: string;
+  estimateKey: keyof Messages;
+  actionKey: keyof Messages;
 }
 
 export interface Perk {
   id: string;
-  name: string;
+  nameKey: keyof Messages;
   nameClass: string;
-  status: string;
+  statusKey: keyof Messages;
   statusClass: string;
   borderClass: string | null;
-  description: string;
+  descriptionKey: keyof Messages;
   progress?: ProgressData;
   footer?: PerkFooter;
-  footnote?: string;
+  footnoteKey?: keyof Messages;
   locked?: boolean;
 }
 
 export interface ChronicleSegment {
-  text: string;
+  textKey: keyof Messages;
   className?: string;
 }
 
 export interface ChronicleEntry {
   id: string;
+  /** Proper noun (dwarf name) — kept as data, not translated. */
   author: string;
   authorClass: string;
-  time: string;
+  timeKey: keyof Messages;
   bodyClass: string;
   segments: ChronicleSegment[];
 }
 
 export interface FooterInfo {
-  left: string;
-  status: string;
-  optimal: string;
+  leftKey: keyof Messages;
+  statusKey: keyof Messages;
+  optimalKey: keyof Messages;
 }
 
 export const GUILD: GuildInfo = {
-  title: 'Dwarven Scriptures',
+  nameKey: 'guild.name',
   runes: '[ᛞᛖᛖᛈ ᛞᛖᛚᚡᛖ]',
-  tag: '[GUILD: IRONVEIN QUARRY - EXPEDITION #84]',
-  streak: '🔥 STREAK: 14 STONES',
+  tagKey: 'guild.tag',
+  streakKey: 'guild.streak',
   logoUrl:
     'favicon.png',
 };
 
 export const NAV_LINKS: NavLink[] = [
-  { label: 'Mine Race', href: '#race-cavern' },
-  { label: 'Guild Ranks', href: '#quarry-leaderboard' },
-  { label: 'Runeworks', href: '#dwarven-armory' },
-  { label: 'Ledgers', href: '#expedition-archives' },
+  { labelKey: 'nav.mineRace', href: '#race-cavern' },
+  { labelKey: 'nav.guildRanks', href: '#quarry-leaderboard' },
+  { labelKey: 'nav.runeworks', href: '#dwarven-armory' },
+  { labelKey: 'nav.ledgers', href: '#expedition-archives' },
 ];
 
 export const BREADCRUMB: BreadcrumbInfo = {
-  left: '᚛ GUILD_HQ // EXPEDITION_#84 // CITADEL_OF_GRANITE ᚜',
-  right: 'STATUS: FORTRESS_ACTIVE ▪ DEFENSE_RATING: 9400 ▪ SEAL: INTACT',
+  leftKey: 'home.breadcrumbLeft',
+  rightKey: 'home.breadcrumbRight',
 };
 
 export const CREST: CrestInfo = {
-  chapter: 'CHAPTER 84',
-  order: '[ANCIENT ORDER]',
-  name: 'IRONVEIN QUARRY',
-  motto:
-    '\u201CStrike the Deepest Veins, Etch the Sacred Runes with Iron Quill.\u201D',
+  chapterKey: 'home.crest.chapter',
+  orderKey: 'home.crest.order',
+  nameKey: 'home.crest.name',
+  mottoKey: 'home.crest.motto',
   level: 'L18',
-  stats: ['⚔ 38 EXCAVATORS ACTIVE', 'HALL TIER: GRAND STRONGHOLD'],
+  statsKeys: ['home.crest.statsExcavators', 'home.crest.statsHallTier'],
 };
 
 export const VAULT_STATS: VaultStat[] = [
   {
     id: 'adamantine',
-    label: 'ADAMANTINE',
+    labelKey: 'home.vault.adamantine.label',
     value: '4,820',
-    caption: 'Ingots Stored',
+    captionKey: 'home.vault.adamantine.caption',
     icon: 'diamond',
     iconClass: 'text-tertiary',
     valueClass: 'text-primary',
   },
   {
     id: 'magma-fuel',
-    label: 'MAGMA FUEL',
+    labelKey: 'home.vault.magmaFuel.label',
     value: '94.2%',
     icon: 'local_fire_department',
     iconClass: 'text-secondary',
@@ -224,18 +232,18 @@ export const VAULT_STATS: VaultStat[] = [
   },
   {
     id: 'raw-gems',
-    label: 'RAW GEMS',
+    labelKey: 'home.vault.rawGems.label',
     value: '12,450',
-    caption: 'Cut & Uncut',
+    captionKey: 'home.vault.rawGems.caption',
     icon: 'flare',
     iconClass: 'text-tertiary',
     valueClass: 'text-on-surface',
   },
   {
     id: 'hourly-tithe',
-    label: 'HOURLY TITHE',
+    labelKey: 'home.vault.hourlyTithe.label',
     value: '+340/hr',
-    caption: 'Active Surge Active',
+    captionKey: 'home.vault.hourlyTithe.caption',
     captionClass: 'text-tertiary',
     icon: 'search_music_note',
     iconClass: 'text-primary',
@@ -246,21 +254,21 @@ export const VAULT_STATS: VaultStat[] = [
 export const ACTION_BUTTONS: ActionButtonData[] = [
   {
     id: 'contribute',
-    label: '[CONTRIBUTE TO VAULT]',
+    labelKey: 'home.action.contribute',
     icon: 'add_circle',
     className:
       'bg-primary text-on-primary hover:bg-primary-fixed transition-transform shadow-md',
   },
   {
     id: 'declare-race',
-    label: '[DECLARE NEW CAVERN RACE]',
+    labelKey: 'home.action.declareRace',
     icon: 'swords',
     className:
       'bg-surface-container-high hover:bg-surface-container-highest text-primary transition-colors shadow-sm',
   },
   {
     id: 'manage-emblem',
-    label: '[MANAGE EMBLEM & BANNER]',
+    labelKey: 'home.action.manageEmblem',
     icon: 'shield',
     className:
       'bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors',
@@ -268,20 +276,20 @@ export const ACTION_BUTTONS: ActionButtonData[] = [
 ];
 
 export const ROSTER_FILTERS: RosterFilter[] = [
-  { id: 'all', label: '[ALL MINERS (38)]', active: true },
-  { id: 'veterans', label: '[VETERAN ENGRAVERS (12)]' },
-  { id: 'champions', label: '[CHAMPION TYPISTS (6)]' },
-  { id: 'apprentices', label: '[APPRENTICES (20)]' },
+  { id: 'all', labelKey: 'home.roster.filterAll', active: true },
+  { id: 'veterans', labelKey: 'home.roster.filterVeterans' },
+  { id: 'champions', labelKey: 'home.roster.filterChampions' },
+  { id: 'apprentices', labelKey: 'home.roster.filterApprentices' },
 ];
 
 export const ROSTER_COLUMNS: RosterColumn[] = [
-  { label: 'MINER IDENTITY', align: 'text-left' },
-  { label: 'SPECIALIZATION', align: 'text-left' },
-  { label: 'PEAK WPM', align: 'text-center' },
-  { label: 'ACCURACY', align: 'text-center' },
-  { label: 'STONES MINED', align: 'text-left' },
-  { label: 'CHAMBER STATUS', align: 'text-left' },
-  { label: 'ORDERS', align: 'text-right' },
+  { labelKey: 'home.roster.colIdentity', align: 'text-left' },
+  { labelKey: 'home.roster.colSpecialization', align: 'text-left' },
+  { labelKey: 'home.roster.colPeakWpm', align: 'text-center' },
+  { labelKey: 'home.roster.colAccuracy', align: 'text-center' },
+  { labelKey: 'home.roster.colStones', align: 'text-left' },
+  { labelKey: 'home.roster.colStatus', align: 'text-left' },
+  { labelKey: 'home.roster.colOrders', align: 'text-right' },
 ];
 
 export const MINERS: Miner[] = [
@@ -291,22 +299,22 @@ export const MINERS: Miner[] = [
     avatarClass: 'bg-primary text-on-primary',
     name: 'Urist McTypist',
     nameClass: 'text-primary',
-    rank: '[OVERSEER // GRAND GOLD]',
+    rankKey: 'home.miners.urist.rank',
     rankClass: 'text-secondary-fixed-dim',
-    specialization: 'Master Engraver',
+    specializationKey: 'home.miners.urist.specialization',
     specializationClass: 'text-on-surface',
     wpm: 112,
     wpmClass: 'text-primary',
     accuracy: '98.4%',
     accuracyClass: 'text-tertiary',
-    stones: '148,920 STONES',
+    stonesKey: 'home.miners.urist.stones',
     progress: { percent: 92, fillClass: 'bg-primary' },
     status: {
-      label: 'RACING #MINE-8449',
+      labelKey: 'home.miners.urist.status',
       pillClass: 'bg-secondary-container/40 text-on-secondary-container',
       dotClass: 'bg-secondary animate-pulse',
     },
-    action: { label: '[INSPECT]', className: 'text-primary' },
+    action: { labelKey: 'home.miners.urist.action', className: 'text-primary' },
   },
   {
     id: 'darin',
@@ -314,22 +322,22 @@ export const MINERS: Miner[] = [
     avatarClass: 'bg-surface-container-high text-on-surface',
     name: 'Darin Coppervein',
     nameClass: 'text-on-surface',
-    rank: '[VETERAN FOREMAN]',
+    rankKey: 'home.miners.darin.rank',
     rankClass: 'text-outline',
-    specialization: 'Pickaxe Specialist',
+    specializationKey: 'home.miners.darin.specialization',
     specializationClass: 'text-on-surface-variant',
     wpm: 89,
     wpmClass: 'text-on-surface',
     accuracy: '96.1%',
     accuracyClass: 'text-tertiary',
-    stones: '82,400 STONES',
+    stonesKey: 'home.miners.darin.stones',
     progress: { percent: 65, fillClass: 'bg-tertiary' },
     status: {
-      label: 'FORGING RUNES',
+      labelKey: 'home.miners.darin.status',
       pillClass: 'bg-surface-container-high text-on-surface-variant',
       dotClass: 'bg-tertiary',
     },
-    action: { label: '[CHALLENGE]', className: 'text-on-surface' },
+    action: { labelKey: 'home.miners.darin.action', className: 'text-on-surface' },
   },
   {
     id: 'thrum',
@@ -337,22 +345,22 @@ export const MINERS: Miner[] = [
     avatarClass: 'bg-surface-container-high text-on-surface',
     name: 'Thrum Stonebreaker',
     nameClass: 'text-on-surface',
-    rank: '[HEAVY QUARRIER]',
+    rankKey: 'home.miners.thrum.rank',
     rankClass: 'text-outline',
-    specialization: 'Bedrock Cleaver',
+    specializationKey: 'home.miners.thrum.specialization',
     specializationClass: 'text-on-surface-variant',
     wpm: 84,
     wpmClass: 'text-on-surface',
     accuracy: '94.0%',
     accuracyClass: 'text-tertiary',
-    stones: '61,120 STONES',
+    stonesKey: 'home.miners.thrum.stones',
     progress: { percent: 48, fillClass: 'bg-secondary' },
     status: {
-      label: 'MEAD HALL REST',
+      labelKey: 'home.miners.thrum.status',
       pillClass: 'bg-surface-container-high text-outline',
       dotClass: 'bg-outline',
     },
-    action: { label: '[CHALLENGE]', className: 'text-on-surface-variant' },
+    action: { labelKey: 'home.miners.thrum.action', className: 'text-on-surface-variant' },
   },
   {
     id: 'kogan',
@@ -360,22 +368,22 @@ export const MINERS: Miner[] = [
     avatarClass: 'bg-surface-container-high text-on-surface',
     name: 'Kogan Alelover',
     nameClass: 'text-on-surface',
-    rank: '[UNSTABLE PROSPECTOR]',
+    rankKey: 'home.miners.kogan.rank',
     rankClass: 'text-error',
-    specialization: 'Tunnel Breaker',
+    specializationKey: 'home.miners.kogan.specialization',
     specializationClass: 'text-on-surface-variant',
     wpm: 72,
     wpmClass: 'text-on-surface',
     accuracy: '89.2%',
     accuracyClass: 'text-error',
-    stones: '34,500 STONES',
+    stonesKey: 'home.miners.kogan.stones',
     progress: { percent: 28, fillClass: 'bg-error' },
     status: {
-      label: 'SCOUTING MAGMA',
+      labelKey: 'home.miners.kogan.status',
       pillClass: 'bg-error-container/30 text-error',
       dotClass: 'bg-error animate-ping',
     },
-    action: { label: '[DISCIPLINE]', className: 'text-error' },
+    action: { labelKey: 'home.miners.kogan.action', className: 'text-error' },
   },
 ];
 
@@ -383,59 +391,59 @@ export const BOUNTIES: Bounty[] = [
   {
     id: 'adamantine-vein',
     dotClass: 'bg-secondary animate-pulse',
-    title: 'CHAMBER #8849: ADAMANTINE VEIN RACE',
+    titleKey: 'home.bounties.vein.title',
     titleClass: 'text-primary',
-    meta: '4 TYPISTS IN TUNNEL ▪ APEX SPEED REQ: 90+ WPM ▪ TACTICAL DEPTH: -520Z',
+    metaKey: 'home.bounties.vein.meta',
     metaClass: 'text-on-surface-variant',
-    reward: '+2,500 GUILD XP',
+    rewardKey: 'home.bounties.vein.reward',
     rewardClass: 'bg-primary text-on-primary',
-    action: '[JOIN CART]',
+    actionKey: 'home.bounties.vein.action',
     actionClass:
       'bg-surface-container-high hover:bg-secondary-container hover:text-on-secondary-container text-on-surface',
     body: {
       kind: 'rail',
-      start: '[ENTRANCE: RUNIC GATE]',
-      lead: 'CURRENT LEAD: URIST (82% EXCAVATED)',
-      end: '[DEEP VEIN CORE]',
-      ascii: '[████████████████████████████░░░░░░] 82%',
+      startKey: 'home.bounties.vein.start',
+      leadKey: 'home.bounties.vein.lead',
+      endKey: 'home.bounties.vein.end',
+      asciiKey: 'home.bounties.vein.ascii',
       leader: '► URIST [▲]',
     },
   },
   {
     id: 'magma-trial',
     dotClass: 'bg-error',
-    title: 'DEEP MAGMA CRAG SPEED TRIAL (SOLO ORDEAL)',
+    titleKey: 'home.bounties.magma.title',
     titleClass: 'text-on-surface',
-    meta: 'HARDCORE REQUIREMENT: >95 WPM ▪ ZERO FAULTS (100% ACCURACY)',
+    metaKey: 'home.bounties.magma.meta',
     metaClass: 'text-error',
-    reward: 'LEGENDARY MAGMA PICKAXE SKIN',
+    rewardKey: 'home.bounties.magma.reward',
     rewardClass: 'bg-secondary-container text-on-secondary-container',
-    action: '[COMMENCE TRIAL]',
+    actionKey: 'home.bounties.magma.action',
     actionClass:
       'bg-surface-container-high hover:bg-primary hover:text-on-primary text-on-surface',
     body: {
       kind: 'status',
-      text: 'Runes Remaining: 420 words of basalt glyphs under molten pressure.',
-      status: 'STATUS: UNCLAIMED TODAY',
+      textKey: 'home.bounties.magma.text',
+      statusKey: 'home.bounties.magma.status',
     },
   },
   {
     id: 'runic-decryption',
     dotClass: 'bg-tertiary',
-    title: 'ANCIENT RUNIC SCRIPTURE DECRYPTION',
+    titleKey: 'home.bounties.decryption.title',
     titleClass: 'text-tertiary',
-    meta: 'COOPERATIVE GUILD DELVE ▪ DUAL LINGUAL [ENG / LATIN LITURGY]',
+    metaKey: 'home.bounties.decryption.meta',
     metaClass: 'text-on-surface-variant',
-    reward: 'GOAL: 50,000 WORDS',
+    rewardKey: 'home.bounties.decryption.reward',
     rewardClass: 'bg-surface-container-high text-primary',
-    action: '[TYPE RUNES]',
+    actionKey: 'home.bounties.decryption.action',
     actionClass:
       'bg-surface-container-high hover:bg-tertiary hover:text-on-tertiary text-on-surface',
     body: {
       kind: 'progress',
-      label: 'PROGRESSION: 39,000 / 50,000 WORDS MINED',
-      pctLabel: '78% DECRYPTED',
-      ascii: '[====================>          ] 78% DECRYPTED',
+      labelKey: 'home.bounties.decryption.label',
+      pctLabelKey: 'home.bounties.decryption.pctLabel',
+      asciiKey: 'home.bounties.decryption.ascii',
     },
   },
 ];
@@ -443,46 +451,46 @@ export const BOUNTIES: Bounty[] = [
 export const PERKS: Perk[] = [
   {
     id: 'basalt-mastery',
-    name: 'Ancient Basalt Mastery',
+    nameKey: 'home.perks.basalt.name',
     nameClass: 'text-on-surface',
-    status: '[UNLOCKED]',
+    statusKey: 'home.perks.basalt.status',
     statusClass: 'bg-tertiary/20 text-tertiary',
     borderClass: 'border-l-tertiary',
-    description:
-      '+5% WPM velocity multiplier across all volcanic cavern and magma crag race courses.',
-    footnote: 'TIER I ▪ APPLIED TO ALL BROTHERS',
+    descriptionKey: 'home.perks.basalt.description',
+    footnoteKey: 'home.perks.basalt.footnote',
   },
   {
     id: 'fault-tolerance',
-    name: 'Fault Tolerance Reinforcement',
+    nameKey: 'home.perks.fault.name',
     nameClass: 'text-on-surface',
-    status: '[UNLOCKED]',
+    statusKey: 'home.perks.fault.status',
     statusClass: 'bg-tertiary/20 text-tertiary',
     borderClass: 'border-l-tertiary',
-    description:
-      'Pickaxe withstands +1 typo fault without shattering rock streak momentum.',
-    footnote: 'TIER II ▪ APPLIED TO ALL BROTHERS',
+    descriptionKey: 'home.perks.fault.description',
+    footnoteKey: 'home.perks.fault.footnote',
   },
   {
     id: 'magma-quill',
-    name: 'Magma-Cooled Quill',
+    nameKey: 'home.perks.quill.name',
     nameClass: 'text-secondary',
-    status: '82% FORGED',
+    statusKey: 'home.perks.quill.status',
     statusClass: 'bg-secondary-container text-on-secondary-container animate-pulse',
     borderClass: 'border-l-secondary',
-    description:
-      'Zero input lag buffering on frantic monospaced keystrokes. Heat dissipation runes.',
+    descriptionKey: 'home.perks.quill.description',
     progress: { percent: 82, fillClass: 'bg-secondary' },
-    footer: { estimate: 'EST: 4 HOURS REMAINING', action: '[FEED ORE]' },
+    footer: {
+      estimateKey: 'home.perks.quill.estimate',
+      actionKey: 'home.perks.quill.action',
+    },
   },
   {
     id: 'forgotten-beast',
-    name: 'Forgotten Beast Cleaver',
+    nameKey: 'home.perks.beast.name',
     nameClass: 'text-outline',
-    status: '[LOCKED: LVL 20]',
+    statusKey: 'home.perks.beast.status',
     statusClass: 'bg-surface-container-high text-outline',
     borderClass: null,
-    description: '+25% Adamantine yield harvested from Titan keystroke encounter phases.',
+    descriptionKey: 'home.perks.beast.description',
     locked: true,
   },
 ];
@@ -492,54 +500,46 @@ export const CHRONICLES: ChronicleEntry[] = [
     id: 'apex-record',
     author: 'URIST MCTYPIST',
     authorClass: 'text-primary',
-    time: '02 MINS AGO',
+    timeKey: 'home.chronicles.apex.time',
     bodyClass: 'text-tertiary font-medium',
     segments: [
-      { text: '⚡ New Apex Speed Record set in Chamber #8849: ' },
-      { text: '112 WPM', className: 'font-bold' },
-      { text: ' with 0 faults!' },
+      { textKey: 'home.chronicles.apex.s1' },
+      { textKey: 'home.chronicles.apex.s2', className: 'font-bold' },
+      { textKey: 'home.chronicles.apex.s3' },
     ],
   },
   {
     id: 'tithe-deposit',
     author: 'DARIN COPPERVEIN',
     authorClass: 'text-on-surface',
-    time: '14 MINS AGO',
+    timeKey: 'home.chronicles.tithe.time',
     bodyClass: 'text-on-surface-variant',
     segments: [
-      { text: 'Tithe deposited: ' },
-      { text: '+400 Adamantine Ingots', className: 'text-primary font-bold' },
-      { text: ' transferred to Vault.' },
+      { textKey: 'home.chronicles.tithe.s1' },
+      { textKey: 'home.chronicles.tithe.s2', className: 'text-primary font-bold' },
+      { textKey: 'home.chronicles.tithe.s3' },
     ],
   },
   {
     id: 'cave-in',
     author: 'KOGAN ALELOVER',
     authorClass: 'text-error',
-    time: '28 MINS AGO',
+    timeKey: 'home.chronicles.caveIn.time',
     bodyClass: 'text-error',
-    segments: [
-      {
-        text: '⚠ Minor Cave-in triggered in Sub-Vein C! Typo burst dropped tunnel stability by 4%.',
-      },
-    ],
+    segments: [{ textKey: 'home.chronicles.caveIn.s1' }],
   },
   {
     id: 'rune-pickaxes',
     author: 'THRUM STONEBREAKER',
     authorClass: 'text-secondary',
-    time: '1 HOUR AGO',
+    timeKey: 'home.chronicles.pickaxes.time',
     bodyClass: 'text-on-surface-variant',
-    segments: [
-      {
-        text: 'Crafted 3x Rune Pickaxes for apprentice typists entering the magma trial.',
-      },
-    ],
+    segments: [{ textKey: 'home.chronicles.pickaxes.s1' }],
   },
 ];
 
 export const FOOTER: FooterInfo = {
-  left: '▪ DEPTH: -480 Z-LEVEL (MAGMA CRAG) ▪ ROOM: #EXP-84 (PUBLIC LANTERN) ▪ PROTOCOL: ASCII_SOCKET_v2',
-  status: 'STATUS: [MINING SYNCHRONIZED]',
-  optimal: '● SYSTEM OPTIMAL: 112 WPM APEX',
+  leftKey: 'footer.left',
+  statusKey: 'footer.status',
+  optimalKey: 'footer.optimal',
 };

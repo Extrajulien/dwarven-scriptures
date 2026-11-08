@@ -5,6 +5,7 @@ import {
   type GridCell,
 } from './autoTileEvaluator';
 import TileGrid from './TileGrid';
+import type { Messages } from '../i18n/messages';
 
 const ROWS = 8;
 const COLS = 9;
@@ -44,18 +45,8 @@ const INITIAL_MINED: ReadonlySet<string> = (() => {
   return set;
 })();
 
-export default function AutoTileDemo() {
+export default function AutoTileDemo({ messages }: { messages: Messages }) {
   const [mined, setMined] = useState<ReadonlySet<string>>(() => INITIAL_MINED);
-
-  const toggle = useCallback((row: number, col: number) => {
-    const key = `${row},${col}`;
-    setMined((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
 
   const reset = useCallback(() => setMined(new Set(INITIAL_MINED)), []);
 
@@ -71,8 +62,11 @@ export default function AutoTileDemo() {
   );
 
   const getCellLabel = useCallback(
-    (row: number, col: number) => (mined.has(`${row},${col}`) ? 'Restore tile' : 'Mine tile'),
-    [mined],
+    (row: number, col: number) =>
+      mined.has(`${row},${col}`)
+        ? messages['demo.autoTileRestore']
+        : messages['demo.autoTileMine'],
+    [mined, messages],
   );
 
   const getCellPressed = useCallback(
@@ -83,18 +77,15 @@ export default function AutoTileDemo() {
   return (
     <section className="flex flex-col gap-space-md rounded-lg border border-outline-variant bg-surface-container-low p-space-lg">
       <header className="flex flex-col gap-space-xs">
-        <h2 className="font-headline-md text-primary">Auto-Tiling &amp; Layered Cells</h2>
+        <h2 className="font-headline-md text-primary">{messages['demo.autoTileTitle']}</h2>
         <p className="font-body-sm text-on-surface-variant">
-          Click a tile to mine it out (air). Buried rock is culled; exposed rock renders a wall
-          face, and exposed gold veins render a tinted mineral face with inner corners. A corridor
-          is pre-mined so you can see the effect immediately.
+          {messages['demo.autoTileBody']}
         </p>
       </header>
 
       <TileGrid
         grid={grid}
         scale={SCALE}
-        //onCellClick={toggle}
         getCellLabel={getCellLabel}
         getCellPressed={getCellPressed}
         className="bg-outline-variant/30"
@@ -106,20 +97,20 @@ export default function AutoTileDemo() {
           onClick={reset}
           className="rounded bg-primary px-space-md py-space-xs font-label-md text-on-primary transition-colors hover:bg-primary-fixed"
         >
-          Reset
+          {messages['demo.autoTileReset']}
         </button>
         <div className="flex flex-wrap gap-space-md font-body-sm text-on-surface-variant">
           <span>
-            <span className="text-primary">■</span> gold vein (mineral tint)
+            <span className="text-primary">■</span> {messages['demo.legendGold']}
           </span>
           <span>
-            <span className="text-on-surface-variant">■</span> exposed rock wall
+            <span className="text-on-surface-variant">■</span> {messages['demo.legendRock']}
           </span>
           <span>
-            <span className="text-secondary">■</span> mined floor (air)
+            <span className="text-secondary">■</span> {messages['demo.legendFloor']}
           </span>
           <span>
-            <span className="text-tertiary">■</span> dwarf occupant
+            <span className="text-tertiary">■</span> {messages['demo.legendDwarf']}
           </span>
         </div>
       </footer>

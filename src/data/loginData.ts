@@ -1,89 +1,89 @@
-// Mock content for the "Citadel of Granite // Scribe Access Terminal" login
-// page. Values are placeholders until the real auth flow and i18n land.
-// Class strings are Tailwind utilities resolved from tailwind.config.js.
+// Content for the "Citadel of Granite // Scribe Access Terminal" login page.
+// All user-visible strings live in `src/i18n/messages.ts` (I18N-01): each text
+// field is a message key resolved against the active fr/en bag by the
+// rendering component. Machine values (urls, hrefs, runes, provider ids) stay
+// here. Class strings are Tailwind utilities resolved from tailwind.config.js.
+import type { Messages } from '../i18n/messages';
 
 export interface LoginCardData {
-  logoAlt: string;
+  logoAltKey: keyof Messages;
   logoUrl: string;
-  title: string;
-  heading: string;
-  subtitle: string;
-  status: string;
-  terminalId: string;
+  titleKey: keyof Messages;
+  headingKey: keyof Messages;
+  subtitleKey: keyof Messages;
+  statusKey: keyof Messages;
+  terminalIdKey: keyof Messages;
   guidance: {
     rune: string;
-    text: string;
+    textKey: keyof Messages;
     version: string;
   };
 }
 
 export interface LoginFormField {
   rune: string;
-  label: string;
-  hint: string;
-  placeholder: string;
+  labelKey: keyof Messages;
+  hintKey: keyof Messages;
+  placeholderKey: keyof Messages;
 }
 
 export interface LoginFormData {
   callsign: LoginFormField;
   password: LoginFormField;
-  remember: string;
-  submit: string;
-  submitPending: string;
-  errors: {
-    username: Record<string, string>;
-    password: Record<string, string>;
-    form: Record<string, string>;
-  };
+  rememberKey: keyof Messages;
+  submitKey: keyof Messages;
+  submitPendingKey: keyof Messages;
 }
 
 export interface AuthProvider {
   id: string;
-  label: string;
+  labelKey: keyof Messages;
 }
 
 export interface AuthAlternativesData {
-  divider: string;
+  dividerKey: keyof Messages;
   providers: AuthProvider[];
   register: {
-    prompt: string;
-    label: string;
+    promptKey: keyof Messages;
+    labelKey: keyof Messages;
     href: string;
   };
-  security: string;
+  securityKey: keyof Messages;
 }
 
 export interface ArtShowcaseData {
-  ariaLabel: string;
-  topLeft: string;
-  feedStatus: string;
+  ariaLabelKey: keyof Messages;
+  topLeftKey: keyof Messages;
+  feedStatusKey: keyof Messages;
   image: {
-    alt: string;
+    altKey: keyof Messages;
     src: string;
   };
   hud: {
-    title: string;
-    activeScribesLabel: string;
+    titleKey: keyof Messages;
+    activeScribesLabelKey: keyof Messages;
+    /** Mock number — data, not copy. */
     activeScribesValue: string;
-    veinLabel: string;
+    veinLabelKey: keyof Messages;
+    /** Proper noun — data, not copy. */
     veinValue: string;
-    quote: string;
+    quoteKey: keyof Messages;
   };
-  bottomLeft: string;
-  bottomRight: string;
+  bottomLeftKey: keyof Messages;
+  bottomRightKey: keyof Messages;
 }
 
 export const LOGIN_CARD: LoginCardData = {
-  logoAlt: 'Logo of Dwarven Scriptures',
+  logoAltKey: 'auth.login.card.logoAlt',
   logoUrl: 'favicon.png',
-  title: '[ CITADEL OF GRANITE ]',
-  heading: 'SCRIBE ACCESS TERMINAL',
-  subtitle: 'Deep Delve Guild • Scribe Verification',
-  status: '[STATUS: ONLINE]',
-  terminalId: 'TERM_ID: #84-S',
+  titleKey: 'auth.login.card.title',
+  headingKey: 'auth.login.card.heading',
+  subtitleKey: 'auth.login.card.subtitle',
+  statusKey: 'auth.login.card.status',
+  terminalIdKey: 'auth.login.card.terminalId',
   guidance: {
     rune: 'ᚱ',
-    text: 'Connect to the dwarven servers',
+    textKey: 'auth.login.card.guidance',
     version: '',
   },
 };
@@ -91,64 +91,51 @@ export const LOGIN_CARD: LoginCardData = {
 export const LOGIN_FORM: LoginFormData = {
   callsign: {
     rune: 'ᛗ',
-    label: '[ Dwarven identity ]',
-    hint: '[username]',
-    placeholder: 'moe lester',
+    labelKey: 'auth.login.callsign.label',
+    hintKey: 'auth.login.callsign.hint',
+    placeholderKey: 'auth.login.callsign.placeholder',
   },
   password: {
     rune: 'ᛝ',
-    label: '[ CIPHER ]',
-    hint: '[password]',
-    placeholder: '••••••••••••',
+    labelKey: 'auth.login.password.label',
+    hintKey: 'auth.login.password.hint',
+    placeholderKey: 'auth.login.password.placeholder',
   },
-  remember: 'Remember Scribe Rune-Stone for 30 cycles',
-  submit: '[ ENTER THE DELVE // LOGIN ]',
-  submitPending: '[ VERIFYING… ]',
-  errors: {
-    username: {
-      required: 'A name is required.',
-    },
-    password: {
-      required: 'A password is required.',
-    },
-    form: {
-      invalidCredentials: 'Incorrect username or password.',
-      unexpected: 'Something went wrong. Please try again.',
-    },
-  },
+  rememberKey: 'auth.login.remember',
+  submitKey: 'auth.login.submit',
+  submitPendingKey: 'auth.login.submitPending',
 };
 
 export const AUTH_ALTERNATIVES: AuthAlternativesData = {
-  divider: '─── [ OR ATTUNE VIA EXTERNAL FORGE ] ───',
+  dividerKey: 'auth.divider',
   providers: [
-    { id: 'github', label: 'Forge with GitHub' },
-    { id: 'discord', label: 'Attune Discord' },
+    { id: 'github', labelKey: 'auth.provider.github' },
+    { id: 'discord', labelKey: 'auth.provider.discord' },
   ],
   register: {
-    prompt: 'New to the subterranean guild?',
-    label: '[ ENGRAVE NEW SCRIBE DOSSIER → ]',
+    promptKey: 'auth.login.register.prompt',
+    labelKey: 'auth.login.register.label',
     href: '/register',
   },
-  security: '• 256-BIT BASALT ENCRYPTION • GUILD PROTOCOL ASCII_V2 •',
+  securityKey: 'auth.security',
 };
 
 export const ART_SHOWCASE: ArtShowcaseData = {
-  ariaLabel: 'Citadel Fortress Live Feed',
-  topLeft: '[ CITADEL HALL ARCHIVE // EXPEDITION #84 ]',
-  feedStatus: '● FEED SYNCED',
+  ariaLabelKey: 'auth.showcase.ariaLabel',
+  topLeftKey: 'auth.showcase.topLeft',
+  feedStatusKey: 'auth.showcase.feedStatus',
   image: {
-    alt: 'Detailed pixel art scene of an ancient subterranean Dwarven fortress hall in Dwarf Fortress Steam Edition style. Grand stone carved pillars, warm glowing lava forge channels in the distance, mining carts on tracks, glowing runic engravings in emerald and amber, rugged dwarven scribes and miners at basalt desks with quills and picks, intricate stone masonry borders, atmospheric dark slate cavern with warm torchlight, retro isometric high detail 16-bit video game art',
+    altKey: 'auth.showcase.imageAlt',
     src: 'assets/images/dwarf-angry.gif',
   },
   hud: {
-    title: '[ DEEP DELVE SANCTUM ]',
-    activeScribesLabel: 'Active Scribes & Miners:',
+    titleKey: 'auth.showcase.hudTitle',
+    activeScribesLabelKey: 'auth.showcase.activeScribesLabel',
     activeScribesValue: '4,820',
-    veinLabel: 'Vein:',
+    veinLabelKey: 'auth.showcase.veinLabel',
     veinValue: 'Adamantine #8849',
-    quote:
-      'Strike the granite true, young scribes. Every keystroke fortifies the mountain hall.',
+    quoteKey: 'auth.showcase.quote',
   },
-  bottomLeft: '[ SECTOR: LOWER_FORGE_LEVEL ]',
-  bottomRight: 'MAGMA RESERVOIR: 1,420°C // 98% CAPACITY',
+  bottomLeftKey: 'auth.showcase.bottomLeft',
+  bottomRightKey: 'auth.showcase.bottomRight',
 };

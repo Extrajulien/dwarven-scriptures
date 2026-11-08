@@ -1,11 +1,12 @@
 import type { ComponentType } from 'react';
 import { AUTH_ALTERNATIVES } from '../../data/registerData';
+import type { Messages } from '../../i18n/messages';
 import { DiscordIcon, GitHubIcon } from '../ProviderIcon';
 
 // A plain anchor (not `next/link`) so the browser performs a full-page load
 // to the route handler, which immediately redirects to the external provider.
 const PROVIDER_LINK_CLASSES =
-  'btn-chisel-stone group inline-flex min-h-[44px] items-center justify-center gap-2 rounded bg-dwarf-basalt px-3 py-2.5 text-xs text-dwarf-parchment transition hover:text-white';
+  'btn-chisel-stone group inline-flex min-h-[44px] items-center justify-center gap-2 rounded bg-dwarf-basalt px-3 py-2.5 text-xs text-dwarf-parchment transition hover:text-dwarf-parchmentBright';
 
 type ProviderIconProps = { className?: string };
 
@@ -15,15 +16,17 @@ const PROVIDER_ICONS: Record<
 > = {
   github: {
     Icon: GitHubIcon,
-    className: 'h-4 w-4 fill-current text-dwarf-parchmentMuted group-hover:text-white',
+    className: 'h-4 w-4 fill-current text-dwarf-parchmentMuted group-hover:text-dwarf-parchmentBright',
   },
   discord: {
     Icon: DiscordIcon,
+    // #5865F2 is the Discord brand colour: theme-independent identity colour,
+    // intentionally not a theme token (same hue on both cave backgrounds).
     className: 'h-4 w-4 fill-current text-[#5865F2]',
   },
 };
 
-export default function RegisterOAuthButtons() {
+export default function RegisterOAuthButtons({ messages }: { messages: Messages }) {
   return (
     <div
       className="grid grid-cols-1 gap-2.5 sm:grid-cols-2"
@@ -39,7 +42,7 @@ export default function RegisterOAuthButtons() {
           >
             <Icon className={className} />
             <span className="text-label-sm font-bold tracking-tight">
-              {provider.label}
+              {messages[provider.labelKey]}
             </span>
           </a>
         );

@@ -2,24 +2,26 @@ import type { UserProfileWithStatsInternal } from '../../db/schema';
 
 /**
  * Serializable projection of a user's account, handed to the account screen
- * components. `bigint` and `Date` values are converted to strings here because
- * they cannot cross the server/client boundary, and the internal `id` (plus the
- * raw `totalTimeMs`) is dropped so it can never reach the client
- * ([AGENTS.md](../../AGENTS.md) — internal ids never leave the server).
+ * components. `bigint` and `Date` values are converted to serializable forms
+ * here because they cannot cross the server/client boundary, and the internal
+ * `id` (plus the raw `totalTimeMs`) is dropped so it can never reach the
+ * client ([AGENTS.md](../../AGENTS.md) — internal ids never leave the server).
+ *
+ * Numbers and dates are emitted *unformatted*: the account components format
+ * them with the active locale through `src/i18n/format.ts` (I18N-03).
  */
 
 export type AccountProfile = {
   username: string;
   pfpUrl: string | null;
-  /** Formatted as `YYYY-MM-DD` (UTC). */
+  /** ISO-8601 instant; formatted with the active locale at render time. */
   createdAt: string;
   racesCompleted: number;
-  /** Locale-free thousands-grouped string, e.g. `148,920`. */
+  /** Raw digit string (bigint-safe, no grouping), e.g. `148920`. */
   totalWords: string;
-  /** Trimmed numeric string, e.g. `112` for `112.00`. */
-  bestWpm: string;
-  /** One-decimal string, e.g. `84.6`. */
-  avgWpm: string;
+  bestWpm: number;
+  avgWpm: number;
+  /** Raw digit string (bigint-safe, no grouping), e.g. `4820`. */
   coins: string;
   gems: number;
   linkedProviders: string[];
@@ -32,34 +34,19 @@ export function toAccountProfile(
   return {
     username: profile.username,
     pfpUrl: profile.pfpUrl,
-    createdAt: formatDate(profile.createdAt),
+    createdAt: profile.createdAt.toISOString(),
     racesCompleted: profile.racesCompleted,
-    totalWords: formatCount(profile.totalWords),
-    bestWpm: formatBestWpm(profile.bestWpm),
-    avgWpm: profile.avgWpm.toFixed(1),
-    coins: formatCount(profile.coins),
+    totalWords: profile.totalWords.toString(),
+    bestWpm: toFiniteNumber(profile.bestWpm),
+    avgWpm: profile.avgWpm,
+    coins: profile.coins.toString(),
     gems: profile.gems,
     linkedProviders,
   };
 }
 
-/** Groups a `bigint` with thousands separators without relying on ICU/locale. */
-function formatCount(value: bigint): string {
-  const negative = value < 0n;
-  const digits = (negative ? -value : value).toString();
-  const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return negative ? `-${grouped}` : grouped;
-}
-
-/** `numeric(6,2)` surfaces as a string like `112.00`; trim trailing zeros. */
-function formatBestWpm(value: string): string {
+/** `numeric(6,2)` surfaces as a string like `112.00`; parse to a number. */
+function toFiniteNumber(value: string): number {
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed.toString() : '0';
-}
-
-function formatDate(date: Date): string {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return Number.isFinite(parsed) ? parsed : 0;
 }

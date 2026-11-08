@@ -24,7 +24,7 @@ type ElementButton = BaseProps & {
 export type ButtonSecondaryProps = LinkButton | ElementButton;
 
 const BASE_CLASSES =
-  'btn-chisel-stone group inline-flex min-h-[44px] items-center justify-center gap-2 rounded bg-dwarf-basalt px-3 py-2.5 text-xs text-dwarf-parchment transition hover:text-white';
+  'btn-chisel-stone group inline-flex min-h-[44px] items-center justify-center gap-2 rounded bg-dwarf-basalt px-3 py-2.5 text-xs text-dwarf-parchment transition hover:text-dwarf-parchmentBright';
 
 /**
  * Secondary (stone chisel) action. Renders its `children` in a left-to-right

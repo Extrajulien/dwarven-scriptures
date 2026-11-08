@@ -4,6 +4,7 @@ import {
   type PasswordStrength,
 } from '../../lib/password';
 import { REGISTER_FORM } from '../../data/registerData';
+import type { Messages } from '../../i18n/messages';
 
 /**
  * Live "entropy bar" for the registration password field.
@@ -18,12 +19,25 @@ import { REGISTER_FORM } from '../../data/registerData';
 
 const FILL_CLASSES: Record<PasswordStrength, string> = {
   empty: 'bg-transparent',
-  weak: 'bg-[#dc2626]',
+  weak: 'bg-dwarf-danger',
   acceptable: 'bg-dwarf-goldLight',
   strong: 'bg-dwarf-runeBright',
 };
 
-export default function PasswordStrengthBar({ password }: { password: string }) {
+const STRENGTH_LABEL_KEYS: Record<PasswordStrength, keyof Messages> = {
+  empty: REGISTER_FORM.strength.emptyKey,
+  weak: REGISTER_FORM.strength.weakKey,
+  acceptable: REGISTER_FORM.strength.acceptableKey,
+  strong: REGISTER_FORM.strength.strongKey,
+};
+
+export default function PasswordStrengthBar({
+  password,
+  messages,
+}: {
+  password: string;
+  messages: Messages;
+}) {
   const tier = passwordStrength(password);
   const score = passwordStrengthScore(password);
 
@@ -32,12 +46,12 @@ export default function PasswordStrengthBar({ password }: { password: string }) 
       data-purpose="password-strength-bar"
       data-strength={tier}
       role="progressbar"
-      aria-label={REGISTER_FORM.strength.label}
+      aria-label={messages[REGISTER_FORM.strength.labelKey]}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={score}
-      aria-valuetext={REGISTER_FORM.strength[tier]}
-      className="h-1.5 w-full overflow-hidden rounded border border-[#3f382d] bg-[#0e0d0c] shadow-stone-inner"
+      aria-valuetext={messages[STRENGTH_LABEL_KEYS[tier]]}
+      className="h-1.5 w-full overflow-hidden rounded border border-dwarf-inputBorder bg-dwarf-track shadow-stone-inner"
     >
       <div
         aria-hidden="true"

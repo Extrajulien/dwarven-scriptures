@@ -1,20 +1,21 @@
 import { RACES_CHART, WPM_CHART } from '../../data/accountData';
+import type { Messages } from '../../i18n/messages';
 import Icon from '../Icon';
 
 // TODO: both charts render placeholder series from `accountData`. Wire them to a
 // real `races` table once race history is persisted (STAT-3 progression charts).
 
-export default function ProgressionCharts() {
+export default function ProgressionCharts({ messages }: { messages: Messages }) {
   return (
     <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <WpmChart />
-      <RacesChart />
+      <WpmChart messages={messages} />
+      <RacesChart messages={messages} />
     </section>
   );
 }
 
-function WpmChart() {
-  const { title, icon, subheader, linePoints, areaPoints, nodes, xTicks } = WPM_CHART;
+function WpmChart({ messages }: { messages: Messages }) {
+  const { titleKey, icon, subheader, linePoints, areaPoints, nodes, xTickKeys } = WPM_CHART;
 
   return (
     <div className="stone-card space-y-3 rounded-lg border border-outline-variant bg-surface-container-low p-4">
@@ -22,23 +23,23 @@ function WpmChart() {
         <div className="flex items-center gap-2">
           <Icon name={icon} className="text-headline-sm text-primary" />
           <span className="font-display text-label-md font-bold uppercase tracking-wider text-on-surface">
-            {title}
+            {messages[titleKey]}
           </span>
         </div>
         <div className="inline-flex rounded border border-outline-variant bg-surface-container-highest p-0.5 font-label-sm text-label-sm uppercase tracking-wider">
           <button type="button" className="rounded bg-primary px-2 py-0.5 font-bold text-on-primary">
-            [LAST 10 RACES]
+            {messages['account.chart.last10Races']}
           </button>
           <button type="button" className="rounded px-2 py-0.5 text-on-surface-variant transition-colors hover:text-on-surface">
-            [ALL TIME]
+            {messages['account.chart.allTime']}
           </button>
         </div>
       </div>
 
       <div className="flex items-baseline justify-between border-b border-outline-variant pb-1 font-mono font-label-sm text-label-sm uppercase tracking-wider text-outline">
-        <span>{subheader.apex}</span>
-        <span>{subheader.low}</span>
-        <span className="font-bold text-primary">{subheader.current}</span>
+        <span>{messages[subheader.apexKey]}</span>
+        <span>{messages[subheader.lowKey]}</span>
+        <span className="font-bold text-primary">{messages[subheader.currentKey]}</span>
       </div>
 
       <div className="relative h-44 w-full pt-2">
@@ -68,16 +69,16 @@ function WpmChart() {
       </div>
 
       <div className="flex items-center justify-between font-mono font-label-sm text-label-sm text-outline-variant">
-        {xTicks.map((tick) => (
-          <span key={tick}>{tick}</span>
+        {xTickKeys.map((tickKey) => (
+          <span key={tickKey}>{messages[tickKey]}</span>
         ))}
       </div>
     </div>
   );
 }
 
-function RacesChart() {
-  const { title, icon, subheader, bars, xTicks } = RACES_CHART;
+function RacesChart({ messages }: { messages: Messages }) {
+  const { titleKey, icon, subheader, bars, xTickKeys } = RACES_CHART;
 
   return (
     <div className="stone-card space-y-3 rounded-lg border border-outline-variant bg-surface-container-low p-4">
@@ -85,23 +86,23 @@ function RacesChart() {
         <div className="flex items-center gap-2">
           <Icon name={icon} className="text-headline-sm text-tertiary" />
           <span className="font-display text-label-md font-bold uppercase tracking-wider text-on-surface">
-            {title}
+            {messages[titleKey]}
           </span>
         </div>
         <div className="inline-flex rounded border border-outline-variant bg-surface-container-highest p-0.5 font-label-sm text-label-sm uppercase tracking-wider">
           <button type="button" className="rounded bg-tertiary px-2 py-0.5 font-bold text-surface">
-            [LAST 10 RACES]
+            {messages['account.chart.last10Races']}
           </button>
           <button type="button" className="rounded px-2 py-0.5 text-on-surface-variant transition-colors hover:text-on-surface">
-            [ALL TIME]
+            {messages['account.chart.allTime']}
           </button>
         </div>
       </div>
 
       <div className="flex items-baseline justify-between border-b border-outline-variant pb-1 font-mono font-label-sm text-label-sm uppercase tracking-wider text-outline">
-        <span>{subheader.total}</span>
-        <span>{subheader.streaks}</span>
-        <span className="font-bold text-tertiary">{subheader.daily}</span>
+        <span>{messages[subheader.totalKey]}</span>
+        <span>{messages[subheader.streaksKey]}</span>
+        <span className="font-bold text-tertiary">{messages[subheader.dailyKey]}</span>
       </div>
 
       <div className="relative h-44 w-full pt-2">
@@ -125,8 +126,8 @@ function RacesChart() {
       </div>
 
       <div className="flex items-center justify-between font-mono font-label-sm text-label-sm text-outline-variant">
-        {xTicks.map((tick) => (
-          <span key={tick}>{tick}</span>
+        {xTickKeys.map((tickKey) => (
+          <span key={tickKey}>{messages[tickKey]}</span>
         ))}
       </div>
     </div>

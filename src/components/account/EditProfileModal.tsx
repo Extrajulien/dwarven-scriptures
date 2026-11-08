@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { ComponentType, ReactNode } from 'react';
 import type { AccountProfile } from '../../app/account/profile';
 import { unlinkAccount, updateProfile } from '../../app/account/actions';
+import type { Messages } from '../../i18n/messages';
 import ButtonPrimary from '../ButtonPrimary';
 import ButtonSecondary from '../ButtonSecondary';
 import Icon from '../Icon';
@@ -17,9 +18,9 @@ type ProviderMeta = {
   id: string;
   Icon: ComponentType<{ className?: string }>;
   iconClass: string;
-  connectedLabel: string;
-  disconnectedLabel: string;
-  note: string;
+  connectedLabelKey: keyof Messages;
+  disconnectedLabelKey: keyof Messages;
+  noteKey: keyof Messages;
 };
 
 const PROVIDERS: ProviderMeta[] = [
@@ -27,29 +28,44 @@ const PROVIDERS: ProviderMeta[] = [
     id: 'github',
     Icon: GitHubIcon,
     iconClass: 'h-4 w-4 fill-current text-on-surface',
-    connectedLabel: 'GITHUB: CONNECTED',
-    disconnectedLabel: 'GITHUB: NOT CONNECTED',
-    note: '[OAUTH2 SYNC ACTIVE]',
+    connectedLabelKey: 'account.modal.githubConnected',
+    disconnectedLabelKey: 'account.modal.githubDisconnected',
+    noteKey: 'account.modal.oauthNote',
   },
   {
     id: 'discord',
     Icon: DiscordIcon,
     iconClass: 'h-4 w-4 fill-current text-secondary',
-    connectedLabel: 'DISCORD: CONNECTED',
-    disconnectedLabel: 'DISCORD: NOT CONNECTED',
-    note: '[OAUTH2 SYNC ACTIVE]',
+    connectedLabelKey: 'account.modal.discordConnected',
+    disconnectedLabelKey: 'account.modal.discordDisconnected',
+    noteKey: 'account.modal.oauthNote',
   },
 ];
 
-const USERNAME_ERRORS: Record<string, string> = {
-  required: 'A name is required.',
-  usernameTooLong: 'Name must be at most 32 characters.',
-  usernameTaken: 'That name is already taken.',
+/** Field error codes → localized message keys (I18N-01). */
+const USERNAME_ERROR_KEYS: Record<string, keyof Messages> = {
+  required: 'account.modal.error.usernameRequired',
+  usernameTooLong: 'account.modal.error.usernameTooLong',
+  usernameTaken: 'account.modal.error.usernameTaken',
 };
 
-const AVATAR_ERRORS: Record<string, string> = {
-  invalidUrl: 'Enter a valid http(s) image URL.',
+const AVATAR_ERROR_KEYS: Record<string, keyof Messages> = {
+  invalidUrl: 'account.modal.error.invalidUrl',
 };
+
+const SOUND_OPTION_KEYS: readonly (keyof Messages)[] = [
+  'account.modal.sound1',
+  'account.modal.sound2',
+  'account.modal.sound3',
+  'account.modal.sound4',
+];
+
+const SCRIPT_OPTION_KEYS: readonly (keyof Messages)[] = [
+  'account.modal.script1',
+  'account.modal.script2',
+  'account.modal.script3',
+  'account.modal.script4',
+];
 
 const FIELD_CLASSES =
   'w-full rounded border border-outline-variant bg-surface-container-lowest px-3 py-2 font-mono text-body-sm text-on-surface placeholder:text-outline focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40';
@@ -58,10 +74,12 @@ export default function EditProfileModal({
   open,
   onClose,
   profile,
+  messages,
 }: {
   open: boolean;
   onClose: () => void;
   profile: AccountProfile;
+  messages: Messages;
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('identity');
@@ -102,13 +120,13 @@ export default function EditProfileModal({
           {/* Header bar */}
           <div className="flex items-center justify-between border-b border-outline-variant pb-3">
             <div className="flex items-center gap-2 font-mono font-label-sm text-label-sm uppercase tracking-widest">
-              <span className="font-bold text-primary">ᛞ [DIALOGUE // PROFILE_SETTINGS]</span>
+              <span className="font-bold text-primary">{messages['account.modal.header']}</span>
               <span className="text-outline">{'//'}</span>
-              <span className="text-tertiary">[STATUS: ACTIVE]</span>
+              <span className="text-tertiary">{messages['account.modal.statusActive']}</span>
             </div>
             <button
               type="button"
-              title="[DISCARD]"
+              title={messages['account.modal.discardTitle']}
               onClick={onClose}
               className="inline-flex h-7 w-7 items-center justify-center rounded border border-outline-variant bg-surface-container-high font-mono font-bold text-outline transition-colors hover:border-error/60 hover:bg-error/20 hover:text-error"
             >
@@ -123,24 +141,24 @@ export default function EditProfileModal({
               className="flex items-center gap-2 font-display text-headline-sm font-bold uppercase tracking-wider text-on-surface sm:text-headline-md"
             >
               <span className="font-bold text-primary">᚛</span>
-              <span>CHISEL SCRIBE DOSSIER &amp; SETTINGS</span>
+              <span>{messages['account.modal.title']}</span>
               <span className="font-bold text-primary">᚜</span>
             </h2>
             <p className="mt-0.5 font-mono font-label-sm text-label-sm uppercase tracking-wider text-outline">
-              Configure runic identifier, linked telemetry nodes, and auditory chisel profiles.
+              {messages['account.modal.subtitle']}
             </p>
           </div>
 
           {/* Tabs */}
           <div className="mt-5 flex items-center gap-2 border-b border-outline-variant pb-2 font-mono font-label-sm text-label-sm uppercase tracking-wider">
             <TabButton active={activeTab === 'identity'} onClick={() => setActiveTab('identity')}>
-              <span>ᛉ</span> [IDENTITY &amp; CALLSIGN]
+              <span>ᛉ</span> {messages['account.modal.tabIdentity']}
             </TabButton>
             <TabButton active={activeTab === 'accounts'} onClick={() => setActiveTab('accounts')}>
-              <span>ᛋ</span> [LINKED ACCOUNTS]
+              <span>ᛋ</span> {messages['account.modal.tabAccounts']}
             </TabButton>
             <TabButton active={activeTab === 'preferences'} onClick={() => setActiveTab('preferences')}>
-              <span>ᚱ</span> [DELVE PREFERENCES]
+              <span>ᚱ</span> {messages['account.modal.tabPreferences']}
             </TabButton>
           </div>
 
@@ -149,8 +167,8 @@ export default function EditProfileModal({
             {activeTab === 'identity' && (
               <div className="space-y-4 rounded border border-outline-variant bg-surface-container p-3.5">
                 <div className="flex items-center justify-between font-label-sm text-label-sm font-bold uppercase tracking-wider text-outline">
-                  <span>[01 // IDENTITY &amp; CALLSIGN]</span>
-                  <span className="text-tertiary">[CITADEL REGISTERED]</span>
+                  <span>{messages['account.modal.identitySection']}</span>
+                  <span className="text-tertiary">{messages['account.modal.citadelRegistered']}</span>
                 </div>
 
                 {/* Username */}
@@ -159,7 +177,7 @@ export default function EditProfileModal({
                     htmlFor="profile-username"
                     className="block font-label-sm text-label-sm font-bold uppercase tracking-widest text-outline"
                   >
-                    [ SCRIBE USERNAME ]
+                    {messages['account.modal.usernameLabel']}
                   </label>
                   <div className="relative flex items-center">
                     <span className="absolute left-3 select-none font-label-md text-label-md font-bold text-primary">ᛞ</span>
@@ -173,12 +191,12 @@ export default function EditProfileModal({
                       className={`pl-8 pr-16 ${FIELD_CLASSES}`}
                     />
                     <span className="absolute right-3 font-mono font-label-sm text-label-sm font-bold uppercase text-tertiary">
-                      [AVAIL: YES]
+                      {messages['account.modal.availableYes']}
                     </span>
                   </div>
                   {fieldErrors.username && (
                     <p id="profile-username-error" role="alert" className="font-label-sm text-label-sm font-medium text-error">
-                      {USERNAME_ERRORS[fieldErrors.username]}
+                      {messages[USERNAME_ERROR_KEYS[fieldErrors.username] ?? 'account.modal.error.usernameRequired']}
                     </p>
                   )}
                 </div>
@@ -189,7 +207,7 @@ export default function EditProfileModal({
                     htmlFor="profile-pfpUrl"
                     className="block font-label-sm text-label-sm font-bold uppercase tracking-widest text-outline"
                   >
-                    [ AVATAR EMBLEM SELECTION ]
+                    {messages['account.modal.avatarLabel']}
                   </label>
                   <div className="flex flex-wrap items-center gap-3">
                     <div className="relative h-14 w-14 flex-shrink-0 rounded border-2 border-primary bg-surface-container-lowest p-0.5 shadow-gold-glow">
@@ -200,7 +218,7 @@ export default function EditProfileModal({
                         iconClassName="text-headline-md"
                       />
                       <span className="absolute -bottom-1 -right-1 rounded-full bg-primary px-1 text-[8px] font-bold text-on-primary">
-                        ACTIVE
+                        {messages['account.modal.avatarActive']}
                       </span>
                     </div>
                     <input
@@ -216,11 +234,11 @@ export default function EditProfileModal({
                   </div>
                   {fieldErrors.pfpUrl && (
                     <p id="profile-pfpUrl-error" role="alert" className="font-label-sm text-label-sm font-medium text-error">
-                      {AVATAR_ERRORS[fieldErrors.pfpUrl]}
+                      {messages[AVATAR_ERROR_KEYS[fieldErrors.pfpUrl] ?? 'account.modal.error.invalidUrl']}
                     </p>
                   )}
                   <p className="font-label-sm text-label-sm text-outline">
-                    Leave empty to clear the avatar and restore the fallback icon.
+                    {messages['account.modal.avatarHint']}
                   </p>
                 </div>
               </div>
@@ -229,8 +247,8 @@ export default function EditProfileModal({
             {activeTab === 'accounts' && (
               <div className="space-y-3 rounded border border-outline-variant bg-surface-container p-3.5">
                 <div className="flex items-center justify-between font-label-sm text-label-sm font-bold uppercase tracking-wider text-outline">
-                  <span>[02 // LINKED ACCOUNTS &amp; TELEMETRY]</span>
-                  <span className="text-outline-variant">[OAUTH2 SECURE]</span>
+                  <span>{messages['account.modal.accountsSection']}</span>
+                  <span className="text-outline-variant">{messages['account.modal.oauthSecure']}</span>
                 </div>
                 {PROVIDERS.map((provider) => {
                   const linked = profile.linkedProviders.includes(provider.id);
@@ -243,9 +261,13 @@ export default function EditProfileModal({
                         <provider.Icon className={provider.iconClass} />
                         <div>
                           <div className="font-label-md text-label-md font-bold text-on-surface">
-                            {linked ? provider.connectedLabel : provider.disconnectedLabel}
+                            {messages[
+                              linked ? provider.connectedLabelKey : provider.disconnectedLabelKey
+                            ]}
                           </div>
-                          <div className="font-label-sm text-label-sm text-tertiary">{provider.note}</div>
+                          <div className="font-label-sm text-label-sm text-tertiary">
+                            {messages[provider.noteKey]}
+                          </div>
                         </div>
                       </div>
                       {linked ? (
@@ -256,14 +278,14 @@ export default function EditProfileModal({
                           }}
                           className="rounded border border-outline-variant bg-surface-container-high px-2.5 py-1 font-label-sm text-label-sm font-bold uppercase tracking-wider text-error transition-colors hover:border-error/40 hover:bg-error/15"
                         >
-                          [DISCONNECT]
+                          {messages['account.modal.disconnect']}
                         </button>
                       ) : (
                         <a
                           href={`/api/auth/${provider.id}`}
                           className="rounded border border-outline-variant bg-surface-container-high px-2.5 py-1 font-label-sm text-label-sm font-bold uppercase tracking-wider text-primary transition-colors hover:border-primary/50 hover:text-on-surface"
                         >
-                          [CONNECT]
+                          {messages['account.modal.connect']}
                         </a>
                       )}
                     </div>
@@ -275,30 +297,32 @@ export default function EditProfileModal({
             {activeTab === 'preferences' && (
               <div className="space-y-3 rounded border border-outline-variant bg-surface-container p-3.5">
                 <div className="flex items-center justify-between font-label-sm text-label-sm font-bold uppercase tracking-wider text-outline">
-                  <span>[03 // DELVE PREFERENCES]</span>
-                  <span className="text-outline-variant">[AUDIO &amp; SCRIPTS]</span>
+                  <span>{messages['account.modal.preferencesSection']}</span>
+                  <span className="text-outline-variant">{messages['account.modal.audioScripts']}</span>
                 </div>
                 {/* Not persisted — no DB columns yet. Rendered for parity with the design. */}
                 <div className="space-y-1.5">
                   <label className="block font-label-sm text-label-sm font-bold uppercase tracking-widest text-outline">
-                    [ KEYSTROKE SOUND: AUDITORY CHISEL ]
+                    {messages['account.modal.keystrokeLabel']}
                   </label>
                   <select defaultValue="" className="w-full cursor-pointer appearance-none rounded border border-outline-variant bg-surface-container-lowest px-3 py-2 text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40">
-                    <option value="">[CHERRY MX BLUE / DEEP GRANITE CLACK]</option>
-                    <option value="">[MAGMA FLINT / HEAVY ANVIL STRIKE]</option>
-                    <option value="">[BASALT CHIP / SUBDUED TACTILE]</option>
-                    <option value="">[SILENT CAVERN / MUTED RUNES]</option>
+                    {SOUND_OPTION_KEYS.map((optionKey) => (
+                      <option key={optionKey} value="">
+                        {messages[optionKey]}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="space-y-1.5">
                   <label className="block font-label-sm text-label-sm font-bold uppercase tracking-widest text-outline">
-                    [ DEFAULT RUNIC SCRIPT / LANGUAGE DRILL ]
+                    {messages['account.modal.scriptLabel']}
                   </label>
                   <select defaultValue="" className="w-full cursor-pointer appearance-none rounded border border-outline-variant bg-surface-container-lowest px-3 py-2 text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40">
-                    <option value="">[DEFAULT RUNIC SCRIPT: ENGLISH + LATIN]</option>
-                    <option value="">[ANCIENT RUNIC / DWARVEN PROTOCOL]</option>
-                    <option value="">[POLYGLOT DELVE: ENG + FRE + GER]</option>
-                    <option value="">[HEXADECIMAL CODE MATRIX]</option>
+                    {SCRIPT_OPTION_KEYS.map((optionKey) => (
+                      <option key={optionKey} value="">
+                        {messages[optionKey]}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -308,16 +332,16 @@ export default function EditProfileModal({
           {/* Footer */}
           <div className="mt-5 flex flex-col items-center justify-between gap-3 border-t border-outline-variant pt-3 font-mono text-body-sm sm:flex-row">
             <div className="hidden font-label-sm text-label-sm uppercase tracking-wider text-outline sm:block">
-              ᛞ [CHANGES PERSIST TO CITADEL CORE]
+              {messages['account.modal.persistNote']}
             </div>
             <div className="flex w-full items-center justify-end gap-2.5 sm:w-auto">
               <ButtonSecondary type="button" onClick={onClose} className="!min-h-[48px] !px-4 !py-3 sm:text-sm">
                 <Icon name="close" className="text-headline-sm" />
-                [ DISCARD ]
+                {messages['account.modal.discard']}
               </ButtonSecondary>
               <ButtonPrimary type="submit" disabled={pending}>
                 <Icon name="done" className="text-headline-sm" />
-                {pending ? '[ ENGRAVING… ]' : '[ ENGRAVE ]'}
+                {pending ? messages['account.modal.submitPending'] : messages['account.modal.submit']}
               </ButtonPrimary>
             </div>
           </div>

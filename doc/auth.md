@@ -130,6 +130,30 @@ cookie with a database-backed session table (see
 [`doc/database.md`](database.md)) without changing the login action's result
 contract.
 
+## Guest sessions (AUTH-02/03)
+
+Guests — people who join a room without an account — get the same
+`body.signature` HMAC-SHA256 token design as users, but in a separate cookie
+([`src/lib/guest-session.ts`](../src/lib/guest-session.ts)):
+
+| Aspect | Value |
+| ------ | ----- |
+| Cookie name | `guest` |
+| Payload | `{ guestId, nickname, exp }` — `guestId` is a random uuid generated server-side; it doubles as the `room_members.guestToken` that identifies the guest in the database |
+| Signature | HMAC-SHA256, verified with `timingSafeEqual` (same code pattern as `session.ts`) |
+| Lifetime | 30 days (`GUEST_TTL_SECONDS`) |
+| Options | `httpOnly`, `secure` in production, `sameSite: 'lax'`, `path: '/'` |
+| Secret | reuses `SESSION_SECRET` — the two payload shapes are disjoint, so one secret is safe |
+
+The nickname rule (3–20 characters, trimmed) is exported as the Zod schema
+`guestNicknameSchema` and enforced both by the `setGuestNickname` server action
+(`src/app/rooms/actions.ts`) and again inside `createGuestSession` before the
+cookie is written. A guest session is not an account: it never grants a
+`user_stats`/`user_resources` row, it cannot create rooms (`createRoom` requires
+a user session — AUTH-03), and the guest's display name lives only in the
+cookie, not in the database (the realtime layer combines the cookie with the
+`guestToken` column when showing who is present).
+
 ## Name rules
 
 The `username` column stores the **display name**, not a URL slug (this was the
@@ -223,15 +247,16 @@ interpolates continuously inside each band, so the bar grows left-to-right
 without jumping at the colour changes. This meter is **advisory only** — the
 server action still re-validates with `validateRegistration` and never trusts
 the client's assessment. Labels live in
-[`src/data/registerData.ts`](../src/data/registerData.ts) (`REGISTER_FORM.strength`),
-following the same English-only placeholder convention as the field errors.
+[`src/i18n/messages.ts`](../src/i18n/messages.ts)
+(`auth.register.strength.*`), rendered in the active locale like the field
+errors.
 
 ## Field error codes
 
 `validateRegistration` and the action use these stable codes; the client maps
-them to display strings in
-[`src/data/registerData.ts`](../src/data/registerData.ts) (English only — the
-i18n layer referenced in AGENTS.md is not built yet).
+them to localized display strings in
+[`src/i18n/messages.ts`](../src/i18n/messages.ts) (`auth.register.error.*`,
+`auth.error.*`) for both French and English.
 
 | Field | Codes |
 | ----- | ----- |
@@ -241,7 +266,8 @@ i18n layer referenced in AGENTS.md is not built yet).
 | form-level | `unexpected` |
 
 `validateLogin` and the login action use these codes; the client maps them in
-[`src/data/loginData.ts`](../src/data/loginData.ts):
+[`src/i18n/messages.ts`](../src/i18n/messages.ts) (`auth.login.error.invalidCredentials`,
+`auth.error.*):
 
 | Field | Codes |
 | ----- | ----- |
@@ -258,10 +284,10 @@ i18n layer referenced in AGENTS.md is not built yet).
   — trimming, length, mismatch and policy mapping.
 * [`src/db/queries/users.test.ts`](../src/db/queries/users.test.ts) — the
   `23505` → `UsernameTakenError` mapping.
-* [`src/components/register/RegisterForm.test.jsx`](../src/components/register/RegisterForm.test.jsx)
-  — the client renders each field error under its input (action is mocked) and
-  the strength bar turns red, then yellow, then green as the password grows
-  stronger.
+* [`src/components/register/RegisterForm.test.tsx`](../src/components/register/RegisterForm.test.tsx)
+  — the client renders each field error under its input (action is mocked, error
+  codes mapped to the localized dictionary) and the strength bar turns red, then
+  yellow, then green as the password grows stronger.
 * [`src/lib/session.test.ts`](../src/lib/session.test.ts) — token round-trips,
   tamper/expiry/malformed/wrong-secret rejection.
 * [`src/lib/login-validation.test.ts`](../src/lib/login-validation.test.ts) —

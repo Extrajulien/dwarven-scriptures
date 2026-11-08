@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { HEATMAP } from '../../data/accountData';
+import type { Messages } from '../../i18n/messages';
 import Icon from '../Icon';
 
 // Static mock keyboard layout (no heatmap statistics exist yet). The tinting is
@@ -38,8 +39,8 @@ function Key({
 
 const MODIFIER = 'font-label-sm text-label-sm uppercase tracking-wider';
 
-export default function KeyboardHeatmap() {
-  const { title, caption, legendLabel, legend, analysis } = HEATMAP;
+export default function KeyboardHeatmap({ messages }: { messages: Messages }) {
+  const { titleKey, captionKey, legendLabelKey, legend, analysis } = HEATMAP;
 
   return (
     <section className="stone-card space-y-4 rounded-lg border border-outline-variant bg-surface-container-low p-4 md:p-6">
@@ -47,17 +48,21 @@ export default function KeyboardHeatmap() {
         <div className="flex items-center gap-2">
           <Icon name="keyboard" className="text-[20px] text-secondary" />
           <h2 className="font-display text-headline-sm font-bold uppercase tracking-wider text-on-surface">
-            {title}
+            {messages[titleKey]}
           </h2>
-          <span className="font-mono font-label-sm text-label-sm text-outline">{caption}</span>
+          <span className="font-mono font-label-sm text-label-sm text-outline">
+            {messages[captionKey]}
+          </span>
         </div>
 
         <div className="flex items-center gap-3 font-mono font-label-sm text-label-sm uppercase tracking-wider">
-          <span className="text-outline">{legendLabel}:</span>
+          <span className="text-outline">{messages[legendLabelKey]}:</span>
           {legend.map((item) => (
             <div key={item.id} className="flex items-center gap-1">
               <span className={`h-3 w-3 rounded ${item.swatchClass}`} />
-              <span className={`font-bold ${item.labelClass}`}>{item.label}</span>
+              <span className={`font-bold ${item.labelClass}`}>
+                {messages[item.labelKey]}
+              </span>
             </div>
           ))}
         </div>
@@ -81,14 +86,14 @@ export default function KeyboardHeatmap() {
             <Key tone="error">-</Key>
             <Key tone="plain">=</Key>
             <Key tone="muted" size="w-14 sm:w-16" className={MODIFIER}>
-              [BACK]
+              {messages['account.heatmap.key.back']}
             </Key>
           </div>
 
           {/* Row 2: QWERTY */}
           <div className="flex justify-center gap-1.5">
             <Key tone="muted" size="w-12 sm:w-14" className={MODIFIER}>
-              [TAB]
+              {messages['account.heatmap.key.tab']}
             </Key>
             <Key tone="accurate">Q</Key>
             <Key tone="accurate">W</Key>
@@ -110,7 +115,7 @@ export default function KeyboardHeatmap() {
           {/* Row 3: ASDF */}
           <div className="flex justify-center gap-1.5">
             <Key tone="muted" size="w-14 sm:w-16" className={MODIFIER}>
-              [CAPS]
+              {messages['account.heatmap.key.caps']}
             </Key>
             <Key tone="accurate">A</Key>
             <Key tone="accurate">S</Key>
@@ -124,14 +129,14 @@ export default function KeyboardHeatmap() {
             <Key tone="medium">;</Key>
             <Key tone="error">&apos;</Key>
             <Key tone="accent" size="w-16 sm:w-20" className={MODIFIER}>
-              [ENTER]
+              {messages['account.heatmap.key.enter']}
             </Key>
           </div>
 
           {/* Row 4: ZXCV */}
           <div className="flex justify-center gap-1.5">
             <Key tone="muted" size="w-16 sm:w-20" className={MODIFIER}>
-              [SHIFT]
+              {messages['account.heatmap.key.shift']}
             </Key>
             <Key tone="accurate">Z</Key>
             <Key tone="medium">X</Key>
@@ -144,26 +149,26 @@ export default function KeyboardHeatmap() {
             <Key tone="accurate">.</Key>
             <Key tone="error">/</Key>
             <Key tone="muted" size="w-16 sm:w-20" className={MODIFIER}>
-              [SHIFT]
+              {messages['account.heatmap.key.shift']}
             </Key>
           </div>
 
           {/* Row 5: space & modifiers */}
           <div className="flex justify-center gap-1.5 pt-0.5">
             <Key tone="muted" size="w-12 sm:w-14" className={MODIFIER}>
-              [CTRL]
+              {messages['account.heatmap.key.ctrl']}
             </Key>
             <Key tone="muted" size="w-12 sm:w-14" className={MODIFIER}>
-              [ALT]
+              {messages['account.heatmap.key.alt']}
             </Key>
             <div className="flex h-9 max-w-sm flex-1 items-center justify-center rounded border border-tertiary/70 bg-tertiary/20 font-label-sm text-label-sm font-bold uppercase tracking-widest text-tertiary sm:h-10">
-              [SPACE] — 99.8% ACCURATE
+              {messages['account.heatmap.key.space']}
             </div>
             <Key tone="muted" size="w-12 sm:w-14" className={MODIFIER}>
-              [ALT]
+              {messages['account.heatmap.key.alt']}
             </Key>
             <Key tone="muted" size="w-12 sm:w-14" className={MODIFIER}>
-              [CTRL]
+              {messages['account.heatmap.key.ctrl']}
             </Key>
           </div>
         </div>
@@ -171,11 +176,11 @@ export default function KeyboardHeatmap() {
 
       <div className="flex items-center justify-between pt-1 font-mono text-body-sm text-outline">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-error">{analysis.weakestLabel}</span>
+          <span className="font-bold text-error">{messages[analysis.weakestLabelKey]}</span>
           <span className="text-on-surface">{analysis.weakestValue}</span>
         </div>
         <div className="hidden font-label-sm text-label-sm text-outline-variant sm:block">
-          {analysis.drill}
+          {messages[analysis.drillKey]}
         </div>
       </div>
     </section>

@@ -1,98 +1,97 @@
-// Mock content for the "Citadel of Granite // Scribe Registration Terminal"
-// page. Values are placeholders until the real auth flow and i18n land.
-// Class strings are Tailwind utilities resolved from tailwind.config.js.
+// Content for the "Citadel of Granite // Scribe Registration Terminal" page.
+// All user-visible strings live in `src/i18n/messages.ts` (I18N-01): each text
+// field is a message key resolved against the active fr/en bag by the
+// rendering component. Machine values (urls, hrefs, runes, provider ids) stay
+// here. Class strings are Tailwind utilities resolved from tailwind.config.js.
+import type { Messages } from '../i18n/messages';
 
 export interface RegisterCardData {
-  logoAlt: string;
+  logoAltKey: keyof Messages;
   logoUrl: string;
-  title: string;
-  heading: string;
-  subtitle: string;
-  status: string;
-  terminalId: string;
+  titleKey: keyof Messages;
+  headingKey: keyof Messages;
+  subtitleKey: keyof Messages;
+  statusKey: keyof Messages;
+  terminalIdKey: keyof Messages;
   guidance: {
     rune: string;
-    text: string;
+    textKey: keyof Messages;
     version: string;
   };
 }
 
 export interface RegisterFormField {
   rune: string;
-  label: string;
-  hint: string;
-  placeholder: string;
+  labelKey: keyof Messages;
+  hintKey: keyof Messages;
+  placeholderKey: keyof Messages;
 }
 
 export interface RegisterFormData {
   callsign: RegisterFormField;
   password: RegisterFormField;
   confirmPassword: RegisterFormField;
-  terms: string;
-  submit: string;
-  submitPending: string;
+  termsKey: keyof Messages;
+  submitKey: keyof Messages;
+  submitPendingKey: keyof Messages;
   strength: {
-    label: string;
-    empty: string;
-    weak: string;
-    acceptable: string;
-    strong: string;
-  };
-  errors: {
-    username: Record<string, string>;
-    password: Record<string, string>;
-    confirmPassword: Record<string, string>;
-    form: Record<string, string>;
+    labelKey: keyof Messages;
+    emptyKey: keyof Messages;
+    weakKey: keyof Messages;
+    acceptableKey: keyof Messages;
+    strongKey: keyof Messages;
   };
 }
 
 export interface AuthProvider {
   id: string;
-  label: string;
+  labelKey: keyof Messages;
 }
 
 export interface AuthAlternativesData {
-  divider: string;
+  dividerKey: keyof Messages;
   providers: AuthProvider[];
   login: {
-    prompt: string;
-    label: string;
+    promptKey: keyof Messages;
+    labelKey: keyof Messages;
     href: string;
   };
-  security: string;
+  securityKey: keyof Messages;
 }
 
 export interface ArtShowcaseData {
-  ariaLabel: string;
-  topLeft: string;
-  feedStatus: string;
+  ariaLabelKey: keyof Messages;
+  topLeftKey: keyof Messages;
+  feedStatusKey: keyof Messages;
   image: {
-    alt: string;
+    altKey: keyof Messages;
     src: string;
   };
   hud: {
-    title: string;
-    activeScribesLabel: string;
+    titleKey: keyof Messages;
+    activeScribesLabelKey: keyof Messages;
+    /** Mock number — data, not copy. */
     activeScribesValue: string;
-    veinLabel: string;
+    veinLabelKey: keyof Messages;
+    /** Proper noun — data, not copy. */
     veinValue: string;
-    quote: string;
+    quoteKey: keyof Messages;
   };
-  bottomLeft: string;
-  bottomRight: string;
+  bottomLeftKey: keyof Messages;
+  bottomRightKey: keyof Messages;
 }
 
 export const REGISTER_CARD: RegisterCardData = {
-  logoAlt: 'Logo of Dwarven Scriptures',
+  logoAltKey: 'auth.register.card.logoAlt',
   logoUrl: 'favicon.png',
-  title: '[ CITADEL OF GRANITE ]',
-  heading: 'SCRIBE REGISTRATION TERMINAL',
-  subtitle: 'Deep Delve Guild • New Scribe Enlistment',
-  status: '[STATUS: RECRUITING]',
-  terminalId: 'TERM_ID: #84-R',
+  titleKey: 'auth.register.card.title',
+  headingKey: 'auth.register.card.heading',
+  subtitleKey: 'auth.register.card.subtitle',
+  statusKey: 'auth.register.card.status',
+  terminalIdKey: 'auth.register.card.terminalId',
   guidance: {
     rune: 'ᚱ',
-    text: 'Engrave your life on a stone',
+    textKey: 'auth.register.card.guidance',
     version: '',
   },
 };
@@ -100,86 +99,64 @@ export const REGISTER_CARD: RegisterCardData = {
 export const REGISTER_FORM: RegisterFormData = {
   callsign: {
     rune: 'ᛗ',
-    label: '[ Dwarven identity ]',
-    hint: '[username]',
-    placeholder: 'Joe Mama',
+    labelKey: 'auth.register.callsign.label',
+    hintKey: 'auth.register.callsign.hint',
+    placeholderKey: 'auth.register.callsign.placeholder',
   },
   password: {
     rune: 'ᛝ',
-    label: '[ CIPHER ]',
-    hint: '[password]',
-    placeholder: '••••••••••••',
+    labelKey: 'auth.register.password.label',
+    hintKey: 'auth.register.password.hint',
+    placeholderKey: 'auth.register.password.placeholder',
   },
   confirmPassword: {
     rune: 'ᛟ',
-    label: '[ RE-CIPHER ]',
-    hint: '[confirm]',
-    placeholder: '••••••••••••',
+    labelKey: 'auth.register.confirmPassword.label',
+    hintKey: 'auth.register.confirmPassword.hint',
+    placeholderKey: 'auth.register.confirmPassword.placeholder',
   },
-  terms: 'I swear the Guild Charter oath and accept the stonebound terms',
-  submit: '[ ENGRAVE // CREATE ACCOUNT ]',
-  submitPending: '[ ENGRAVING… ]',
+  termsKey: 'auth.register.terms',
+  submitKey: 'auth.register.submit',
+  submitPendingKey: 'auth.register.submitPending',
   strength: {
-    label: 'Password strength',
-    empty: 'No password',
-    weak: 'Too weak',
-    acceptable: 'Good enough',
-    strong: 'Strong',
-  },
-  errors: {
-    username: {
-      required: 'A name is required.',
-      usernameTooLong: 'Name must be 32 characters or fewer.',
-      usernameTaken: 'That name is already taken.',
-    },
-    password: {
-      required: 'A password is required.',
-      passwordTooShort: 'Password must be at least 12 characters.',
-      passwordTooLong: 'Password must be 128 characters or fewer.',
-      passwordWeak:
-        'Password needs more variety — mix upper/lowercase letters, numbers and symbols.',
-    },
-    confirmPassword: {
-      required: 'Please confirm your password.',
-      passwordsDoNotMatch: 'Passwords do not match.',
-    },
-    form: {
-      unexpected: 'Something went wrong. Please try again.',
-    },
+    labelKey: 'auth.register.strength.label',
+    emptyKey: 'auth.register.strength.empty',
+    weakKey: 'auth.register.strength.weak',
+    acceptableKey: 'auth.register.strength.acceptable',
+    strongKey: 'auth.register.strength.strong',
   },
 };
 
 export const AUTH_ALTERNATIVES: AuthAlternativesData = {
-  divider: '─── [ OR ATTUNE VIA EXTERNAL FORGE ] ───',
+  dividerKey: 'auth.divider',
   providers: [
-    { id: 'github', label: 'Forge with GitHub' },
-    { id: 'discord', label: 'Attune Discord' },
+    { id: 'github', labelKey: 'auth.provider.github' },
+    { id: 'discord', labelKey: 'auth.provider.discord' },
   ],
   login: {
-    prompt: 'Already a sworn member of the guild?',
-    label: '[ RETURN TO SCRIBE ACCESS → ]',
+    promptKey: 'auth.register.login.prompt',
+    labelKey: 'auth.register.login.label',
     href: '/login',
   },
-  security: '• 256-BIT BASALT ENCRYPTION • GUILD PROTOCOL ASCII_V2 •',
+  securityKey: 'auth.security',
 };
 
 export const ART_SHOWCASE: ArtShowcaseData = {
-  ariaLabel: 'Citadel Fortress Live Feed',
-  topLeft: '[ CITADEL HALL ARCHIVE // EXPEDITION #84 ]',
-  feedStatus: '● FEED SYNCED',
+  ariaLabelKey: 'auth.showcase.ariaLabel',
+  topLeftKey: 'auth.showcase.topLeft',
+  feedStatusKey: 'auth.showcase.feedStatus',
   image: {
-    alt: 'Detailed pixel art scene of an ancient subterranean Dwarven fortress hall in Dwarf Fortress Steam Edition style. Grand stone carved pillars, warm glowing lava forge channels in the distance, mining carts on tracks, glowing runic engravings in emerald and amber, rugged dwarven scribes and miners at basalt desks with quills and picks, intricate stone masonry borders, atmospheric dark slate cavern with warm torchlight, retro isometric high detail 16-bit video game art',
+    altKey: 'auth.showcase.imageAlt',
     src: 'assets/images/gnome_drip.jpg',
   },
   hud: {
-    title: '[ DEEP DELVE SANCTUM ]',
-    activeScribesLabel: 'Active Scribes & Miners:',
+    titleKey: 'auth.showcase.hudTitle',
+    activeScribesLabelKey: 'auth.showcase.activeScribesLabel',
     activeScribesValue: '4,820',
-    veinLabel: 'Vein:',
+    veinLabelKey: 'auth.showcase.veinLabel',
     veinValue: 'Adamantine #8849',
-    quote:
-      'Strike the granite true, young scribes. Every keystroke fortifies the mountain hall.',
+    quoteKey: 'auth.showcase.quote',
   },
-  bottomLeft: '[ SECTOR: LOWER_FORGE_LEVEL ]',
-  bottomRight: 'MAGMA RESERVOIR: 1,420°C // 98% CAPACITY',
+  bottomLeftKey: 'auth.showcase.bottomLeft',
+  bottomRightKey: 'auth.showcase.bottomRight',
 };

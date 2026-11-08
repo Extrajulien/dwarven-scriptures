@@ -2,15 +2,34 @@
 
 import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { loginUser } from '../../app/login/actions';
+import { loginUser, type LoginFormError } from '../../app/login/actions';
 import { LOGIN_FORM } from '../../data/loginData';
-import type { LoginFieldErrors } from '../../lib/login-validation';
+import type { LoginFieldErrorCode, LoginFieldErrors } from '../../lib/login-validation';
+import type { Messages } from '../../i18n/messages';
 import ButtonPrimary from '../ButtonPrimary';
+
+/**
+ * Stable error codes from the server action/validation, mapped to localized
+ * text via the message dictionary (I18N-01): the action returns codes only —
+ * never human-readable strings.
+ */
+const USERNAME_ERROR_KEYS: Record<LoginFieldErrorCode, keyof Messages> = {
+  required: 'auth.error.requiredUsername',
+};
+
+const PASSWORD_ERROR_KEYS: Record<LoginFieldErrorCode, keyof Messages> = {
+  required: 'auth.error.requiredPassword',
+};
+
+const FORM_ERROR_KEYS: Record<LoginFormError, keyof Messages> = {
+  invalidCredentials: 'auth.login.error.invalidCredentials',
+  unexpected: 'auth.error.unexpected',
+};
 
 function PickaxeIcon() {
   return (
     <svg
-      className="h-4 w-4 text-[#8a7241]"
+      className="h-4 w-4 text-dwarf-parchmentIcon"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
@@ -29,7 +48,7 @@ function PickaxeIcon() {
 function LockIcon() {
   return (
     <svg
-      className="h-4 w-4 text-[#8a7241]"
+      className="h-4 w-4 text-dwarf-parchmentIcon"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
@@ -72,7 +91,7 @@ function EyeIcon() {
 function HammerIcon() {
   return (
     <svg
-      className="h-4 w-4 text-[#3d2c07] transition-transform duration-150 group-hover:rotate-12"
+      className="h-4 w-4 text-dwarf-goldInk transition-transform duration-150 group-hover:rotate-12"
       fill="currentColor"
       viewBox="0 0 24 24"
       aria-hidden="true"
@@ -90,7 +109,7 @@ function FieldError({ id, message }: { id: string; message: string }) {
   );
 }
 
-export default function LoginForm() {
+export default function LoginForm({ messages }: { messages: Messages }) {
   const [state, formAction, pending] = useActionState(loginUser, null);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
@@ -124,10 +143,10 @@ export default function LoginForm() {
             <span className="font-bold text-dwarf-gold">
               {LOGIN_FORM.callsign.rune}
             </span>
-            <span>{LOGIN_FORM.callsign.label}</span>
+            <span>{messages[LOGIN_FORM.callsign.labelKey]}</span>
           </label>
           <span className="text-label-sm text-dwarf-parchmentMuted">
-            {LOGIN_FORM.callsign.hint}
+            {messages[LOGIN_FORM.callsign.hintKey]}
           </span>
         </div>
         <div className="relative">
@@ -140,16 +159,16 @@ export default function LoginForm() {
             type="text"
             autoComplete="username"
             required
-            placeholder={LOGIN_FORM.callsign.placeholder}
+            placeholder={messages[LOGIN_FORM.callsign.placeholderKey]}
             aria-invalid={usernameError ? true : undefined}
             aria-describedby={usernameError ? 'username-error' : undefined}
-            className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-3 font-mono text-sm text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
+            className="w-full rounded border border-dwarf-inputBorder bg-dwarf-inputBg py-2.5 pl-10 pr-3 font-mono text-sm text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
         </div>
         {usernameError && (
           <FieldError
             id="username-error"
-            message={LOGIN_FORM.errors.username[usernameError]}
+            message={messages[USERNAME_ERROR_KEYS[usernameError]]}
           />
         )}
       </div>
@@ -164,10 +183,10 @@ export default function LoginForm() {
             <span className="font-bold text-dwarf-gold">
               {LOGIN_FORM.password.rune}
             </span>
-            <span>{LOGIN_FORM.password.label}</span>
+            <span>{messages[LOGIN_FORM.password.labelKey]}</span>
           </label>
           <span className="text-label-sm text-dwarf-parchmentMuted">
-            {LOGIN_FORM.password.hint}
+            {messages[LOGIN_FORM.password.hintKey]}
           </span>
         </div>
         <div className="relative">
@@ -180,14 +199,14 @@ export default function LoginForm() {
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
             required
-            placeholder={LOGIN_FORM.password.placeholder}
+            placeholder={messages[LOGIN_FORM.password.placeholderKey]}
             aria-invalid={passwordError ? true : undefined}
             aria-describedby={passwordError ? 'password-error' : undefined}
-            className="w-full rounded border border-[#3f382d] bg-[#121110] py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
+            className="w-full rounded border border-dwarf-inputBorder bg-dwarf-inputBg py-2.5 pl-10 pr-10 font-mono text-sm tracking-wider text-dwarf-parchment placeholder-dwarf-borderLight shadow-stone-inner transition-colors duration-150 focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
           <button
             type="button"
-            aria-label="Toggle password visibility"
+            aria-label={messages['auth.login.togglePassword']}
             onClick={() => setShowPassword((visible) => !visible)}
             className={`absolute inset-y-0 right-0 flex items-center pr-3 transition-colors focus:outline-none ${
               showPassword ? 'text-dwarf-gold' : 'text-dwarf-parchmentMuted hover:text-dwarf-gold'
@@ -199,7 +218,7 @@ export default function LoginForm() {
         {passwordError && (
           <FieldError
             id="password-error"
-            message={LOGIN_FORM.errors.password[passwordError]}
+            message={messages[PASSWORD_ERROR_KEYS[passwordError]]}
           />
         )}
       </div>
@@ -210,10 +229,10 @@ export default function LoginForm() {
           <input
             type="checkbox"
             name="remember_scribe"
-            className="dwarf-checkbox h-4 w-4 rounded-none border-[#3f382d] bg-[#121110] text-dwarf-gold transition focus:border-dwarf-gold focus:ring-0 focus:ring-offset-0"
+            className="dwarf-checkbox h-4 w-4 rounded-none border-dwarf-inputBorder bg-dwarf-inputBg text-dwarf-gold transition focus:border-dwarf-gold focus:ring-0 focus:ring-offset-0"
           />
           <span className="text-xs tracking-tight text-dwarf-parchmentMuted">
-            {LOGIN_FORM.remember}
+            {messages[LOGIN_FORM.rememberKey]}
           </span>
         </label>
       </div>
@@ -222,13 +241,15 @@ export default function LoginForm() {
       <div className="pt-2">
         {formError && (
           <p role="alert" className="mb-3 text-xs font-medium text-dwarf-magma">
-            {LOGIN_FORM.errors.form[formError]}
+            {messages[FORM_ERROR_KEYS[formError]]}
           </p>
         )}
         <ButtonPrimary type="submit" disabled={pending} className="w-full">
           <HammerIcon />
           <span className="font-bold">
-            {pending ? LOGIN_FORM.submitPending : LOGIN_FORM.submit}
+            {pending
+              ? messages[LOGIN_FORM.submitPendingKey]
+              : messages[LOGIN_FORM.submitKey]}
           </span>
         </ButtonPrimary>
       </div>

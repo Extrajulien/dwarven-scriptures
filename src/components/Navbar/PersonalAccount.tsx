@@ -2,10 +2,17 @@ import Link from 'next/link';
 import Icon from '../Icon';
 import UserAvatar from '../UserAvatar';
 import { LOGIN } from '../../data/NavbarData';
+import type { Messages } from '../../i18n/messages';
 
 export type NavUser = { username: string; pfpUrl?: string | null };
 
-export default function PersonalAccount({ user = null }: { user?: NavUser | null }) {
+export default function PersonalAccount({
+  user = null,
+  messages,
+}: {
+  user?: NavUser | null;
+  messages: Messages;
+}) {
   if (user) {
     return (
       <Link
@@ -33,7 +40,7 @@ export default function PersonalAccount({ user = null }: { user?: NavUser | null
       className={`${LOGIN.button.className} flex h-8 items-center justify-center rounded-md bg-primary pe-3 ps-2`}
     >
       <Icon name={LOGIN.button.icon} className="text-headline-sm" />
-      {LOGIN.button.label}
+      {messages[LOGIN.button.labelKey]}
     </Link>
   );
 }
