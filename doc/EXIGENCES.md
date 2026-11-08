@@ -26,7 +26,7 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 - [x] **TECH-03** — Tailwind CSS pour le style. — fichiers : `tailwind.config.cjs`, `postcss.config.mjs`, `src/app/globals.css`
 - [x] (partiel) **TECH-04** — PostgreSQL avec l'ORM de votre choix (Drizzle), migrations versionnées, script de seed (corpus de textes, utilisateurs, historique).
   - [x] Migrations versionnées — fichiers : `drizzle/`, `src/db/schema.ts`, `src/db/migrate.ts`
-  - [ ] Script de seed — à créer (corpus, utilisateurs, historique de courses).
+  - [x] Script de seed — fichiers : `src/db/seed.ts` (idempotent, `npm run db:seed`), `src/lib/text-metrics.ts` (métriques de complexité mesurables) — tests : `src/lib/text-metrics.test.ts`. Contenu : corpus cohérent de 30 passages du domaine public (13 FR / 17 EN sur les trois complexités), 6 dictionnaires de mots (≥ 100 mots par paire langue × complexité) et 3 utilisateurs de démo (`demo`, `demo2`, `demo3`) avec statistiques. L'historique individuel des courses n'existe pas encore (les tables `races` viendront avec les salles) : le seed remplit les statistiques agrégées de `user_stats`.
 - [ ] **TECH-05** — Déploiement sur un serveur (VPS), accessible publiquement en HTTPS, fonctionnel en production au checkpoint 1 et à la remise finale.
   — La cible Railway est documentée dans `doc/database.md` ; l'URL publique reste à confirmer.
 - [ ] **TECH-06** — Visualisation de la progression en temps réel (WebSocket, MQTT ou autre — choix libre, à documenter par ADR dans `doc/ARCHITECTURE.md`).
@@ -63,8 +63,8 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
   — fichiers : `src/app/account/actions.ts`, `src/components/account/EditProfileModal.tsx`
   — tests : `src/app/account/profile.test.ts`, `src/lib/profile-validation.test.ts`
 - [x] (partiel) **AUTH-06** — Page de profil avec les statistiques : meilleur MPM, MPM moyen, précision moyenne, nombre de courses, nombre de victoires, graphique de progression du MPM.
-  — fichiers : `src/app/account/page.tsx`, `src/components/account/AccountStats.tsx`, `ProgressionCharts.tsx`, `RaceHistory.tsx`
-  — Manque : précision moyenne et victoires (colonnes absentes du schéma), graphique branché sur de vraies données.
+  — fichiers : `src/app/account/page.tsx`, `src/components/account/AccountStats.tsx`, `ProgressionCharts.tsx`, `RaceHistory.tsx`, `src/db/schema.ts` (colonnes `wins`, `correctKeystrokes`, `totalKeystrokes`), `src/db/queries/users.ts` (`avgAccuracy` dérivée)
+  — Manque : colonnes wins/précision ajoutées au schéma (phase 3 branchera les graphiques).
 
 ## SALLE — Salles et visibilité
 
@@ -217,7 +217,7 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 Exigences ambiguës ou laissées à l'appréciation de l'équipe — chaque choix
 retenu doit être expliqué ici ou dans `doc/ARCHITECTURE.md` :
 
-- **CONF-05** — critères mesurables de la complexité (facile / moyen / difficile).
+- **CONF-05** — critères mesurables de la complexité (facile / moyen / difficile) : seuils documentés dans `doc/database.md` (section « Complexity ») et implémentés dans `src/lib/text-metrics.ts` (un vote par métrique, longueur moyenne des mots à poids double).
 - **CONF-07** — comportement retenu en mode cohérent (option désactivée ou filtrage des passages compatibles).
 - **BOT-01** — valeurs retenues si les plages de MPM/erreurs sont ajustées.
 - **BONUS-01** — règle exacte d'attribution des bonus (définition précise du « retard », cumul, choix du bonus).
