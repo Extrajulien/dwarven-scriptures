@@ -4,6 +4,7 @@ import {
   SlidingWindowRateLimiter,
 } from '../lib/rate-limit';
 import type { RoomConfig } from '../db/schema';
+import type { RaceEngineHooks } from './race-engine';
 import type {
   ConfigUpdatedMessage,
   ErrorMessage,
@@ -172,7 +173,18 @@ export type RoomHubOptions = {
   /** Join-attempt limiter (defaults to the shared SALLE-10 limiter). */
   limiter?: SlidingWindowRateLimiter;
   heartbeatIntervalMs?: number;
+  /**
+   * Optional race-engine hooks (COURSE-08): when set, a mid-race disconnect
+   * keeps the membership slot (no DB leave, no `memberLeft`) so the engine
+   * can run the 30-second reconnect window.
+   */
+  raceHooks?: RaceEngineHooks;
 };
+
+/** Stable in-memory key of an identity (`user:<id>` / `guest:<token>`). */
+export function hubKeyForIdentity(identity: HubIdentity): string {
+  return memberKey(identity);
+}
 
 /** Internal registration of one live connection. */
 type ConnectedMember = {
@@ -202,6 +214,7 @@ export class RoomHub {
   private readonly store: RoomStore;
   private readonly limiter: SlidingWindowRateLimiter;
   private readonly heartbeatIntervalMs: number;
+  private readonly raceHooks: RaceEngineHooks | null;
   private readonly rooms = new Map<number, Map<string, ConnectedMember>>();
   /** roomId → publicId, remembered so broadcasts keep working after a leave. */
   private readonly roomPublicIds = new Map<number, string>();
@@ -216,6 +229,7 @@ export class RoomHub {
     this.store = options.store;
     this.limiter = options.limiter ?? roomCodeJoinLimiter;
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? DEFAULT_HEARTBEAT_INTERVAL_MS;
+    this.raceHooks = options.raceHooks ?? null;
   }
 
   /** Number of live connections across all rooms (monitoring + tests). */
@@ -338,6 +352,9 @@ export class RoomHub {
     const wire = this.toWireMember(ownRow, state, true, actor);
     room.set(key, { connection, identity: actor, wire });
 
+    // COURSE-08: a mid-race rejoin re-attaches the participant's slot.
+    this.raceHooks?.notifyReconnected(result.roomId, key);
+
     connection.send(this.buildSnapshot(state));
 
     for (const [otherKey, other] of room) {
@@ -386,6 +403,10 @@ export class RoomHub {
    * store applies the departure (SALLE-08 handover included) and the outcome
    * drives the broadcasts; with `dbLeave: false` the store already moved the
    * person during a join and only the `memberLeft` broadcast is needed.
+   *
+   * COURSE-08: while a member races (DÉCOMPTE/EN_COURSE) and has no result
+   * yet, the race hooks keep the membership — no DB leave, no `memberLeft`;
+   * the engine runs the 30-second reconnect window instead.
    */
   private async depart(
     roomId: number,
@@ -407,6 +428,11 @@ export class RoomHub {
     }
     room.delete(key);
     const publicId = this.roomPublicIds.get(roomId) ?? null;
+
+    if (options.dbLeave && this.raceHooks?.keepMembershipOnDisconnect(roomId, key)) {
+      this.raceHooks.notifyDisconnected(roomId, key);
+      return;
+    }
 
     if (!options.dbLeave) {
       if (publicId) {
@@ -447,6 +473,7 @@ export class RoomHub {
     }
     if (outcome.roomClosed) {
       this.broadcast(room, { type: 'roomClosed', roomPublicId: publicId });
+      this.raceHooks?.notifyRoomClosed(roomId);
       this.clearRoom(roomId, room);
     }
   }
@@ -537,7 +564,48 @@ export class RoomHub {
     if (publicId) {
       this.broadcast(room, { type: 'roomClosed', roomPublicId: publicId });
     }
+    this.raceHooks?.notifyRoomClosed(roomId);
     this.clearRoom(roomId, room);
+  }
+
+  // ------------------------------------------------------- race engine seam
+
+  /** The live membership a connection belongs to: room id + member key. */
+  membershipOf(connection: HubConnection): { roomId: number; key: string } | null {
+    const roomId = this.findMembershipRoom(connection);
+    if (roomId === null) {
+      return null;
+    }
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return null;
+    }
+    const key = this.keyFor(room, connection);
+    return key === null ? null : { roomId, key };
+  }
+
+  /** Broadcasts any server message to every live connection of one room. */
+  sendToRoom(roomId: number, message: ServerMessage): void {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return;
+    }
+    for (const entry of room.values()) {
+      entry.connection.send(message);
+    }
+  }
+
+  /**
+   * A live guest's nickname in this room, or `null` when the member is a
+   * user or holds no connection right now (nicknames live in the signed
+   * cookie, so a disconnected guest's name is unknown).
+   */
+  nicknameFor(roomId: number, key: string): string | null {
+    const entry = this.rooms.get(roomId)?.get(key);
+    if (entry && entry.identity.kind === 'guest') {
+      return entry.identity.nickname;
+    }
+    return null;
   }
 
   // -------------------------------------------------------------- heartbeat

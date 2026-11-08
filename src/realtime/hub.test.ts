@@ -22,6 +22,7 @@ import {
   type RoomStoreJoinInput,
   type RoomStoreJoinResult,
 } from './hub';
+import type { RaceEngineHooks } from './race-engine';
 import type { ServerMessage } from './protocol';
 
 const ROOM_ID = 42;
@@ -185,7 +186,33 @@ function memberRowFor(identity: HubIdentity): HubRoomState['members'][number] {
       };
 }
 
-function makeHub(store: FakeStore): {
+class FakeRaceHooks implements RaceEngineHooks {
+  keep = true;
+  disconnected: Array<{ roomId: number; key: string }> = [];
+  reconnected: Array<{ roomId: number; key: string }> = [];
+  closedRooms: number[] = [];
+
+  keepMembershipOnDisconnect(roomId: number, memberKey: string): boolean {
+    return this.keep;
+  }
+
+  notifyDisconnected(roomId: number, memberKey: string): void {
+    this.disconnected.push({ roomId, key: memberKey });
+  }
+
+  notifyReconnected(roomId: number, memberKey: string): void {
+    this.reconnected.push({ roomId, key: memberKey });
+  }
+
+  notifyRoomClosed(roomId: number): void {
+    this.closedRooms.push(roomId);
+  }
+}
+
+function makeHub(
+  store: FakeStore,
+  raceHooks?: RaceEngineHooks,
+): {
   hub: RoomHub;
   store: FakeStore;
   limiter: SlidingWindowRateLimiter;
@@ -195,7 +222,11 @@ function makeHub(store: FakeStore): {
     windowMs: ROOM_CODE_JOIN_WINDOW_MS,
     now: () => 1_000_000,
   });
-  const hub = new RoomHub({ store, limiter });
+  const hub = new RoomHub({
+    store,
+    limiter,
+    ...(raceHooks !== undefined ? { raceHooks } : {}),
+  });
   return { hub, store, limiter };
 }
 
@@ -579,6 +610,104 @@ describe('host action notifications', () => {
     hub.notifyRoomClosed(ROOM_ID);
     hub.notifyMemberKicked(ROOM_ID, { userId: 7 });
     expect(hub.connectionCount()).toBe(0);
+  });
+});
+
+describe('race hooks (COURSE-08 reconnect window)', () => {
+  function joinedPair(
+    hooks: FakeRaceHooks,
+  ): {
+    hub: RoomHub;
+    store: FakeStore;
+    hostConn: FakeConnection;
+    bobConn: FakeConnection;
+  } {
+    const store = new FakeStore();
+    store.states.set(
+      ROOM_ID,
+      roomState({
+        members: [
+          memberRowFor(ada),
+          {
+            role: 'participant',
+            userId: 8,
+            guestToken: null,
+            userPublicId: BOB_ID,
+            username: 'bob',
+            pfpUrl: null,
+            joinedAt: JOINED_AT,
+          },
+        ],
+      }),
+    );
+    const hub = makeHub(store, hooks).hub;
+    const hostConn = connection('c1', ada);
+    const bobConn = connection('c2', bob);
+    return { hub, store, hostConn, bobConn };
+  }
+
+  test('keeps a racing membership on disconnect: no DB leave, no memberLeft, engine notified', async () => {
+    const hooks = new FakeRaceHooks();
+    const { hub, store, hostConn, bobConn } = joinedPair(hooks);
+    await hub.handleJoin(hostConn, { type: 'joinRoom', code: 'DWRF42' });
+    await hub.handleJoin(bobConn, { type: 'joinRoom', code: 'DWRF42' });
+    hooks.disconnected = [];
+    store.leaveCalls = [];
+
+    await hub.handleDisconnect(bobConn);
+
+    expect(store.leaveCalls).toHaveLength(0);
+    expect(hostConn.last('memberLeft')).toBeUndefined();
+    expect(hooks.disconnected).toEqual([{ roomId: ROOM_ID, key: 'user:8' }]);
+    expect(hub.connectionCount()).toBe(1);
+  });
+
+  test('applies the normal departure when the hook declines to keep the slot', async () => {
+    const hooks = new FakeRaceHooks();
+    hooks.keep = false;
+    const { hub, store, hostConn, bobConn } = joinedPair(hooks);
+    await hub.handleJoin(hostConn, { type: 'joinRoom', code: 'DWRF42' });
+    await hub.handleJoin(bobConn, { type: 'joinRoom', code: 'DWRF42' });
+
+    await hub.handleDisconnect(bobConn);
+
+    expect(store.leaveCalls).toHaveLength(1);
+    expect(hostConn.last('memberLeft')).toBeDefined();
+    expect(hooks.disconnected).toHaveLength(0);
+  });
+
+  test('notifies the engine when a membership attaches a connection (join/rejoin)', async () => {
+    const hooks = new FakeRaceHooks();
+    const { hub, bobConn } = joinedPair(hooks);
+    const hostConn = connection('c1', ada);
+    await hub.handleJoin(hostConn, { type: 'joinRoom', code: 'DWRF42' });
+    await hub.handleJoin(bobConn, { type: 'joinRoom', code: 'DWRF42' });
+
+    expect(hooks.reconnected).toEqual([
+      { roomId: ROOM_ID, key: 'user:7' },
+      { roomId: ROOM_ID, key: 'user:8' },
+    ]);
+  });
+
+  test('notifies the engine when the room closes (departure and notifyRoomClosed)', async () => {
+    const hooks = new FakeRaceHooks();
+    hooks.keep = false; // the member leaves for good: the departure path applies
+    const store = new FakeStore();
+    store.states.set(ROOM_ID, roomState());
+    store.leaveOutcome = { left: true, hostChangedTo: null, roomClosed: true };
+    const { hub } = makeHub(store, hooks);
+    const hostConn = connection('c1', ada);
+    await hub.handleJoin(hostConn, { type: 'joinRoom', code: 'DWRF42' });
+
+    await hub.handleLeave(hostConn);
+    expect(hooks.closedRooms).toEqual([ROOM_ID]);
+
+    const second = new FakeRaceHooks();
+    const { hub: hub2 } = makeHub(store, second);
+    const hostConn2 = connection('c2', ada);
+    await hub2.handleJoin(hostConn2, { type: 'joinRoom', code: 'DWRF42' });
+    hub2.notifyRoomClosed(ROOM_ID);
+    expect(second.closedRooms).toEqual([ROOM_ID]);
   });
 });
 

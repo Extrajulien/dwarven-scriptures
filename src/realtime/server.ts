@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, Server as HttpServer } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
+import { getRoomForJoin, setRoomStatus } from '../db/queries/rooms';
 import { getUserFullProfile } from '../db/queries/users';
 // Pure token codecs — the realtime server runs before the Next request
 // context exists, so it must never import `next/headers` here.
 import { decodeGuestToken, GUEST_COOKIE_NAME } from '../lib/guest-token';
 import { decodeSessionToken, SESSION_COOKIE_NAME } from '../lib/session-token';
 import {
+  hubKeyForIdentity,
   RoomHub,
   type ConnectionMeta,
   type HubConnection,
@@ -16,7 +18,9 @@ import {
 import { checkOrigin } from './origin';
 import { clientMessageSchema, type ServerMessage } from './protocol';
 import { PostgresRoomStore } from './room-store';
-import { setRealtimeHub } from './events';
+import { setRaceEngine, setRealtimeHub } from './events';
+import { RaceEngine, type RaceEngineMember } from './race-engine';
+import { pickRaceText } from './race-text-provider';
 
 /**
  * `ws` adapter for the room hub (ADR-010, Decision A): a `WebSocketServer`
@@ -127,6 +131,51 @@ function upgradePathname(request: IncomingMessage): string {
   }
 }
 
+/**
+ * Builds the production {@link RaceEngine} over the room queries and the
+ * hub: room snapshots come from `getRoomForJoin` (guests' display names from
+ * the hub's live identities, since nicknames live in the signed cookie),
+ * texts from the corpus/dictionary picker, status persistence through
+ * `setRoomStatus` and broadcasts through the hub's room fan-out. `getHub`
+ * defers the hub reference so hub ↔ engine wiring can be circular.
+ */
+function createRaceEngine(getHub: () => RoomHub): RaceEngine {
+  return new RaceEngine({
+    now: () => new Date(),
+    async loadRoom(roomId) {
+      const state = await getRoomForJoin(roomId);
+      if (!state) {
+        return null;
+      }
+      const members: RaceEngineMember[] = state.members.map((row) => {
+        const isUser = row.userId !== null;
+        const key = isUser ? `user:${row.userId}` : `guest:${row.guestToken as string}`;
+        return {
+          memberId: row.memberId,
+          role: row.role,
+          userId: row.userId,
+          guestToken: row.guestToken,
+          publicId: (isUser ? row.userPublicId : row.guestToken) as string,
+          displayName: isUser
+            ? (row.username ?? 'player')
+            : (getHub().nicknameFor(state.roomId, key) ?? 'Guest'),
+          hubKey: key,
+        };
+      });
+      return {
+        publicId: state.publicId,
+        config: state.config,
+        hostUserId: state.hostUserId,
+        members,
+      };
+    },
+    pickText: pickRaceText,
+    persistStatus: (roomId, status) => setRoomStatus(roomId, status),
+    broadcast: (roomId, message) => getHub().sendToRoom(roomId, message),
+    randomSeed: () => Math.floor(Math.random() * 0x1_0000_0000),
+  });
+}
+
 /** `ws` socket wrapped as a transport-neutral {@link HubConnection}. */
 class WsConnection implements HubConnection {
   readonly id: string;
@@ -196,7 +245,14 @@ export function createRealtimeServer(
   options: RealtimeServerOptions = {},
 ): RealtimeServer {
   const store = options.store ?? new PostgresRoomStore();
-  const hub = new RoomHub({ store });
+  // The engine and the hub reference each other (engine deps broadcast
+  // through the hub; the hub's race hooks call back into the engine), so
+  // the engine resolves the hub through a late-bound holder: `getHub` is
+  // only invoked at race time, after the assignment below.
+  const hubHolder: { current: RoomHub | null } = { current: null };
+  const engine = createRaceEngine(() => hubHolder.current as RoomHub);
+  const hub = new RoomHub({ store, raceHooks: engine });
+  hubHolder.current = hub;
   const wss = new WebSocketServer({ noServer: true });
 
   httpServer.on('upgrade', (request, socket, head) => {
@@ -238,7 +294,7 @@ export function createRealtimeServer(
         connection.bufferFrame(data);
         return;
       }
-      void dispatchMessage(hub, connection, data).catch((error: unknown) => {
+      void dispatchMessage(hub, engine, connection, data).catch((error: unknown) => {
         console.error('realtime: message handling failed', error);
       });
     });
@@ -257,7 +313,7 @@ export function createRealtimeServer(
       .then((actor) => {
         const pending = connection.resolveActor(actor);
         for (const frame of pending) {
-          void dispatchMessage(hub, connection, frame).catch((error: unknown) => {
+          void dispatchMessage(hub, engine, connection, frame).catch((error: unknown) => {
             console.error('realtime: buffered message handling failed', error);
           });
         }
@@ -270,10 +326,14 @@ export function createRealtimeServer(
 
   hub.startHeartbeat();
   setRealtimeHub(hub);
+  setRaceEngine(engine);
+  engine.start();
 
   return {
     hub,
     async close(): Promise<void> {
+      engine.stop();
+      setRaceEngine(null);
       setRealtimeHub(null);
       await hub.shutdown();
       wss.close();
@@ -281,9 +341,10 @@ export function createRealtimeServer(
   };
 }
 
-/** Parses one raw ws frame, validates it and dispatches it to the hub. */
+/** Parses one raw ws frame, validates it and dispatches it to the hub/engine. */
 async function dispatchMessage(
   hub: RoomHub,
+  engine: RaceEngine,
   connection: HubConnection,
   data: unknown,
 ): Promise<void> {
@@ -314,5 +375,68 @@ async function dispatchMessage(
     case 'ping':
       connection.send({ type: 'pong' });
       break;
+    case 'startRace': {
+      const membership = hub.membershipOf(connection);
+      if (!membership) {
+        connection.send({ type: 'error', code: 'invalid_input' });
+        break;
+      }
+      const outcome = await engine.startRace(membership.roomId, membership.key);
+      if (!outcome.ok) {
+        connection.send({
+          type: 'error',
+          code: outcome.code,
+          ...(outcome.message !== undefined ? { message: outcome.message } : {}),
+        });
+      }
+      break;
+    }
+    case 'raceProgress': {
+      const membership = hub.membershipOf(connection);
+      if (!membership) {
+        connection.send({ type: 'error', code: 'invalid_input' });
+        break;
+      }
+      const outcome = engine.handleRaceProgress(membership.roomId, membership.key, {
+        validatedChars: parsed.data.validatedChars,
+        correctKeystrokes: parsed.data.correctKeystrokes,
+        totalKeystrokes: parsed.data.totalKeystrokes,
+      });
+      if (!outcome.ok) {
+        connection.send({ type: 'error', code: outcome.code });
+      }
+      break;
+    }
+    case 'quitRace': {
+      const membership = hub.membershipOf(connection);
+      if (!membership) {
+        connection.send({ type: 'error', code: 'invalid_input' });
+        break;
+      }
+      const outcome = engine.quitRace(membership.roomId, membership.key);
+      if (!outcome.ok) {
+        connection.send({ type: 'error', code: outcome.code });
+      }
+      break;
+    }
+    case 'rejoinRace': {
+      const membership = hub.membershipOf(connection);
+      if (!membership) {
+        connection.send({ type: 'error', code: 'invalid_input' });
+        break;
+      }
+      const outcome = engine.rejoinRace(membership.roomId, membership.key);
+      if (!outcome.ok) {
+        connection.send({ type: 'error', code: outcome.code });
+        break;
+      }
+      // COURSE-08: answer with the full resume snapshot (phase, text, own
+      // counters) so the client re-applies its race state.
+      const snapshot = engine.raceSnapshotFor(membership.roomId, membership.key);
+      if (snapshot) {
+        connection.send(snapshot);
+      }
+      break;
+    }
   }
 }

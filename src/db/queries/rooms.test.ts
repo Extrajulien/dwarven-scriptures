@@ -12,6 +12,7 @@
 import { z } from 'zod';
 import { rooms, roomMembers, invitationLinks } from '../schema';
 import { defaultRoomConfig } from '../../lib/room-config';
+import { RaceStartRulesError } from '../../lib/race/start-rules';
 
 type RecordedCall = {
   operation: 'insert' | 'update' | 'select' | 'delete' | 'transaction';
@@ -139,6 +140,7 @@ import {
   RoomMemberNotFoundError,
   RoomNotFoundError,
   RoomNotJoinableError,
+  setRoomStatus,
   transferHost,
   updateRoomConfig,
 } from './rooms';
@@ -831,6 +833,39 @@ describe('updateRoomConfig (CONF-01..12)', () => {
     await expect(
       updateRoomConfig({ roomId: 42, hostUserId: 7, config: defaultRoomConfig }),
     ).rejects.toThrow(NotRoomHostError);
+  });
+});
+
+describe('setRoomStatus (COURSE-01 engine seam)', () => {
+  test('persists a race phase with a fresh updatedAt', async () => {
+    await setRoomStatus(42, 'en_course');
+
+    const roomUpdate = calls
+      .filter((call) => call.operation === 'update')
+      .find((call) => call.args[0][0] === rooms);
+    const set = roomUpdate!.args[1][0] as Record<string, unknown>;
+    expect(set.status).toBe('en_course');
+    expect(set.updatedAt).toBeInstanceOf(Date);
+    expect(roomUpdate!.args[2][0]).toBeDefined(); // .where(eq(rooms.id, roomId))
+  });
+
+  test('accepts every race phase', async () => {
+    for (const status of ['en_attente', 'decompte', 'en_course', 'resultats']) {
+      await setRoomStatus(42, status);
+    }
+    const updates = calls.filter(
+      (call) => call.operation === 'update' && call.args[0][0] === rooms,
+    );
+    expect(updates.map((call) => (call.args[1][0] as { status: string }).status)).toEqual([
+      'en_attente',
+      'decompte',
+      'en_course',
+      'resultats',
+    ]);
+  });
+
+  test('rejects an unknown status before touching the database', async () => {
+    await expect(setRoomStatus(42, 'racing_now')).rejects.toThrow(RaceStartRulesError);
   });
 });
 

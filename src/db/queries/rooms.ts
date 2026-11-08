@@ -18,6 +18,7 @@ import {
   ROOM_CODE_LENGTH,
   type PresentMember,
 } from '../../lib/room-rules';
+import { roomStatusForPhase } from '../../lib/race/start-rules';
 import { parseRoomConfig, resolveRoomConfig } from '../../lib/room-config';
 
 /**
@@ -1108,6 +1109,23 @@ export async function updateRoomConfig(params: UpdateRoomConfigParams): Promise<
       .set({ config, updatedAt: new Date() })
       .where(eq(rooms.id, params.roomId));
   });
+}
+
+/**
+ * Moves a room to a race phase (COURSE-01). The status goes through the
+ * shared room-status ↔ race-phase mapping (`roomStatusForPhase`), so an
+ * unchecked string can never reach the database. Called by the race engine
+ * on every phase change: `decompte` at start, `en_course` at the countdown
+ * end, `resultats` at the finish, `en_attente` on abort/relaunch.
+ */
+export async function setRoomStatus(roomId: number, status: string): Promise<void> {
+  assertPositiveInteger(roomId, 'roomId');
+  const phase = roomStatusForPhase(status);
+
+  await db
+    .update(rooms)
+    .set({ status: phase, updatedAt: new Date() })
+    .where(eq(rooms.id, roomId));
 }
 
 /**
