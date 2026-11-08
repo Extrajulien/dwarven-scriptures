@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { registerUser } from '../../app/register/actions';
 import { REGISTER_FORM } from '../../data/registerData';
 import ButtonPrimary from '../ButtonPrimary';
+import PasswordStrengthBar from './PasswordStrengthBar';
 
 function PickaxeIcon() {
   return (
@@ -92,6 +93,7 @@ function FieldError({ id, message }) {
 export default function RegisterForm() {
   const [state, formAction, pending] = useActionState(registerUser, null);
   const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -179,6 +181,8 @@ export default function RegisterForm() {
             type={showPassword ? 'text' : 'password'}
             autoComplete="new-password"
             required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
             placeholder={REGISTER_FORM.password.placeholder}
             aria-invalid={passwordError ? true : undefined}
             aria-describedby={passwordError ? 'password-error' : undefined}
@@ -195,6 +199,7 @@ export default function RegisterForm() {
             <EyeIcon />
           </button>
         </div>
+        <PasswordStrengthBar password={password} />
         {passwordError && (
           <FieldError
             id="password-error"
