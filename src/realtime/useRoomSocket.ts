@@ -158,6 +158,13 @@ export function applyServerMessage(
 
     case 'pong':
       return previous;
+
+    default:
+      // The race messages (countdownStarted, raceStarted, raceTick,
+      // participantFinished/Quit, raceFinished, raceAborted, raceSnapshot)
+      // are applied by the client-hook unit of the race engine (SP-2B); this
+      // default keeps the reducer exhaustive until that unit lands.
+      return previous;
   }
 }
 
