@@ -7,7 +7,8 @@ design intentions, not implemented code** — do not treat them as done.
 
 Current state: authentication (password + GitHub/Discord OAuth), the account
 profile screen, the Dwarf-Fortress-inspired UI shell and the Drizzle/PostgreSQL
-data layer are implemented. Rooms, the real-time layer, the race engine, bots
+data layer (users plus the seeded `texts` corpus and `word_dictionaries` word
+pools) are implemented. Rooms, the real-time layer, the race engine, bots
 and bonuses are not built yet.
 
 ## Folder layout
@@ -44,6 +45,9 @@ erDiagram
         bigint totalWords
         bigint totalTimeMs
         numeric bestWpm
+        integer wins
+        bigint correctKeystrokes
+        bigint totalKeystrokes
         timestamptz updatedAt
     }
     user_resources {
@@ -58,22 +62,51 @@ erDiagram
         varchar providerAccountId
         timestamptz createdAt
     }
+    texts {
+        bigint id PK
+        varchar language "fr | en (CHECK)"
+        varchar title
+        text body
+        integer wordCount "> 0 (CHECK)"
+        varchar complexity "facile | moyen | difficile (CHECK)"
+        numeric avgWordLength
+        numeric longWordRatio
+        numeric specialCharRatio
+        boolean hasPunctuation
+        boolean hasNumbers
+        boolean hasCapitals
+        boolean hasAccents
+        timestamptz createdAt
+    }
+    word_dictionaries {
+        bigint id PK
+        varchar language "fr | en (CHECK)"
+        varchar complexity "facile | moyen | difficile (CHECK)"
+        jsonb words "array, >= 100 entries (CHECK)"
+        timestamptz createdAt
+    }
     users ||--|| user_stats : "1:1"
     users ||--|| user_resources : "1:1"
     users ||--o{ oauth_accounts : "has"
 ```
 
 Rules: internal `id`s never reach the client (public ids are `publicId` /
-`username`); `user_stats` has no accuracy or win columns yet (needed by AUTH-06);
-child rows cascade on delete; all counters carry `CHECK >= 0`.
+`username`); `user_stats` carries `wins` plus keystroke counters — accuracy is
+derived at read time (`correct / total * 100`, AUTH-06), not stored as a
+column; `texts` and `word_dictionaries` are reference data whose complexity is
+justified by measurable metrics (CONF-05, see `doc/database.md`); child rows
+cascade on delete; all counters carry `CHECK >= 0`.
 
 ### Planned tables (design only)
 
 Needed by the assignment requirements; the final schema will be added through
 committed migrations when each feature is built:
 
-* `texts` — typing corpus: language, title, body, word count, complexity
-  metrics, config flags (punctuation/numbers/capitals/accents) for CONF-03/05/07.
+* ~~`texts`~~ — **implemented** (see current schema): language, title, body,
+  word count, complexity metrics and config flags
+  (punctuation/numbers/capitals/accents) for CONF-03/05/07.
+* ~~`word_dictionaries`~~ — **implemented** (see current schema): ≥100-word
+  pools per (language, complexity) for random mode (CONF-03).
 * `rooms` — host, 6-char code (SALLE-02 alphabet), visibility, capacity,
   status; unique constraint enforcing one room per person (SALLE-06).
 * `room_members` — participants/spectators, join time (host handover uses

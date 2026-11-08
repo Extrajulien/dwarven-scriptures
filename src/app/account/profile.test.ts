@@ -15,9 +15,13 @@ const baseProfile: UserProfileWithStatsInternal = {
   totalWords: 148920n,
   totalTimeMs: 6000000n,
   bestWpm: '112.00',
+  wins: 211,
+  correctKeystrokes: 891_340n,
+  totalKeystrokes: 938_300n,
   coins: 4820n,
   gems: 12,
   avgWpm: 84.6,
+  avgAccuracy: 95.0,
 };
 
 describe('toAccountProfile', () => {

@@ -18,23 +18,23 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 
 - [x] **TECH-01** — Next.js (App Router, version stable actuelle) avec React.
   — fichiers : `package.json` (next 16), `src/app/`
-- [x] (partiel) **TECH-02** — TypeScript à 100 %.
-  - [ ] Aucun fichier `.js`/`.jsx` dans le dépôt (il en reste : `src/App.test.js`, `jest.config.js`, `jest.setup.js` et plusieurs composants `.jsx`).
+- [x] **TECH-02** — TypeScript à 100 %.
+  - [x] Aucun fichier `.js`/`.jsx` dans le dépôt — le dernier restant, `tailwind.config.js`, a été renommé en `tailwind.config.cjs` (format CJS propre à Tailwind, détecté automatiquement par PostCSS). Fichiers convertis : `src/App.test.tsx`, `src/data/homepageData.ts`, les composants `.jsx` de `src/components/` (accueil, login, register), `jest.config.mjs`, `jest.setup.mjs`. Tests : `src/App.test.tsx`, `src/components/UserAvatar.test.tsx`, `src/components/login/LoginForm.test.tsx`, `src/components/register/RegisterForm.test.tsx`.
   - [x] `strict: true` dans `tsconfig.json`.
-  - [ ] Règle ESLint `@typescript-eslint/no-explicit-any` en erreur (absente de `eslint.config.mjs` pour l'instant).
-  - [ ] Aucun `@ts-ignore` / `@ts-expect-error` sans commentaire justificatif (à vérifier).
-- [x] **TECH-03** — Tailwind CSS pour le style. — fichiers : `tailwind.config.js`, `postcss.config.mjs`, `src/app/globals.css`
+  - [x] Règle ESLint `@typescript-eslint/no-explicit-any` en erreur — fichiers : `eslint.config.mjs`.
+  - [x] Aucun `@ts-ignore` / `@ts-expect-error` sans commentaire justificatif — aucune occurrence dans le code source (recherche sur `src/` et la racine).
+- [x] **TECH-03** — Tailwind CSS pour le style. — fichiers : `tailwind.config.cjs`, `postcss.config.mjs`, `src/app/globals.css`
 - [x] (partiel) **TECH-04** — PostgreSQL avec l'ORM de votre choix (Drizzle), migrations versionnées, script de seed (corpus de textes, utilisateurs, historique).
   - [x] Migrations versionnées — fichiers : `drizzle/`, `src/db/schema.ts`, `src/db/migrate.ts`
-  - [ ] Script de seed — à créer (corpus, utilisateurs, historique de courses).
+  - [x] Script de seed — fichiers : `src/db/seed.ts` (idempotent, `npm run db:seed`), `src/lib/text-metrics.ts` (métriques de complexité mesurables) — tests : `src/lib/text-metrics.test.ts`. Contenu : corpus cohérent de 30 passages du domaine public (13 FR / 17 EN sur les trois complexités), 6 dictionnaires de mots (≥ 100 mots par paire langue × complexité) et 3 utilisateurs de démo (`demo`, `demo2`, `demo3`) avec statistiques. L'historique individuel des courses n'existe pas encore (les tables `races` viendront avec les salles) : le seed remplit les statistiques agrégées de `user_stats`.
 - [ ] **TECH-05** — Déploiement sur un serveur (VPS), accessible publiquement en HTTPS, fonctionnel en production au checkpoint 1 et à la remise finale.
   — La cible Railway est documentée dans `doc/database.md` ; l'URL publique reste à confirmer.
 - [ ] **TECH-06** — Visualisation de la progression en temps réel (WebSocket, MQTT ou autre — choix libre, à documenter par ADR dans `doc/ARCHITECTURE.md`).
-- [ ] **TECH-07** — Toutes les entrées côté serveur validées par un schéma (Zod ou équivalent) : actions serveur, routes API et messages temps réel.
-  — Aujourd'hui : validation par fonctions pures maison (`src/lib/*-validation.ts`), sans librairie de schéma.
+- [x] (partiel) **TECH-07** — Toutes les entrées côté serveur validées par un schéma (Zod ou équivalent) : actions serveur, routes API et messages temps réel.
+  — Actions serveur (`src/app/login/actions.ts`, `src/app/register/actions.ts`, `src/app/account/actions.ts`) et routes API OAuth (`src/app/api/auth/[provider]/route.ts`, `src/app/api/auth/[provider]/callback/route.ts`) validées par des schémas Zod v4 — fichiers : `src/lib/login-validation.ts`, `src/lib/register-validation.ts`, `src/lib/profile-validation.ts`, `src/lib/oauth-validation.ts`. Tests : `src/lib/login-validation.test.ts`, `src/lib/register-validation.test.ts`, `src/lib/profile-validation.test.ts`. Messages temps réel : s'appliquera à la couche temps réel (phase suivante).
 - [ ] **TECH-08** — Coûts : serveur à la charge de l'étudiant (ou serveur du cégep) ; tout autre service externe sur forfait gratuit ; le correcteur ne paie rien.
-- [ ] (partiel) **TECH-09** — Intégration continue GitHub Actions : lint, `tsc --noEmit` et tests unitaires à chaque push.
-  — Les scripts `lint` / `typecheck` / `test` existent, mais aucun workflow `.github/workflows` n'est encore créé.
+- [x] **TECH-09** — Intégration continue GitHub Actions : lint, `tsc --noEmit` et tests unitaires à chaque push.
+  — Workflow `.github/workflows/ci.yml` (job `ci` sur ubuntu-latest, Node 22, `npm ci` puis `lint` / `typecheck` / `test`) déclenché sur `push` et `pull_request`. L'exécution distante n'a pas pu être vérifiée depuis l'environnement de développement (aucun push effectué).
 - [x] **TECH-10** — Un fichier `.env.example` documente toutes les variables d'environnement ; aucun secret n'est commité.
   — fichiers : `.env.example` (`DATABASE_URL`, `SESSION_SECRET`, `GITHUB_CLIENT_ID/SECRET`, `DISCORD_CLIENT_ID/SECRET`)
 
@@ -63,8 +63,8 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
   — fichiers : `src/app/account/actions.ts`, `src/components/account/EditProfileModal.tsx`
   — tests : `src/app/account/profile.test.ts`, `src/lib/profile-validation.test.ts`
 - [x] (partiel) **AUTH-06** — Page de profil avec les statistiques : meilleur MPM, MPM moyen, précision moyenne, nombre de courses, nombre de victoires, graphique de progression du MPM.
-  — fichiers : `src/app/account/page.tsx`, `src/components/account/AccountStats.tsx`, `ProgressionCharts.tsx`, `RaceHistory.tsx`
-  — Manque : précision moyenne et victoires (colonnes absentes du schéma), graphique branché sur de vraies données.
+  — fichiers : `src/app/account/page.tsx`, `src/components/account/AccountStats.tsx`, `ProgressionCharts.tsx`, `RaceHistory.tsx`, `src/db/schema.ts` (colonnes `wins`, `correctKeystrokes`, `totalKeystrokes`), `src/db/queries/users.ts` (`avgAccuracy` dérivée)
+  — Manque : colonnes wins/précision ajoutées au schéma (phase 3 branchera les graphiques).
 
 ## SALLE — Salles et visibilité
 
@@ -217,7 +217,7 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 Exigences ambiguës ou laissées à l'appréciation de l'équipe — chaque choix
 retenu doit être expliqué ici ou dans `doc/ARCHITECTURE.md` :
 
-- **CONF-05** — critères mesurables de la complexité (facile / moyen / difficile).
+- **CONF-05** — critères mesurables de la complexité (facile / moyen / difficile) : seuils documentés dans `doc/database.md` (section « Complexity ») et implémentés dans `src/lib/text-metrics.ts` (un vote par métrique, longueur moyenne des mots à poids double).
 - **CONF-07** — comportement retenu en mode cohérent (option désactivée ou filtrage des passages compatibles).
 - **BOT-01** — valeurs retenues si les plages de MPM/erreurs sont ajustées.
 - **BONUS-01** — règle exacte d'attribution des bonus (définition précise du « retard », cumul, choix du bonus).

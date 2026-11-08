@@ -1,3 +1,4 @@
+import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import LoginForm from './LoginForm';
 import { loginUser } from '../../app/login/actions';
@@ -12,16 +13,21 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
 }));
 
+const mockedLoginUser = jest.mocked(loginUser);
+
 function submitForm() {
   const form = document.querySelector(
     'form[data-purpose="scribe-login-form"]',
   );
+  if (!form) {
+    throw new Error('scribe-login-form not found');
+  }
   fireEvent.submit(form);
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
-  loginUser.mockReset();
+  mockedLoginUser.mockReset();
 });
 
 test('toggles the password field visibility', () => {
@@ -42,7 +48,7 @@ test('toggles the password field visibility', () => {
 });
 
 test('renders required errors under both fields', async () => {
-  loginUser.mockResolvedValueOnce({
+  mockedLoginUser.mockResolvedValueOnce({
     ok: false,
     fieldErrors: {
       username: 'required',
@@ -58,7 +64,7 @@ test('renders required errors under both fields', async () => {
 });
 
 test('renders the invalid-credentials message', async () => {
-  loginUser.mockResolvedValueOnce({
+  mockedLoginUser.mockResolvedValueOnce({
     ok: false,
     fieldErrors: {},
     formError: 'invalidCredentials',
@@ -73,7 +79,7 @@ test('renders the invalid-credentials message', async () => {
 });
 
 test('renders the unexpected message', async () => {
-  loginUser.mockResolvedValueOnce({
+  mockedLoginUser.mockResolvedValueOnce({
     ok: false,
     fieldErrors: {},
     formError: 'unexpected',
@@ -88,7 +94,7 @@ test('renders the unexpected message', async () => {
 });
 
 test('redirects to / when the action succeeds', async () => {
-  loginUser.mockResolvedValueOnce({ ok: true });
+  mockedLoginUser.mockResolvedValueOnce({ ok: true });
 
   render(<LoginForm />);
   submitForm();

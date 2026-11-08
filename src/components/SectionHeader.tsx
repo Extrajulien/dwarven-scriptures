@@ -1,9 +1,17 @@
+import type { ReactNode } from 'react';
+
 export default function SectionHeader({
   title,
   titleClass = 'text-primary',
   tag,
   subtitle,
   right,
+}: {
+  title: string;
+  titleClass?: string;
+  tag?: string;
+  subtitle?: string;
+  right?: ReactNode;
 }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-space-xs gap-space-xs">

@@ -4,9 +4,8 @@ import type { NextRequest } from 'next/server';
 import {
   buildAuthorizeUrl,
   generateState,
-  isOAuthProvider,
-  sanitizeRedirectPath,
 } from '../../../../lib/oauth';
+import { oauthNextPathSchema, oauthProviderSchema } from '../../../../lib/oauth-validation';
 
 const STATE_COOKIE = 'oauth_state';
 const NEXT_COOKIE = 'oauth_next';
@@ -24,14 +23,16 @@ export async function GET(
   { params }: { params: Promise<{ provider: string }> },
 ) {
   const { provider } = await params;
-  if (!isOAuthProvider(provider)) {
+  const providerParsed = oauthProviderSchema.safeParse(provider);
+  if (!providerParsed.success) {
     return new Response('Unknown OAuth provider', { status: 404 });
   }
 
   const state = generateState();
-  const next = sanitizeRedirectPath(request.nextUrl.searchParams.get('next'));
+  const nextParsed = oauthNextPathSchema.safeParse(request.nextUrl.searchParams.get('next'));
+  const next = nextParsed.success ? nextParsed.data : '/';
   const redirectUri = new URL(
-    `/api/auth/${provider}/callback`,
+    `/api/auth/${providerParsed.data}/callback`,
     request.nextUrl.origin,
   ).toString();
 
@@ -46,5 +47,5 @@ export async function GET(
   store.set(STATE_COOKIE, state, options);
   store.set(NEXT_COOKIE, next, options);
 
-  redirect(buildAuthorizeUrl(provider, state, redirectUri).toString());
+  redirect(buildAuthorizeUrl(providerParsed.data, state, redirectUri).toString());
 }

@@ -7,9 +7,12 @@ import { createSession } from '../../../../../lib/session';
 import {
   exchangeCodeForToken,
   fetchProfile,
-  isOAuthProvider,
-  sanitizeRedirectPath,
 } from '../../../../../lib/oauth';
+import {
+  oauthCallbackQuerySchema,
+  oauthNextPathSchema,
+  oauthProviderSchema,
+} from '../../../../../lib/oauth-validation';
 
 const STATE_COOKIE = 'oauth_state';
 const NEXT_COOKIE = 'oauth_next';
@@ -27,48 +30,51 @@ export async function GET(
   { params }: { params: Promise<{ provider: string }> },
 ) {
   const { provider } = await params;
-  if (!isOAuthProvider(provider)) {
+  const providerParsed = oauthProviderSchema.safeParse(provider);
+  if (!providerParsed.success) {
     return new Response('Unknown OAuth provider', { status: 404 });
   }
 
   const searchParams = request.nextUrl.searchParams;
   const store = await cookies();
   const storedState = store.get(STATE_COOKIE)?.value;
-  const next = sanitizeRedirectPath(store.get(NEXT_COOKIE)?.value);
+  const nextParsed = oauthNextPathSchema.safeParse(store.get(NEXT_COOKIE)?.value);
+  const next = nextParsed.success ? nextParsed.data : '/';
 
   // One-time cookies are always cleared, success or failure.
   store.delete(STATE_COOKIE);
   store.delete(NEXT_COOKIE);
 
-  const code = searchParams.get('code');
-  const state = searchParams.get('state');
-  const providerError = searchParams.get('error');
+  const queryParsed = oauthCallbackQuerySchema.safeParse({
+    code: searchParams.get('code'),
+    state: searchParams.get('state'),
+    error: searchParams.get('error'),
+  });
 
   if (
-    providerError !== null ||
-    !code ||
-    !state ||
+    !queryParsed.success ||
+    queryParsed.data.error !== null ||
     !storedState ||
-    !stateMatches(state, storedState)
+    !stateMatches(queryParsed.data.state, storedState)
   ) {
     redirect('/login');
   }
 
   const redirectUri = new URL(
-    `/api/auth/${provider}/callback`,
+    `/api/auth/${providerParsed.data}/callback`,
     request.nextUrl.origin,
   ).toString();
 
   let publicId: string;
   let username: string;
   try {
-    const accessToken = await exchangeCodeForToken(provider, code, redirectUri);
-    const profile = await fetchProfile(provider, accessToken);
+    const accessToken = await exchangeCodeForToken(providerParsed.data, queryParsed.data.code, redirectUri);
+    const profile = await fetchProfile(providerParsed.data, accessToken);
     const user = await createOrLinkOAuthUser(profile);
     publicId = user.publicId;
     username = user.username;
   } catch (error) {
-    console.error(`OAuth callback failed for ${provider}:`, error);
+    console.error(`OAuth callback failed for ${providerParsed.data}:`, error);
     redirect('/login');
   }
 

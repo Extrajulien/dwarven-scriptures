@@ -1,7 +1,8 @@
+import type { VaultStat } from '../data/homepageData';
 import Icon from './Icon';
 import ProgressBar from './ProgressBar';
 
-export default function StatTile({ stat }) {
+export default function StatTile({ stat }: { stat: VaultStat }) {
   const {
     label,
     value,

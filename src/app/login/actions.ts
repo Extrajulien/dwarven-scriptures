@@ -1,7 +1,11 @@
 'use server';
 
 import { getUserCredentialsByUsername } from '../../db/queries/users';
-import { validateLogin, type LoginFieldErrors } from '../../lib/login-validation';
+import {
+  loginFieldErrors,
+  loginInputSchema,
+  type LoginFieldErrors,
+} from '../../lib/login-validation';
 import { verifyPassword } from '../../lib/password';
 import { createSession } from '../../lib/session';
 
@@ -32,14 +36,15 @@ export async function loginUser(
   const password = readField(formData, 'password');
   const remember = formData.get('remember_scribe') === 'on';
 
-  const validation = validateLogin({ username, password });
-  if (Object.keys(validation.fieldErrors).length > 0) {
-    return { ok: false, fieldErrors: validation.fieldErrors };
+  const parsed = loginInputSchema.safeParse({ username, password });
+  if (!parsed.success) {
+    return { ok: false, fieldErrors: loginFieldErrors(parsed.error.issues) };
   }
+  const trimmedUsername = parsed.data.username;
 
   let credentials;
   try {
-    credentials = await getUserCredentialsByUsername(validation.username);
+    credentials = await getUserCredentialsByUsername(trimmedUsername);
   } catch (error) {
     console.error('loginUser: failed to look up the account', error);
     return { ok: false, fieldErrors: {}, formError: 'unexpected' };

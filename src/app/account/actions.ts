@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { unlinkOAuthAccount } from '../../db/queries/oauth-accounts';
 import { getUserFullProfile, updateUserProfile, UsernameTakenError } from '../../db/queries/users';
-import { validateAvatarUrl, validateUsername } from '../../lib/profile-validation';
+import { oauthProviderSchema } from '../../lib/oauth-validation';
+import { avatarUrlSchema, usernameError, usernameSchema } from '../../lib/profile-validation';
 import { deleteSession, getSession } from '../../lib/session';
 
 /**
@@ -48,20 +49,24 @@ export async function updateProfile(
     return { ok: false, fieldErrors: {}, formError: 'unauthenticated' };
   }
 
-  const username = validateUsername(readField(formData, 'username'));
-  const avatar = validateAvatarUrl(readField(formData, 'pfpUrl'));
+  const usernameParsed = usernameSchema.safeParse(readField(formData, 'username'));
+  const avatarParsed = avatarUrlSchema.safeParse(readField(formData, 'pfpUrl'));
 
-  const fieldErrors: UpdateProfileFieldErrors = {};
-  if (username.error) fieldErrors.username = username.error;
-  if (avatar.error) fieldErrors.pfpUrl = avatar.error;
-  if (Object.keys(fieldErrors).length > 0) {
+  if (!usernameParsed.success || !avatarParsed.success) {
+    const fieldErrors: UpdateProfileFieldErrors = {};
+    if (!usernameParsed.success) {
+      fieldErrors.username = usernameError(usernameParsed.error.issues);
+    }
+    if (!avatarParsed.success) {
+      fieldErrors.pfpUrl = 'invalidUrl';
+    }
     return { ok: false, fieldErrors };
   }
 
   try {
     await updateUserProfile(profile.id, {
-      username: username.username,
-      pfpUrl: avatar.pfpUrl,
+      username: usernameParsed.data,
+      pfpUrl: avatarParsed.data,
     });
   } catch (error) {
     if (error instanceof UsernameTakenError) {
@@ -80,7 +85,8 @@ export async function updateProfile(
  * the provider is asserted against the known set before the delete.
  */
 export async function unlinkAccount(provider: string): Promise<void> {
-  if (provider !== 'github' && provider !== 'discord') {
+  const providerParsed = oauthProviderSchema.safeParse(provider);
+  if (!providerParsed.success) {
     return;
   }
 
@@ -94,7 +100,7 @@ export async function unlinkAccount(provider: string): Promise<void> {
     return;
   }
 
-  await unlinkOAuthAccount(profile.id, provider);
+  await unlinkOAuthAccount(profile.id, providerParsed.data);
   revalidatePath('/account');
 }
 

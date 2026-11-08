@@ -1,3 +1,4 @@
+import type { ComponentType } from 'react';
 import { AUTH_ALTERNATIVES } from '../../data/loginData';
 import { DiscordIcon, GitHubIcon } from '../ProviderIcon';
 
@@ -6,7 +7,12 @@ import { DiscordIcon, GitHubIcon } from '../ProviderIcon';
 const PROVIDER_LINK_CLASSES =
   'btn-chisel-stone group inline-flex min-h-[44px] items-center justify-center gap-2 rounded bg-dwarf-basalt px-3 py-2.5 text-xs text-dwarf-parchment transition hover:text-white';
 
-const PROVIDER_ICONS = {
+type ProviderIconProps = { className?: string };
+
+const PROVIDER_ICONS: Record<
+  string,
+  { Icon: ComponentType<ProviderIconProps>; className: string }
+> = {
   github: {
     Icon: GitHubIcon,
     className: 'h-4 w-4 fill-current text-dwarf-parchmentMuted group-hover:text-white',

@@ -2,7 +2,177 @@
 // Values are placeholders until the real-time backend, auth and i18n land.
 // Class strings are Tailwind utilities resolved from tailwind.config.js.
 
-export const GUILD = {
+export interface GuildInfo {
+  title: string;
+  runes: string;
+  tag: string;
+  streak: string;
+  logoUrl: string;
+}
+
+export interface NavLink {
+  label: string;
+  href: string;
+}
+
+export interface BreadcrumbInfo {
+  left: string;
+  right: string;
+}
+
+export interface CrestInfo {
+  chapter: string;
+  order: string;
+  name: string;
+  motto: string;
+  level: string;
+  stats: string[];
+}
+
+export interface ProgressData {
+  percent: number;
+  fillClass: string;
+}
+
+export interface VaultStat {
+  id: string;
+  label: string;
+  value: string;
+  caption?: string;
+  icon: string;
+  iconClass: string;
+  valueClass: string;
+  captionClass?: string;
+  progress?: ProgressData;
+}
+
+export interface ActionButtonData {
+  id: string;
+  label: string;
+  icon: string;
+  className: string;
+}
+
+export interface RosterFilter {
+  id: string;
+  label: string;
+  active?: boolean;
+}
+
+export interface RosterColumn {
+  label: string;
+  align: 'text-left' | 'text-center' | 'text-right';
+}
+
+export interface MinerStatus {
+  label: string;
+  pillClass: string;
+  dotClass: string;
+}
+
+export interface MinerAction {
+  label: string;
+  className: string;
+}
+
+export interface Miner {
+  id: string;
+  initial: string;
+  avatarClass: string;
+  name: string;
+  nameClass: string;
+  rank: string;
+  rankClass: string;
+  specialization: string;
+  specializationClass: string;
+  wpm: number;
+  wpmClass: string;
+  accuracy: string;
+  accuracyClass: string;
+  stones: string;
+  progress: ProgressData;
+  status: MinerStatus;
+  action: MinerAction;
+}
+
+export interface RailBountyBody {
+  kind: 'rail';
+  start: string;
+  lead: string;
+  end: string;
+  ascii: string;
+  leader: string;
+}
+
+export interface StatusBountyBody {
+  kind: 'status';
+  text: string;
+  status: string;
+}
+
+export interface ProgressBountyBody {
+  kind: 'progress';
+  label: string;
+  pctLabel: string;
+  ascii: string;
+}
+
+export type BountyBody = RailBountyBody | StatusBountyBody | ProgressBountyBody;
+
+export interface Bounty {
+  id: string;
+  dotClass: string;
+  title: string;
+  titleClass: string;
+  meta: string;
+  metaClass: string;
+  reward: string;
+  rewardClass: string;
+  action: string;
+  actionClass: string;
+  body: BountyBody;
+}
+
+export interface PerkFooter {
+  estimate: string;
+  action: string;
+}
+
+export interface Perk {
+  id: string;
+  name: string;
+  nameClass: string;
+  status: string;
+  statusClass: string;
+  borderClass: string | null;
+  description: string;
+  progress?: ProgressData;
+  footer?: PerkFooter;
+  footnote?: string;
+  locked?: boolean;
+}
+
+export interface ChronicleSegment {
+  text: string;
+  className?: string;
+}
+
+export interface ChronicleEntry {
+  id: string;
+  author: string;
+  authorClass: string;
+  time: string;
+  bodyClass: string;
+  segments: ChronicleSegment[];
+}
+
+export interface FooterInfo {
+  left: string;
+  status: string;
+  optimal: string;
+}
+
+export const GUILD: GuildInfo = {
   title: 'Dwarven Scriptures',
   runes: '[ᛞᛖᛖᛈ ᛞᛖᛚᚡᛖ]',
   tag: '[GUILD: IRONVEIN QUARRY - EXPEDITION #84]',
@@ -11,19 +181,19 @@ export const GUILD = {
     'favicon.png',
 };
 
-export const NAV_LINKS = [
+export const NAV_LINKS: NavLink[] = [
   { label: 'Mine Race', href: '#race-cavern' },
   { label: 'Guild Ranks', href: '#quarry-leaderboard' },
   { label: 'Runeworks', href: '#dwarven-armory' },
   { label: 'Ledgers', href: '#expedition-archives' },
 ];
 
-export const BREADCRUMB = {
+export const BREADCRUMB: BreadcrumbInfo = {
   left: '᚛ GUILD_HQ // EXPEDITION_#84 // CITADEL_OF_GRANITE ᚜',
   right: 'STATUS: FORTRESS_ACTIVE ▪ DEFENSE_RATING: 9400 ▪ SEAL: INTACT',
 };
 
-export const CREST = {
+export const CREST: CrestInfo = {
   chapter: 'CHAPTER 84',
   order: '[ANCIENT ORDER]',
   name: 'IRONVEIN QUARRY',
@@ -33,7 +203,7 @@ export const CREST = {
   stats: ['⚔ 38 EXCAVATORS ACTIVE', 'HALL TIER: GRAND STRONGHOLD'],
 };
 
-export const VAULT_STATS = [
+export const VAULT_STATS: VaultStat[] = [
   {
     id: 'adamantine',
     label: 'ADAMANTINE',
@@ -73,7 +243,7 @@ export const VAULT_STATS = [
   },
 ];
 
-export const ACTION_BUTTONS = [
+export const ACTION_BUTTONS: ActionButtonData[] = [
   {
     id: 'contribute',
     label: '[CONTRIBUTE TO VAULT]',
@@ -97,14 +267,14 @@ export const ACTION_BUTTONS = [
   },
 ];
 
-export const ROSTER_FILTERS = [
+export const ROSTER_FILTERS: RosterFilter[] = [
   { id: 'all', label: '[ALL MINERS (38)]', active: true },
   { id: 'veterans', label: '[VETERAN ENGRAVERS (12)]' },
   { id: 'champions', label: '[CHAMPION TYPISTS (6)]' },
   { id: 'apprentices', label: '[APPRENTICES (20)]' },
 ];
 
-export const ROSTER_COLUMNS = [
+export const ROSTER_COLUMNS: RosterColumn[] = [
   { label: 'MINER IDENTITY', align: 'text-left' },
   { label: 'SPECIALIZATION', align: 'text-left' },
   { label: 'PEAK WPM', align: 'text-center' },
@@ -114,7 +284,7 @@ export const ROSTER_COLUMNS = [
   { label: 'ORDERS', align: 'text-right' },
 ];
 
-export const MINERS = [
+export const MINERS: Miner[] = [
   {
     id: 'urist',
     initial: 'U',
@@ -209,7 +379,7 @@ export const MINERS = [
   },
 ];
 
-export const BOUNTIES = [
+export const BOUNTIES: Bounty[] = [
   {
     id: 'adamantine-vein',
     dotClass: 'bg-secondary animate-pulse',
@@ -270,7 +440,7 @@ export const BOUNTIES = [
   },
 ];
 
-export const PERKS = [
+export const PERKS: Perk[] = [
   {
     id: 'basalt-mastery',
     name: 'Ancient Basalt Mastery',
@@ -317,7 +487,7 @@ export const PERKS = [
   },
 ];
 
-export const CHRONICLES = [
+export const CHRONICLES: ChronicleEntry[] = [
   {
     id: 'apex-record',
     author: 'URIST MCTYPIST',
@@ -368,7 +538,7 @@ export const CHRONICLES = [
   },
 ];
 
-export const FOOTER = {
+export const FOOTER: FooterInfo = {
   left: '▪ DEPTH: -480 Z-LEVEL (MAGMA CRAG) ▪ ROOM: #EXP-84 (PUBLIC LANTERN) ▪ PROTOCOL: ASCII_SOCKET_v2',
   status: 'STATUS: [MINING SYNCHRONIZED]',
   optimal: '● SYSTEM OPTIMAL: 112 WPM APEX',

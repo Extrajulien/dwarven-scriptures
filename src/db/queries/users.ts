@@ -161,6 +161,9 @@ export async function getUserFullProfile(
       totalWords: userStats.totalWords,
       totalTimeMs: userStats.totalTimeMs,
       bestWpm: userStats.bestWpm,
+      wins: userStats.wins,
+      correctKeystrokes: userStats.correctKeystrokes,
+      totalKeystrokes: userStats.totalKeystrokes,
       coins: userResources.coins,
       gems: userResources.gems,
     })
@@ -186,9 +189,16 @@ export async function getUserFullProfile(
     totalWords: profile.totalWords ?? 0n,
     totalTimeMs: profile.totalTimeMs ?? 0n,
     bestWpm: profile.bestWpm ?? '0.00',
+    wins: profile.wins ?? 0,
+    correctKeystrokes: profile.correctKeystrokes ?? 0n,
+    totalKeystrokes: profile.totalKeystrokes ?? 0n,
     coins: profile.coins ?? 0n,
     gems: profile.gems ?? 0,
     avgWpm: computeAverageWpm(profile.totalWords ?? 0n, profile.totalTimeMs ?? 0n),
+    avgAccuracy: computeAverageAccuracy(
+      profile.correctKeystrokes ?? 0n,
+      profile.totalKeystrokes ?? 0n,
+    ),
   };
 }
 
@@ -376,6 +386,24 @@ function computeAverageWpm(totalWords: bigint, totalTimeMs: bigint): number {
   }
 
   return Number(totalWords) / (Number(totalTimeMs) / 60_000);
+}
+
+/**
+ * `correctKeystrokes / totalKeystrokes * 100`, rounded to 2 decimals, or `0`
+ * when nothing has been typed yet. Accuracy is deliberately derived instead of
+ * stored (see `src/db/schema.ts`): a stored percentage could drift away from
+ * the counters that justify it, while the formula can never contradict them.
+ */
+function computeAverageAccuracy(
+  correctKeystrokes: bigint,
+  totalKeystrokes: bigint,
+): number {
+  if (totalKeystrokes <= 0n) {
+    return 0;
+  }
+
+  const ratio = Number(correctKeystrokes) / Number(totalKeystrokes);
+  return Math.round(ratio * 100 * 100) / 100;
 }
 
 const POSTGRES_UNIQUE_VIOLATION = '23505';

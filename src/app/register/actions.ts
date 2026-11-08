@@ -2,7 +2,11 @@
 
 import { createUserWithProfiles, UsernameTakenError } from '../../db/queries/users';
 import { hashPassword } from '../../lib/password';
-import { validateRegistration, type RegisterFieldErrors } from '../../lib/register-validation';
+import {
+  registerFieldErrors,
+  registerInputSchema,
+  type RegisterFieldErrors,
+} from '../../lib/register-validation';
 
 /**
  * Server action behind the `/register` form.
@@ -26,16 +30,16 @@ export async function registerUser(
   const password = readField(formData, 'password');
   const confirmPassword = readField(formData, 'confirmPassword');
 
-  const validation = validateRegistration({ username, password, confirmPassword });
-  if (Object.keys(validation.fieldErrors).length > 0) {
-    return { ok: false, fieldErrors: validation.fieldErrors };
+  const parsed = registerInputSchema.safeParse({ username, password, confirmPassword });
+  if (!parsed.success) {
+    return { ok: false, fieldErrors: registerFieldErrors(parsed.error.issues) };
   }
 
   const passwordHash = await hashPassword(password);
 
   try {
     await createUserWithProfiles({
-      username: validation.username,
+      username: parsed.data.username,
       passwordHash,
       pfpUrl: null, // stays NULL until the profile screen lets a user set it
     });

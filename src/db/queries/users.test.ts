@@ -373,6 +373,9 @@ describe('getUserFullProfile', () => {
     totalWords: 900n,
     totalTimeMs: 90_000n,
     bestWpm: '120.00',
+    wins: 1,
+    correctKeystrokes: 190n,
+    totalKeystrokes: 200n,
     coins: 500n,
     gems: 3,
     passwordHash: 'secret',
@@ -395,10 +398,29 @@ describe('getUserFullProfile', () => {
     expect(profile).not.toHaveProperty('passwordHash');
   });
 
+  test('derives avgAccuracy from the keystroke counters', async () => {
+    selectResult = [baseRow];
+
+    const profile = await getUserFullProfile({ username: 'ada' });
+
+    expect(profile?.wins).toBe(1);
+    expect(profile?.correctKeystrokes).toBe(190n);
+    expect(profile?.totalKeystrokes).toBe(200n);
+    expect(profile?.avgAccuracy).toBe(95);
+  });
+
   test('reports avgWpm as zero when no time has been recorded', async () => {
     selectResult = [{ ...baseRow, totalWords: 0n, totalTimeMs: 0n }];
 
     await expect(getUserFullProfile({ username: 'ada' })).resolves.toMatchObject({ avgWpm: 0 });
+  });
+
+  test('reports avgAccuracy as zero when no keystroke has been recorded', async () => {
+    selectResult = [{ ...baseRow, correctKeystrokes: 0n, totalKeystrokes: 0n }];
+
+    await expect(getUserFullProfile({ username: 'ada' })).resolves.toMatchObject({
+      avgAccuracy: 0,
+    });
   });
 
   test('tolerates totals that exceed the safe integer range', async () => {
@@ -417,6 +439,9 @@ describe('getUserFullProfile', () => {
         totalWords: null,
         totalTimeMs: null,
         bestWpm: null,
+        wins: null,
+        correctKeystrokes: null,
+        totalKeystrokes: null,
         coins: null,
         gems: null,
       },
@@ -428,6 +453,8 @@ describe('getUserFullProfile', () => {
     expect(profile?.gems).toBe(0);
     expect(profile?.bestWpm).toBe('0.00');
     expect(profile?.avgWpm).toBe(0);
+    expect(profile?.wins).toBe(0);
+    expect(profile?.avgAccuracy).toBe(0);
   });
 
   test('looks up by username slug', async () => {
