@@ -5,6 +5,8 @@ import type { ComponentType } from 'react';
 import type { AccountProfile } from '../../app/account/profile';
 import { logout } from '../../app/account/actions';
 import { ACCOUNT_IDENTITY } from '../../data/accountData';
+import { formatDate } from '../../i18n/format';
+import type { Locale, Messages } from '../../i18n/messages';
 import ButtonPrimary from '../ButtonPrimary';
 import ButtonSecondary from '../ButtonSecondary';
 import Icon from '../Icon';
@@ -14,23 +16,36 @@ import EditProfileModal from './EditProfileModal';
 
 const PROVIDER_CHIPS: Record<
   string,
-  { Icon: ComponentType<{ className?: string }>; className: string; label: string; dotClass: string }
+  {
+    Icon: ComponentType<{ className?: string }>;
+    className: string;
+    labelKey: keyof Messages;
+    dotClass: string;
+  }
 > = {
   github: {
     Icon: GitHubIcon,
     className: 'h-3.5 w-3.5 fill-current text-on-surface',
-    label: '[GITHUB: CONNECTED]',
+    labelKey: 'account.providers.githubConnected',
     dotClass: 'bg-tertiary',
   },
   discord: {
     Icon: DiscordIcon,
     className: 'h-3.5 w-3.5 fill-current text-secondary',
-    label: '[DISCORD: CONNECTED]',
+    labelKey: 'account.providers.discordConnected',
     dotClass: 'bg-secondary',
   },
 };
 
-export default function AccountIdentityCard({ profile }: { profile: AccountProfile }) {
+export default function AccountIdentityCard({
+  profile,
+  locale,
+  messages,
+}: {
+  profile: AccountProfile;
+  locale: Locale;
+  messages: Messages;
+}) {
   const { actions } = ACCOUNT_IDENTITY;
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -62,7 +77,10 @@ export default function AccountIdentityCard({ profile }: { profile: AccountProfi
                 {profile.username}
               </h1>
               <p className="mt-0.5 font-mono font-label-md text-label-md uppercase tracking-wider text-outline">
-                {ACCOUNT_IDENTITY.memberSincePrefix} {profile.createdAt} {ACCOUNT_IDENTITY.memberSinceSuffix} • {ACCOUNT_IDENTITY.citadel}
+                {messages[ACCOUNT_IDENTITY.memberSincePrefixKey]}{' '}
+                {formatDate(profile.createdAt, locale)}{' '}
+                {messages[ACCOUNT_IDENTITY.memberSinceSuffixKey]} •{' '}
+                {messages[ACCOUNT_IDENTITY.citadelKey]}
               </p>
             </div>
 
@@ -77,7 +95,7 @@ export default function AccountIdentityCard({ profile }: { profile: AccountProfi
                       className="inline-flex items-center gap-1.5 rounded border border-outline-variant bg-surface-container-high px-2.5 py-1 font-label-sm text-label-sm tracking-wider text-on-surface-variant"
                     >
                       <meta.Icon className={meta.className} />
-                      <span>{meta.label}</span>
+                      <span>{messages[meta.labelKey]}</span>
                       <span className={`h-1.5 w-1.5 rounded-full ${meta.dotClass}`} />
                     </div>
                   );
@@ -90,12 +108,12 @@ export default function AccountIdentityCard({ profile }: { profile: AccountProfi
           <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2 md:justify-start">
             <ButtonPrimary type="button" onClick={() => setIsModalOpen(true)}>
               <Icon name="edit" className="text-headline-sm" />
-              {actions.edit}
+              {messages[actions.editKey]}
             </ButtonPrimary>
             <form action={logout}>
               <ButtonSecondary type="submit">
                 <Icon name="logout" className="text-headline-sm" />
-                {actions.logout}
+                {messages[actions.logoutKey]}
               </ButtonSecondary>
             </form>
           </div>
@@ -106,6 +124,7 @@ export default function AccountIdentityCard({ profile }: { profile: AccountProfi
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         profile={profile}
+        messages={messages}
       />
     </section>
   );

@@ -470,6 +470,147 @@ export interface Messages {
   // ------------------------------------------------------------ page titles
   'pageTitle.login': string;
   'pageTitle.register': string;
+  'pageTitle.account': string;
+  'pageTitle.rooms': string;
+  'pageTitle.room': string;
+  'pageTitle.invitation': string;
+  // ------------------------------------------------------------ account screen
+  'account.breadcrumb.left': string;
+  'account.breadcrumb.node': string;
+  'account.breadcrumb.synced': string;
+  'account.breadcrumb.rightZ': string;
+  'account.breadcrumb.rightProtocol': string;
+  'account.identity.memberSincePrefix': string;
+  'account.identity.memberSinceSuffix': string;
+  'account.identity.citadel': string;
+  'account.identity.edit': string;
+  'account.identity.logout': string;
+  'account.providers.githubConnected': string;
+  'account.providers.discordConnected': string;
+  'account.stats.title': string;
+  'account.stats.caption': string;
+  'account.stats.tile.racesCompleted': string;
+  'account.stats.tile.bestWpm': string;
+  'account.stats.tile.avgWpm': string;
+  'account.stats.tile.totalWords': string;
+  'account.stats.expeditionsCaption': string;
+  'account.stats.wpmUnit': string;
+  'account.stats.runesEngravedCaption': string;
+  'account.stats.coinsLabel': string;
+  'account.stats.gemsLabel': string;
+  'account.chart.wpm.title': string;
+  'account.chart.wpm.apex': string;
+  'account.chart.wpm.low': string;
+  'account.chart.wpm.current': string;
+  'account.chart.wpm.tick1': string;
+  'account.chart.wpm.tick2': string;
+  'account.chart.wpm.tick3': string;
+  'account.chart.wpm.tick4': string;
+  'account.chart.wpm.tick5': string;
+  'account.chart.wpm.tick6': string;
+  'account.chart.races.title': string;
+  'account.chart.races.total': string;
+  'account.chart.races.streaks': string;
+  'account.chart.races.daily': string;
+  'account.chart.races.tickDay9': string;
+  'account.chart.races.tickDay7': string;
+  'account.chart.races.tickDay5': string;
+  'account.chart.races.tickDay3': string;
+  'account.chart.races.tickYesterday': string;
+  'account.chart.races.tickToday': string;
+  'account.chart.last10Races': string;
+  'account.chart.allTime': string;
+  'account.history.title': string;
+  'account.history.caption': string;
+  'account.history.filterLabel': string;
+  'account.history.colDate': string;
+  'account.history.colWpm': string;
+  'account.history.colAccuracy': string;
+  'account.history.colPlace': string;
+  'account.history.colLanguage': string;
+  'account.history.colDuration': string;
+  'account.history.filterAll': string;
+  'account.history.filterRecent': string;
+  'account.history.filterBest': string;
+  'account.history.exp84.wpm': string;
+  'account.history.exp84.place': string;
+  'account.history.exp84.language': string;
+  'account.history.exp83.wpm': string;
+  'account.history.exp83.place': string;
+  'account.history.exp83.language': string;
+  'account.history.exp82.wpm': string;
+  'account.history.exp82.place': string;
+  'account.history.exp82.language': string;
+  'account.history.exp81.wpm': string;
+  'account.history.exp81.place': string;
+  'account.history.exp81.language': string;
+  'account.history.exp80.wpm': string;
+  'account.history.exp80.place': string;
+  'account.history.exp80.language': string;
+  'account.history.footerShowing': string;
+  'account.history.footerPrev': string;
+  'account.history.footerPage': string;
+  'account.history.footerNext': string;
+  'account.heatmap.title': string;
+  'account.heatmap.caption': string;
+  'account.heatmap.legendLabel': string;
+  'account.heatmap.legendAccurate': string;
+  'account.heatmap.legendMedium': string;
+  'account.heatmap.legendWeak': string;
+  'account.heatmap.key.back': string;
+  'account.heatmap.key.tab': string;
+  'account.heatmap.key.caps': string;
+  'account.heatmap.key.enter': string;
+  'account.heatmap.key.shift': string;
+  'account.heatmap.key.ctrl': string;
+  'account.heatmap.key.alt': string;
+  'account.heatmap.key.space': string;
+  'account.heatmap.weakestLabel': string;
+  'account.heatmap.drill': string;
+  'account.modal.header': string;
+  'account.modal.statusActive': string;
+  'account.modal.discardTitle': string;
+  'account.modal.title': string;
+  'account.modal.subtitle': string;
+  'account.modal.tabIdentity': string;
+  'account.modal.tabAccounts': string;
+  'account.modal.tabPreferences': string;
+  'account.modal.identitySection': string;
+  'account.modal.citadelRegistered': string;
+  'account.modal.usernameLabel': string;
+  'account.modal.availableYes': string;
+  'account.modal.avatarLabel': string;
+  'account.modal.avatarActive': string;
+  'account.modal.avatarHint': string;
+  'account.modal.accountsSection': string;
+  'account.modal.oauthSecure': string;
+  'account.modal.disconnect': string;
+  'account.modal.connect': string;
+  'account.modal.preferencesSection': string;
+  'account.modal.audioScripts': string;
+  'account.modal.keystrokeLabel': string;
+  'account.modal.sound1': string;
+  'account.modal.sound2': string;
+  'account.modal.sound3': string;
+  'account.modal.sound4': string;
+  'account.modal.scriptLabel': string;
+  'account.modal.script1': string;
+  'account.modal.script2': string;
+  'account.modal.script3': string;
+  'account.modal.script4': string;
+  'account.modal.persistNote': string;
+  'account.modal.discard': string;
+  'account.modal.submitPending': string;
+  'account.modal.submit': string;
+  'account.modal.githubConnected': string;
+  'account.modal.githubDisconnected': string;
+  'account.modal.discordConnected': string;
+  'account.modal.discordDisconnected': string;
+  'account.modal.oauthNote': string;
+  'account.modal.error.usernameRequired': string;
+  'account.modal.error.usernameTooLong': string;
+  'account.modal.error.usernameTaken': string;
+  'account.modal.error.invalidUrl': string;
 }
 
 export const MESSAGES: Record<Locale, Messages> = {
@@ -893,6 +1034,148 @@ export const MESSAGES: Record<Locale, Messages> = {
     // ------------------------------------------------------------ page titles
     'pageTitle.login': 'Citadelle de Granit // Terminal d’accès des scribes',
     'pageTitle.register': 'Citadelle de Granit // Terminal d’enrôlement des scribes',
+    'pageTitle.account': 'Compte // Dossier de l’intendant',
+    'pageTitle.rooms': 'Explorateur des salles',
+    'pageTitle.room': 'Salle',
+    'pageTitle.invitation': 'Invitation',
+    // ------------------------------------------------------------ account screen
+    'account.breadcrumb.left': 'ᛞ [TERMINAL_DU_DOSSIER]',
+    'account.breadcrumb.node': '[NŒUD : BASALT_CRAG_01]',
+    'account.breadcrumb.synced': '[SYNCHRONISÉ]',
+    'account.breadcrumb.rightZ': '[NIVEAU Z : -480]',
+    'account.breadcrumb.rightProtocol': '[PROTOCOLE : DWARVEN_SCRIPT_V4]',
+    'account.identity.memberSincePrefix': '[MEMBRE DEPUIS :',
+    'account.identity.memberSinceSuffix': ']',
+    'account.identity.citadel': '[CITADELLE DE GRANIT]',
+    'account.identity.edit': '[MODIFIER LE PROFIL]',
+    'account.identity.logout': '[DÉCONNEXION]',
+    'account.providers.githubConnected': '[GITHUB : CONNECTÉ]',
+    'account.providers.discordConnected': '[DISCORD : CONNECTÉ]',
+    'account.stats.title': '[TABLEAU DES STATISTIQUES PERMANENTES]',
+    'account.stats.caption': '[AGRÉGÉ SUR TOUTES LES EXPÉDITIONS]',
+    'account.stats.tile.racesCompleted': '[COURSES TERMINÉES]',
+    'account.stats.tile.bestWpm': '[MEILLEUR MPM]',
+    'account.stats.tile.avgWpm': '[MPM MOYEN]',
+    'account.stats.tile.totalWords': '[TOTAL DE MOTS FRAPPÉS]',
+    'account.stats.expeditionsCaption': '[EXPÉDITIONS]',
+    'account.stats.wpmUnit': 'MPM',
+    'account.stats.runesEngravedCaption': '[RUNES GRAVÉES]',
+    'account.stats.coinsLabel': '[PIÈCES]',
+    'account.stats.gemsLabel': '[GEMMES]',
+    'account.chart.wpm.title': '[MPM AU FIL DU TEMPS]',
+    'account.chart.wpm.apex': '[MAX : 112 MPM]',
+    'account.chart.wpm.low': '[MIN : 76 MPM]',
+    'account.chart.wpm.current': '[ACTUEL : 108 MPM]',
+    'account.chart.wpm.tick1': '[EXP-75]',
+    'account.chart.wpm.tick2': '[EXP-77]',
+    'account.chart.wpm.tick3': '[EXP-79]',
+    'account.chart.wpm.tick4': '[EXP-81]',
+    'account.chart.wpm.tick5': '[EXP-83 (MAX)]',
+    'account.chart.wpm.tick6': '[EXP-84]',
+    'account.chart.races.title': '[COURSES AU FIL DU TEMPS]',
+    'account.chart.races.total': '[TOTAL ENREGISTRÉ : 412]',
+    'account.chart.races.streaks': '[SÉRIES SANS FAUTE : 22]',
+    'account.chart.races.daily': '[VOLUME QUOTIDIEN : 28]',
+    'account.chart.races.tickDay9': '[J-9]',
+    'account.chart.races.tickDay7': '[J-7]',
+    'account.chart.races.tickDay5': '[J-5]',
+    'account.chart.races.tickDay3': '[J-3]',
+    'account.chart.races.tickYesterday': '[HIER]',
+    'account.chart.races.tickToday': '[AUJOURD’HUI]',
+    'account.chart.last10Races': '[10 DERNIÈRES COURSES]',
+    'account.chart.allTime': '[TOUT L’HISTORIQUE]',
+    'account.history.title': '[HISTORIQUE DES COURSES]',
+    'account.history.caption': '[EXPÉDITIONS ENREGISTRÉES]',
+    'account.history.filterLabel': '[FILTRE]',
+    'account.history.colDate': '[DATE]',
+    'account.history.colWpm': '[MPM]',
+    'account.history.colAccuracy': '[PRÉCISION]',
+    'account.history.colPlace': '[RANG]',
+    'account.history.colLanguage': '[LANGUE]',
+    'account.history.colDuration': '[DURÉE]',
+    'account.history.filterAll': '[TOUT]',
+    'account.history.filterRecent': '[RÉCENT]',
+    'account.history.filterBest': '[MEILLEUR]',
+    'account.history.exp84.wpm': '108 MPM',
+    'account.history.exp84.place': '[1ER 🥇]',
+    'account.history.exp84.language': '[ANG / RUNIQUE]',
+    'account.history.exp83.wpm': '112 MPM 🔥',
+    'account.history.exp83.place': '[1ER 👑]',
+    'account.history.exp83.language': '[LITURGIE LATINE]',
+    'account.history.exp82.wpm': '94 MPM',
+    'account.history.exp82.place': '[2E 🥈]',
+    'account.history.exp82.language': '[ANG / CODE]',
+    'account.history.exp81.wpm': '88 MPM',
+    'account.history.exp81.place': '[2E 🥈]',
+    'account.history.exp81.language': '[FRANÇAIS / CONTE]',
+    'account.history.exp80.wpm': '82 MPM',
+    'account.history.exp80.place': '[3E 🥉]',
+    'account.history.exp80.language': '[ANG / BASALTE]',
+    'account.history.footerShowing': '[5 AFFICHÉES SUR 412]',
+    'account.history.footerPrev': '[PRÉC]',
+    'account.history.footerPage': '[PAGE 1 / 83]',
+    'account.history.footerNext': '[SUIV]',
+    'account.heatmap.title': '[CARTE DE CHALEUR DU CLAVIER]',
+    'account.heatmap.caption': '[FRÉQUENCE D’ERREUR PAR TOUCHE]',
+    'account.heatmap.legendLabel': '[LÉGENDE]',
+    'account.heatmap.legendAccurate': '[FIABLE]',
+    'account.heatmap.legendMedium': '[MOYEN]',
+    'account.heatmap.legendWeak': '[FAIBLE / ERREUR FRÉQUENTE]',
+    'account.heatmap.key.back': '[RETOUR]',
+    'account.heatmap.key.tab': '[TAB]',
+    'account.heatmap.key.caps': '[VERR MAJ]',
+    'account.heatmap.key.enter': '[ENTRÉE]',
+    'account.heatmap.key.shift': '[MAJ]',
+    'account.heatmap.key.ctrl': '[CTRL]',
+    'account.heatmap.key.alt': '[ALT]',
+    'account.heatmap.key.space': '[ESPACE] — 99,8 % DE PRÉCISION',
+    'account.heatmap.weakestLabel': '⚠ [TOUCHES LES PLUS FAIBLES] :',
+    'account.heatmap.drill': '[EXERCICE RECOMMANDÉ : « PONCTUATION ET RUNES DE L’AURICULAIRE DROIT »]',
+    'account.modal.header': 'ᛞ [DIALOGUE // PARAMÈTRES_DU_PROFIL]',
+    'account.modal.statusActive': '[STATUT : ACTIF]',
+    'account.modal.discardTitle': '[ABANDONNER]',
+    'account.modal.title': 'CISELER LE DOSSIER DU SCRIBE ET LES PARAMÈTRES',
+    'account.modal.subtitle':
+      'Configurez l’identifiant runique, les nœuds de télémétrie liés et les profils sonores de ciseau.',
+    'account.modal.tabIdentity': '[IDENTITÉ ET INDICATIF]',
+    'account.modal.tabAccounts': '[COMPTES LIÉS]',
+    'account.modal.tabPreferences': '[PRÉFÉRENCES D’EXPÉDITION]',
+    'account.modal.identitySection': '[01 // IDENTITÉ ET INDICATIF]',
+    'account.modal.citadelRegistered': '[CITADELLE ENREGISTRÉE]',
+    'account.modal.usernameLabel': '[ NOM D’UTILISATEUR DU SCRIBE ]',
+    'account.modal.availableYes': '[DISPONIBLE : OUI]',
+    'account.modal.avatarLabel': '[ CHOIX DE L’EMBLÈME D’AVATAR ]',
+    'account.modal.avatarActive': 'ACTIF',
+    'account.modal.avatarHint': 'Laissez vide pour retirer l’avatar et restaurer l’icône de repli.',
+    'account.modal.accountsSection': '[02 // COMPTES LIÉS ET TÉLÉMÉTRIE]',
+    'account.modal.oauthSecure': '[OAUTH2 SÉCURISÉ]',
+    'account.modal.disconnect': '[DÉCONNECTER]',
+    'account.modal.connect': '[CONNECTER]',
+    'account.modal.preferencesSection': '[03 // PRÉFÉRENCES D’EXPÉDITION]',
+    'account.modal.audioScripts': '[AUDIO ET SCRIPTS]',
+    'account.modal.keystrokeLabel': '[ SON DE FRAPPE : CISEAU AUDITIF ]',
+    'account.modal.sound1': '[CHERRY MX BLUE / CLAC DE GRANIT PROFOND]',
+    'account.modal.sound2': '[SILEX DE MAGMA / FRAPPE D’ENCLUME LOURDE]',
+    'account.modal.sound3': '[ÉCLAT DE BASALTE / TACTILE DISCRET]',
+    'account.modal.sound4': '[CAVERNE SILENCIEUSE / RUNES ASSOURDIES]',
+    'account.modal.scriptLabel': '[ SCRIPT RUNIQUE PAR DÉFAUT / EXERCICE DE LANGUE ]',
+    'account.modal.script1': '[SCRIPT PAR DÉFAUT : ANGLAIS + LATIN]',
+    'account.modal.script2': '[RUNIQUE ANCIEN / PROTOCOLE NAIN]',
+    'account.modal.script3': '[EXPÉDITION POLYGLOTTE : ANG + FRE + GER]',
+    'account.modal.script4': '[MATRICE DE CODE HEXADÉCIMAL]',
+    'account.modal.persistNote': 'ᛞ [LES MODIFICATIONS SONT CONSERVÉES DANS LE CŒUR DE LA CITADELLE]',
+    'account.modal.discard': '[ ABANDONNER ]',
+    'account.modal.submitPending': '[ GRAVURE… ]',
+    'account.modal.submit': '[ GRAVER ]',
+    'account.modal.githubConnected': 'GITHUB : CONNECTÉ',
+    'account.modal.githubDisconnected': 'GITHUB : NON CONNECTÉ',
+    'account.modal.discordConnected': 'DISCORD : CONNECTÉ',
+    'account.modal.discordDisconnected': 'DISCORD : NON CONNECTÉ',
+    'account.modal.oauthNote': '[SYNC OAUTH2 ACTIF]',
+    'account.modal.error.usernameRequired': 'Un nom est requis.',
+    'account.modal.error.usernameTooLong': 'Le nom doit compter au plus 32 caractères.',
+    'account.modal.error.usernameTaken': 'Ce nom est déjà pris.',
+    'account.modal.error.invalidUrl': 'Saisissez une URL d’image http(s) valide.',
   },
   en: {
     // ------------------------------------------------------------ home race section
@@ -1310,5 +1593,147 @@ export const MESSAGES: Record<Locale, Messages> = {
     // ------------------------------------------------------------ page titles
     'pageTitle.login': 'Citadel of Granite // Scribe Access Terminal',
     'pageTitle.register': 'Citadel of Granite // Scribe Registration Terminal',
+    'pageTitle.account': 'Account // Overseer Dossier',
+    'pageTitle.rooms': 'Room explorer',
+    'pageTitle.room': 'Room',
+    'pageTitle.invitation': 'Invitation',
+    // ------------------------------------------------------------ account screen
+    'account.breadcrumb.left': 'ᛞ [DOSSIER_TERMINAL]',
+    'account.breadcrumb.node': '[NODE: BASALT_CRAG_01]',
+    'account.breadcrumb.synced': '[SYNCED]',
+    'account.breadcrumb.rightZ': '[Z-LEVEL: -480]',
+    'account.breadcrumb.rightProtocol': '[PROTOCOL: DWARVEN_SCRIPT_V4]',
+    'account.identity.memberSincePrefix': '[MEMBER SINCE:',
+    'account.identity.memberSinceSuffix': ']',
+    'account.identity.citadel': '[CITADEL OF GRANITE]',
+    'account.identity.edit': '[EDIT PROFILE]',
+    'account.identity.logout': '[LOG OUT]',
+    'account.providers.githubConnected': '[GITHUB: CONNECTED]',
+    'account.providers.discordConnected': '[DISCORD: CONNECTED]',
+    'account.stats.title': '[LIFETIME STATS DASHBOARD]',
+    'account.stats.caption': '[AGGREGATED ACROSS ALL DELVES]',
+    'account.stats.tile.racesCompleted': '[RACES COMPLETED]',
+    'account.stats.tile.bestWpm': '[BEST WPM]',
+    'account.stats.tile.avgWpm': '[AVERAGE WPM]',
+    'account.stats.tile.totalWords': '[TOTAL WORDS TYPED]',
+    'account.stats.expeditionsCaption': '[EXPEDITIONS]',
+    'account.stats.wpmUnit': 'WPM',
+    'account.stats.runesEngravedCaption': '[RUNES ENGRAVED]',
+    'account.stats.coinsLabel': '[COINS]',
+    'account.stats.gemsLabel': '[GEMS]',
+    'account.chart.wpm.title': '[WPM OVER TIME]',
+    'account.chart.wpm.apex': '[APEX: 112 WPM]',
+    'account.chart.wpm.low': '[LOW: 76 WPM]',
+    'account.chart.wpm.current': '[CURRENT: 108 WPM]',
+    'account.chart.wpm.tick1': '[EXP-75]',
+    'account.chart.wpm.tick2': '[EXP-77]',
+    'account.chart.wpm.tick3': '[EXP-79]',
+    'account.chart.wpm.tick4': '[EXP-81]',
+    'account.chart.wpm.tick5': '[EXP-83 (APEX)]',
+    'account.chart.wpm.tick6': '[EXP-84]',
+    'account.chart.races.title': '[RACES OVER TIME]',
+    'account.chart.races.total': '[TOTAL LOGGED: 412]',
+    'account.chart.races.streaks': '[FAULTLESS STREAKS: 22]',
+    'account.chart.races.daily': '[DAILY VOLUME: 28]',
+    'account.chart.races.tickDay9': '[DAY -9]',
+    'account.chart.races.tickDay7': '[DAY -7]',
+    'account.chart.races.tickDay5': '[DAY -5]',
+    'account.chart.races.tickDay3': '[DAY -3]',
+    'account.chart.races.tickYesterday': '[YESTERDAY]',
+    'account.chart.races.tickToday': '[TODAY]',
+    'account.chart.last10Races': '[LAST 10 RACES]',
+    'account.chart.allTime': '[ALL TIME]',
+    'account.history.title': '[RACE HISTORY]',
+    'account.history.caption': '[LOGGED EXPEDITIONS]',
+    'account.history.filterLabel': '[FILTER]',
+    'account.history.colDate': '[DATE]',
+    'account.history.colWpm': '[WPM]',
+    'account.history.colAccuracy': '[ACCURACY]',
+    'account.history.colPlace': '[PLACE]',
+    'account.history.colLanguage': '[LANGUAGE]',
+    'account.history.colDuration': '[DURATION]',
+    'account.history.filterAll': '[ALL]',
+    'account.history.filterRecent': '[RECENT]',
+    'account.history.filterBest': '[BEST]',
+    'account.history.exp84.wpm': '108 WPM',
+    'account.history.exp84.place': '[1ST 🥇]',
+    'account.history.exp84.language': '[ENG / RUNIC]',
+    'account.history.exp83.wpm': '112 WPM 🔥',
+    'account.history.exp83.place': '[1ST 👑]',
+    'account.history.exp83.language': '[LATIN LITURGY]',
+    'account.history.exp82.wpm': '94 WPM',
+    'account.history.exp82.place': '[2ND 🥈]',
+    'account.history.exp82.language': '[ENG / CODE]',
+    'account.history.exp81.wpm': '88 WPM',
+    'account.history.exp81.place': '[2ND 🥈]',
+    'account.history.exp81.language': '[FRENCH / TALE]',
+    'account.history.exp80.wpm': '82 WPM',
+    'account.history.exp80.place': '[3RD 🥉]',
+    'account.history.exp80.language': '[ENG / BASALT]',
+    'account.history.footerShowing': '[SHOWING 5 OF 412]',
+    'account.history.footerPrev': '[PREV]',
+    'account.history.footerPage': '[PAGE 1 / 83]',
+    'account.history.footerNext': '[NEXT]',
+    'account.heatmap.title': '[KEYBOARD HEATMAP]',
+    'account.heatmap.caption': '[ERROR FREQUENCY BY KEYSTROKE]',
+    'account.heatmap.legendLabel': '[LEGEND]',
+    'account.heatmap.legendAccurate': '[ACCURATE]',
+    'account.heatmap.legendMedium': '[MEDIUM]',
+    'account.heatmap.legendWeak': '[WEAK / FREQ ERROR]',
+    'account.heatmap.key.back': '[BACK]',
+    'account.heatmap.key.tab': '[TAB]',
+    'account.heatmap.key.caps': '[CAPS]',
+    'account.heatmap.key.enter': '[ENTER]',
+    'account.heatmap.key.shift': '[SHIFT]',
+    'account.heatmap.key.ctrl': '[CTRL]',
+    'account.heatmap.key.alt': '[ALT]',
+    'account.heatmap.key.space': '[SPACE] — 99.8% ACCURATE',
+    'account.heatmap.weakestLabel': '⚠ [WEAKEST KEYS]:',
+    'account.heatmap.drill': '[RECOMMENDED DRILL: "PUNCTUATION & RIGHT PINKY RUNES"]',
+    'account.modal.header': 'ᛞ [DIALOGUE // PROFILE_SETTINGS]',
+    'account.modal.statusActive': '[STATUS: ACTIVE]',
+    'account.modal.discardTitle': '[DISCARD]',
+    'account.modal.title': 'CHISEL SCRIBE DOSSIER & SETTINGS',
+    'account.modal.subtitle':
+      'Configure runic identifier, linked telemetry nodes, and auditory chisel profiles.',
+    'account.modal.tabIdentity': '[IDENTITY & CALLSIGN]',
+    'account.modal.tabAccounts': '[LINKED ACCOUNTS]',
+    'account.modal.tabPreferences': '[DELVE PREFERENCES]',
+    'account.modal.identitySection': '[01 // IDENTITY & CALLSIGN]',
+    'account.modal.citadelRegistered': '[CITADEL REGISTERED]',
+    'account.modal.usernameLabel': '[ SCRIBE USERNAME ]',
+    'account.modal.availableYes': '[AVAIL: YES]',
+    'account.modal.avatarLabel': '[ AVATAR EMBLEM SELECTION ]',
+    'account.modal.avatarActive': 'ACTIVE',
+    'account.modal.avatarHint': 'Leave empty to clear the avatar and restore the fallback icon.',
+    'account.modal.accountsSection': '[02 // LINKED ACCOUNTS & TELEMETRY]',
+    'account.modal.oauthSecure': '[OAUTH2 SECURE]',
+    'account.modal.disconnect': '[DISCONNECT]',
+    'account.modal.connect': '[CONNECT]',
+    'account.modal.preferencesSection': '[03 // DELVE PREFERENCES]',
+    'account.modal.audioScripts': '[AUDIO & SCRIPTS]',
+    'account.modal.keystrokeLabel': '[ KEYSTROKE SOUND: AUDITORY CHISEL ]',
+    'account.modal.sound1': '[CHERRY MX BLUE / DEEP GRANITE CLACK]',
+    'account.modal.sound2': '[MAGMA FLINT / HEAVY ANVIL STRIKE]',
+    'account.modal.sound3': '[BASALT CHIP / SUBDUED TACTILE]',
+    'account.modal.sound4': '[SILENT CAVERN / MUTED RUNES]',
+    'account.modal.scriptLabel': '[ DEFAULT RUNIC SCRIPT / LANGUAGE DRILL ]',
+    'account.modal.script1': '[DEFAULT RUNIC SCRIPT: ENGLISH + LATIN]',
+    'account.modal.script2': '[ANCIENT RUNIC / DWARVEN PROTOCOL]',
+    'account.modal.script3': '[POLYGLOT DELVE: ENG + FRE + GER]',
+    'account.modal.script4': '[HEXADECIMAL CODE MATRIX]',
+    'account.modal.persistNote': 'ᛞ [CHANGES PERSIST TO CITADEL CORE]',
+    'account.modal.discard': '[ DISCARD ]',
+    'account.modal.submitPending': '[ ENGRAVING… ]',
+    'account.modal.submit': '[ ENGRAVE ]',
+    'account.modal.githubConnected': 'GITHUB: CONNECTED',
+    'account.modal.githubDisconnected': 'GITHUB: NOT CONNECTED',
+    'account.modal.discordConnected': 'DISCORD: CONNECTED',
+    'account.modal.discordDisconnected': 'DISCORD: NOT CONNECTED',
+    'account.modal.oauthNote': '[OAUTH2 SYNC ACTIVE]',
+    'account.modal.error.usernameRequired': 'A name is required.',
+    'account.modal.error.usernameTooLong': 'Name must be at most 32 characters.',
+    'account.modal.error.usernameTaken': 'That name is already taken.',
+    'account.modal.error.invalidUrl': 'Enter a valid http(s) image URL.',
   },
 };

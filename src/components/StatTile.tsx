@@ -3,17 +3,11 @@ import type { Messages } from '../i18n/messages';
 import Icon from './Icon';
 import ProgressBar from './ProgressBar';
 
-/**
- * Structural tile shape: dictionary-keyed (`*Key`) for migrated consumers;
- * the plain `label`/`caption` fields are a temporary fallback for the account
- * screen until it migrates to the dictionary (I18N-01, SP-1D unit 4).
- */
+/** Structural tile shape; every consumer passes message keys (I18N-01). */
 export interface StatTileData {
-  labelKey?: keyof Messages;
-  label?: string;
+  labelKey: keyof Messages;
   value: string;
   captionKey?: keyof Messages;
-  caption?: string;
   icon: string;
   iconClass: string;
   valueClass: string;
@@ -26,15 +20,12 @@ export default function StatTile({
   messages,
 }: {
   stat: StatTileData;
-  /** Required once every consumer passes dictionary keys (account migration). */
-  messages?: Messages;
+  messages: Messages;
 }) {
   const {
     labelKey,
-    label,
     value,
     captionKey,
-    caption,
     icon,
     iconClass,
     valueClass,
@@ -46,7 +37,7 @@ export default function StatTile({
     <div className="bg-surface-container p-space-sm rounded flex flex-col gap-0.5 shadow-sm">
       <div className="flex items-center justify-between text-outline">
         <span className="font-label-sm text-label-sm uppercase tracking-wider">
-          {labelKey && messages ? messages[labelKey] : label}
+          {messages[labelKey]}
         </span>
         <Icon name={icon} className={`text-body-md ${iconClass}`} />
       </div>
@@ -61,7 +52,7 @@ export default function StatTile({
         />
       ) : (
         <span className={`font-label-sm text-label-sm ${captionClass}`}>
-          {captionKey && messages ? messages[captionKey] : caption}
+          {captionKey ? messages[captionKey] : null}
         </span>
       )}
     </div>

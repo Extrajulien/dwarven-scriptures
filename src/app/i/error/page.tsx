@@ -4,9 +4,10 @@ import ButtonSecondary from '../../../components/ButtonSecondary';
 import { getLocale, pick } from '../../../i18n/messages';
 import { SITE } from '../../../data/site';
 
-export const metadata: Metadata = {
-  title: `${SITE.name} // Invitation`,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const messages = pick(await getLocale());
+  return { title: `${SITE.name} // ${messages['pageTitle.invitation']}` };
+}
 
 const REASON_KEYS = {
   unknown: 'inviteError.unknown',

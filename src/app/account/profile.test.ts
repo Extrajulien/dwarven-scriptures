@@ -25,18 +25,18 @@ const baseProfile: UserProfileWithStatsInternal = {
 };
 
 describe('toAccountProfile', () => {
-  test('serializes every field to a client-safe value', () => {
+  test('serializes every field to a client-safe, unformatted value', () => {
     const result = toAccountProfile(baseProfile, ['github']);
 
     expect(result).toEqual({
       username: 'ada',
       pfpUrl: null,
-      createdAt: '2026-11-07',
+      createdAt: '2026-11-07T12:00:00.000Z',
       racesCompleted: 412,
-      totalWords: '148,920',
-      bestWpm: '112',
-      avgWpm: '84.6',
-      coins: '4,820',
+      totalWords: '148920',
+      bestWpm: 112,
+      avgWpm: 84.6,
+      coins: '4820',
       gems: 12,
       linkedProviders: ['github'],
     });
@@ -59,14 +59,14 @@ describe('toAccountProfile', () => {
     }
   });
 
-  test('formats a zero-valued profile sensibly', () => {
+  test('serializes a zero-valued profile sensibly', () => {
     const result = toAccountProfile(
       { ...baseProfile, bestWpm: '0.00', avgWpm: 0, totalWords: 0n, coins: 0n, gems: 0, racesCompleted: 0 },
       [],
     );
 
-    expect(result.bestWpm).toBe('0');
-    expect(result.avgWpm).toBe('0.0');
+    expect(result.bestWpm).toBe(0);
+    expect(result.avgWpm).toBe(0);
     expect(result.totalWords).toBe('0');
     expect(result.coins).toBe('0');
   });

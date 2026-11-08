@@ -14,9 +14,10 @@ import { getLocale, pick } from '../../../i18n/messages';
 import { SITE } from '../../../data/site';
 import ButtonSecondary from '../../../components/ButtonSecondary';
 
-export const metadata: Metadata = {
-  title: `${SITE.name} // Room`,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const messages = pick(await getLocale());
+  return { title: `${SITE.name} // ${messages['pageTitle.room']}` };
+}
 
 type Viewer =
   | { kind: 'user'; publicId: string; username: string }

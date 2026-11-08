@@ -8,9 +8,10 @@ import { getLocale, pick } from '../../i18n/messages';
 import { parseExplorerFilters } from '../../lib/explorer-filters';
 import { SITE } from '../../data/site';
 
-export const metadata: Metadata = {
-  title: `${SITE.name} // Room explorer`,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const messages = pick(await getLocale());
+  return { title: `${SITE.name} // ${messages['pageTitle.rooms']}` };
+}
 
 /**
  * JOIN-02: the public room explorer. The server component fetches public

@@ -14,9 +14,10 @@ import { getLocale, pick } from '../../i18n/messages';
 import { getSession } from '../../lib/session';
 import { toAccountProfile } from './profile';
 
-export const metadata: Metadata = {
-  title: 'Account // Overseer Dossier',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const messages = pick(await getLocale());
+  return { title: messages['pageTitle.account'] };
+}
 
 export default async function AccountPage() {
   const session = await getSession();
@@ -49,24 +50,26 @@ export default async function AccountPage() {
           {/* Breadcrumb / telemetry header */}
           <div className="flex items-center justify-between border-b border-outline-variant pb-2 font-label-sm text-label-sm uppercase tracking-widest text-outline">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-primary">{ACCOUNT_BREADCRUMB.left}</span>
+              <span className="font-bold text-primary">
+                {messages[ACCOUNT_BREADCRUMB.leftKey]}
+              </span>
               <span>{'//'}</span>
-              <span>{ACCOUNT_BREADCRUMB.node}</span>
+              <span>{messages[ACCOUNT_BREADCRUMB.nodeKey]}</span>
               <span>{'//'}</span>
-              <span className="text-tertiary">{ACCOUNT_BREADCRUMB.synced}</span>
+              <span className="text-tertiary">{messages[ACCOUNT_BREADCRUMB.syncedKey]}</span>
             </div>
             <div className="hidden items-center gap-4 sm:flex">
-              {ACCOUNT_BREADCRUMB.right.map((label) => (
-                <span key={label}>{label}</span>
+              {ACCOUNT_BREADCRUMB.rightKeys.map((labelKey) => (
+                <span key={labelKey}>{messages[labelKey]}</span>
               ))}
             </div>
           </div>
 
-          <AccountIdentityCard profile={account} />
-          <AccountStats profile={account} />
-          <ProgressionCharts />
-          <RaceHistory />
-          <KeyboardHeatmap />
+          <AccountIdentityCard profile={account} locale={locale} messages={messages} />
+          <AccountStats profile={account} locale={locale} messages={messages} />
+          <ProgressionCharts messages={messages} />
+          <RaceHistory messages={messages} />
+          <KeyboardHeatmap messages={messages} />
         </div>
       </main>
 
