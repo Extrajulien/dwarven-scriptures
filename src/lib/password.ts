@@ -200,3 +200,163 @@ export function passwordIssues(password: string): PasswordIssue[] {
 
   return issues;
 }
+
+export type PasswordStrength = 'empty' | 'weak' | 'acceptable' | 'strong';
+
+/**
+ * The "super safe" tier sits above the minimum policy (`passwordIssues`). A
+ * password is strong when it is either:
+ *
+ * - at least 16 characters spanning 3+ classes with ≥ 60 bits of entropy, or
+ * - a long passphrase of at least 24 characters with ≥ 80 bits of entropy
+ *   (which stays strong even across only two classes, e.g. lowercase + spaces).
+ *
+ * The passphrase clause keeps the bar from punishing long phrase-style
+ * passwords that the minimum policy already accepts on purpose.
+ */
+const STRONG_MIN_LENGTH = 16;
+const STRONG_MIN_CHARACTER_TYPES = 3;
+const STRONG_MIN_ENTROPY_BITS = 60;
+const STRONG_PASSPHRASE_MIN_LENGTH = 24;
+const STRONG_PASSPHRASE_MIN_ENTROPY_BITS = 80;
+
+// The "excellent" ceiling the score normalizes against: a password at these
+// thresholds scores 100.
+const EXCELLENT_MAX_LENGTH = STRONG_PASSPHRASE_MIN_LENGTH; // 24
+const EXCELLENT_MAX_TYPES = 4;
+const EXCELLENT_MAX_ENTROPY = STRONG_PASSPHRASE_MIN_ENTROPY_BITS; // 80
+
+function isStrongPassword(password: string): boolean {
+  const length = password.length;
+  const types = characterTypeCount(password);
+  const entropy = shannonEntropyBits(password);
+
+  if (
+    length >= STRONG_MIN_LENGTH &&
+    types >= STRONG_MIN_CHARACTER_TYPES &&
+    entropy >= STRONG_MIN_ENTROPY_BITS
+  ) {
+    return true;
+  }
+
+  return (
+    length >= STRONG_PASSPHRASE_MIN_LENGTH &&
+    types >= MIN_CHARACTER_TYPES &&
+    entropy >= STRONG_PASSPHRASE_MIN_ENTROPY_BITS
+  );
+}
+
+function clamp01(value: number): number {
+  return value <= 0 ? 0 : value >= 1 ? 1 : value;
+}
+
+/** Geometric mean of three progress ratios, each already in [0, 1]. */
+function geometricMean(values: readonly number[]): number {
+  return Math.cbrt(values.reduce((product, value) => product * value, 1));
+}
+
+function minimumRatios(
+  length: number,
+  types: number,
+  entropy: number,
+): [number, number, number] {
+  return [
+    length <= PASSWORD_MAX_LENGTH ? clamp01(length / PASSWORD_MIN_LENGTH) : 0,
+    clamp01(types / MIN_CHARACTER_TYPES),
+    clamp01(entropy / MIN_ENTROPY_BITS),
+  ];
+}
+
+function strongRatios(
+  length: number,
+  types: number,
+  entropy: number,
+): [number, number, number] {
+  return [
+    clamp01(length / STRONG_MIN_LENGTH),
+    clamp01(types / STRONG_MIN_CHARACTER_TYPES),
+    clamp01(entropy / STRONG_MIN_ENTROPY_BITS),
+  ];
+}
+
+function excellentRatios(
+  length: number,
+  types: number,
+  entropy: number,
+): [number, number, number] {
+  return [
+    clamp01(length / EXCELLENT_MAX_LENGTH),
+    clamp01(types / EXCELLENT_MAX_TYPES),
+    clamp01(entropy / EXCELLENT_MAX_ENTROPY),
+  ];
+}
+
+// The geometric-mean value each band starts at, so the fill width is continuous
+// across the red → yellow → green colour changes.
+const STRONG_GEOM_AT_MINIMUM = geometricMean([
+  PASSWORD_MIN_LENGTH / STRONG_MIN_LENGTH,
+  MIN_CHARACTER_TYPES / STRONG_MIN_CHARACTER_TYPES,
+  MIN_ENTROPY_BITS / STRONG_MIN_ENTROPY_BITS,
+]);
+
+const EXCELLENCE_GEOM_AT_STRONG = geometricMean([
+  STRONG_MIN_LENGTH / EXCELLENT_MAX_LENGTH,
+  STRONG_MIN_CHARACTER_TYPES / EXCELLENT_MAX_TYPES,
+  STRONG_MIN_ENTROPY_BITS / EXCELLENT_MAX_ENTROPY,
+]);
+
+/**
+ * The semantic tier used by the strength bar's colour and label. It mirrors the
+ * server policy exactly (via `passwordIssues` and `isStrongPassword`):
+ *
+ * - `empty`: no input yet.
+ * - `weak`: non-empty but does not yet satisfy the minimum policy.
+ * - `acceptable`: satisfies the minimum policy but not the strong tier.
+ * - `strong`: satisfies the stricter "super safe" tier.
+ */
+export function passwordStrength(password: string): PasswordStrength {
+  if (password.length === 0) {
+    return 'empty';
+  }
+  if (passwordIssues(password).length > 0) {
+    return 'weak';
+  }
+  return isStrongPassword(password) ? 'strong' : 'acceptable';
+}
+
+/**
+ * A continuous 0–100 score for the strength bar's fill width. The colour bands
+ * line up exactly with `passwordStrength`:
+ *
+ * - `0`      → empty (dark)
+ * - `1–49`   → weak (red)
+ * - `50–79`  → acceptable (yellow)
+ * - `80–100` → strong (green)
+ *
+ * Within each band the score interpolates continuously, so the fill grows
+ * left-to-right without jumping at the colour changes.
+ */
+export function passwordStrengthScore(password: string): number {
+  if (password.length === 0) {
+    return 0;
+  }
+
+  const length = password.length;
+  const types = characterTypeCount(password);
+  const entropy = shannonEntropyBits(password);
+
+  if (passwordIssues(password).length > 0) {
+    const compliance = geometricMean(minimumRatios(length, types, entropy));
+    return Math.max(1, Math.round(compliance * 49));
+  }
+
+  if (isStrongPassword(password)) {
+    const excellence = geometricMean(excellentRatios(length, types, entropy));
+    const normalized = (excellence - EXCELLENCE_GEOM_AT_STRONG) / (1 - EXCELLENCE_GEOM_AT_STRONG);
+    return 80 + Math.round(clamp01(normalized) * 20);
+  }
+
+  const progress = geometricMean(strongRatios(length, types, entropy));
+  const normalized = (progress - STRONG_GEOM_AT_MINIMUM) / (1 - STRONG_GEOM_AT_MINIMUM);
+  return 50 + Math.round(clamp01(normalized) * 29);
+}
