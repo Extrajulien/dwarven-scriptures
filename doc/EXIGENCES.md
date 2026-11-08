@@ -19,10 +19,10 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 - [x] **TECH-01** — Next.js (App Router, version stable actuelle) avec React.
   — fichiers : `package.json` (next 16), `src/app/`
 - [x] (partiel) **TECH-02** — TypeScript à 100 %.
-  - [ ] Aucun fichier `.js`/`.jsx` dans le dépôt (il en reste : `src/App.test.js`, `jest.config.js`, `jest.setup.js` et plusieurs composants `.jsx`).
+  - [x] (partiel) Aucun fichier `.js`/`.jsx` dans le dépôt — il reste `tailwind.config.js` (hors périmètre de cette tâche ; voir TECH-03). Fichiers convertis : `src/App.test.tsx`, `src/data/homepageData.ts`, les composants `.jsx` de `src/components/` (accueil, login, register), `jest.config.mjs`, `jest.setup.mjs`. Tests : `src/App.test.tsx`, `src/components/UserAvatar.test.tsx`, `src/components/login/LoginForm.test.tsx`, `src/components/register/RegisterForm.test.tsx`.
   - [x] `strict: true` dans `tsconfig.json`.
-  - [ ] Règle ESLint `@typescript-eslint/no-explicit-any` en erreur (absente de `eslint.config.mjs` pour l'instant).
-  - [ ] Aucun `@ts-ignore` / `@ts-expect-error` sans commentaire justificatif (à vérifier).
+  - [x] Règle ESLint `@typescript-eslint/no-explicit-any` en erreur — fichiers : `eslint.config.mjs`.
+  - [x] Aucun `@ts-ignore` / `@ts-expect-error` sans commentaire justificatif — aucune occurrence dans le code source (recherche sur `src/` et la racine).
 - [x] **TECH-03** — Tailwind CSS pour le style. — fichiers : `tailwind.config.js`, `postcss.config.mjs`, `src/app/globals.css`
 - [x] (partiel) **TECH-04** — PostgreSQL avec l'ORM de votre choix (Drizzle), migrations versionnées, script de seed (corpus de textes, utilisateurs, historique).
   - [x] Migrations versionnées — fichiers : `drizzle/`, `src/db/schema.ts`, `src/db/migrate.ts`
