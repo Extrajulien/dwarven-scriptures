@@ -392,6 +392,84 @@ export interface Messages {
   'home.chronicles.caveIn.s1': string;
   'home.chronicles.pickaxes.time': string;
   'home.chronicles.pickaxes.s1': string;
+  // ------------------------------------------------------------ auth (shared chrome)
+  'auth.divider': string;
+  'auth.security': string;
+  'auth.provider.github': string;
+  'auth.provider.discord': string;
+  'auth.error.requiredUsername': string;
+  'auth.error.requiredPassword': string;
+  'auth.error.unexpected': string;
+  'auth.showcase.ariaLabel': string;
+  'auth.showcase.topLeft': string;
+  'auth.showcase.feedStatus': string;
+  'auth.showcase.imageAlt': string;
+  'auth.showcase.hudTitle': string;
+  'auth.showcase.activeScribesLabel': string;
+  'auth.showcase.veinLabel': string;
+  'auth.showcase.quote': string;
+  'auth.showcase.bottomLeft': string;
+  'auth.showcase.bottomRight': string;
+  // ------------------------------------------------------------ login screen
+  'auth.login.card.logoAlt': string;
+  'auth.login.card.title': string;
+  'auth.login.card.heading': string;
+  'auth.login.card.subtitle': string;
+  'auth.login.card.status': string;
+  'auth.login.card.terminalId': string;
+  'auth.login.card.guidance': string;
+  'auth.login.callsign.label': string;
+  'auth.login.callsign.hint': string;
+  'auth.login.callsign.placeholder': string;
+  'auth.login.password.label': string;
+  'auth.login.password.hint': string;
+  'auth.login.password.placeholder': string;
+  'auth.login.remember': string;
+  'auth.login.submit': string;
+  'auth.login.submitPending': string;
+  'auth.login.error.invalidCredentials': string;
+  'auth.login.togglePassword': string;
+  'auth.login.register.prompt': string;
+  'auth.login.register.label': string;
+  // ------------------------------------------------------------ register screen
+  'auth.register.card.logoAlt': string;
+  'auth.register.card.title': string;
+  'auth.register.card.heading': string;
+  'auth.register.card.subtitle': string;
+  'auth.register.card.status': string;
+  'auth.register.card.terminalId': string;
+  'auth.register.card.guidance': string;
+  'auth.register.callsign.label': string;
+  'auth.register.callsign.hint': string;
+  'auth.register.callsign.placeholder': string;
+  'auth.register.password.label': string;
+  'auth.register.password.hint': string;
+  'auth.register.password.placeholder': string;
+  'auth.register.confirmPassword.label': string;
+  'auth.register.confirmPassword.hint': string;
+  'auth.register.confirmPassword.placeholder': string;
+  'auth.register.terms': string;
+  'auth.register.submit': string;
+  'auth.register.submitPending': string;
+  'auth.register.strength.label': string;
+  'auth.register.strength.empty': string;
+  'auth.register.strength.weak': string;
+  'auth.register.strength.acceptable': string;
+  'auth.register.strength.strong': string;
+  'auth.register.error.usernameTooLong': string;
+  'auth.register.error.usernameTaken': string;
+  'auth.register.error.passwordTooShort': string;
+  'auth.register.error.passwordTooLong': string;
+  'auth.register.error.passwordWeak': string;
+  'auth.register.error.confirmRequired': string;
+  'auth.register.error.passwordsDoNotMatch': string;
+  'auth.register.togglePassword': string;
+  'auth.register.toggleConfirmPassword': string;
+  'auth.register.login.prompt': string;
+  'auth.register.login.label': string;
+  // ------------------------------------------------------------ page titles
+  'pageTitle.login': string;
+  'pageTitle.register': string;
 }
 
 export const MESSAGES: Record<Locale, Messages> = {
@@ -733,6 +811,88 @@ export const MESSAGES: Record<Locale, Messages> = {
     'home.chronicles.pickaxes.time': 'IL Y A 1 HEURE',
     'home.chronicles.pickaxes.s1':
       '3 pioches runiques forgées pour les apprentis typistes qui entrent dans l’épreuve du magma.',
+    // ------------------------------------------------------------ auth (shared chrome)
+    'auth.divider': '─── [ OU ACCORDEZ-VOUS VIA LA FORGE EXTERNE ] ───',
+    'auth.security': '• CHIFFREMENT BASALTE 256 BITS • PROTOCOLE DE GUILDE ASCII_V2 •',
+    'auth.provider.github': 'Forger avec GitHub',
+    'auth.provider.discord': 'Accorder Discord',
+    'auth.error.requiredUsername': 'Un nom est requis.',
+    'auth.error.requiredPassword': 'Un mot de passe est requis.',
+    'auth.error.unexpected': 'Une erreur est survenue. Réessayez.',
+    'auth.showcase.ariaLabel': 'Flux en direct de la forteresse de la citadelle',
+    'auth.showcase.topLeft': '[ ARCHIVES DE LA GRANDE SALLE // EXPÉDITION N° 84 ]',
+    'auth.showcase.feedStatus': '● FLUX SYNCHRONISÉ',
+    'auth.showcase.imageAlt':
+      'Scène détaillée en pixel art d’une ancienne grande salle de forteresse naine souterraine, style Dwarf Fortress Steam Edition. Grands piliers de pierre sculptés, canaux de forge de lave rougeoyants au loin, wagonnets sur rails, gravures runiques lumineuses émeraude et ambre, scribes et mineurs nains robustes à des bureaux de basalte avec plumes et pioches, bordures de maçonnerie finement ciselées, caverne d’ardoise sombre à la lumière chaude des torches, jeu vidéo 16 bits isométrique rétro très détaillé',
+    'auth.showcase.hudTitle': '[ SANCTUAIRE DEEP DELVE ]',
+    'auth.showcase.activeScribesLabel': 'Scribes et mineurs actifs :',
+    'auth.showcase.veinLabel': 'Veine :',
+    'auth.showcase.quote':
+      'Frappez le granit avec justesse, jeunes scribes. Chaque touche fortifie la grande salle de la montagne.',
+    'auth.showcase.bottomLeft': '[ SECTEUR : NIVEAU_DE_LA_FORGE_INFÉRIEURE ]',
+    'auth.showcase.bottomRight': 'RÉSERVOIR DE MAGMA : 1 420 °C // CAPACITÉ : 98 %',
+    // ------------------------------------------------------------ login screen
+    'auth.login.card.logoAlt': 'Logo de Dwarven Scriptures',
+    'auth.login.card.title': '[ CITADELLE DE GRANIT ]',
+    'auth.login.card.heading': 'TERMINAL D’ACCÈS DES SCRIBES',
+    'auth.login.card.subtitle': 'Guilde Deep Delve • Vérification du scribe',
+    'auth.login.card.status': '[STATUT : EN LIGNE]',
+    'auth.login.card.terminalId': 'ID_TERM : N° 84-S',
+    'auth.login.card.guidance': 'Connexion aux serveurs nains',
+    'auth.login.callsign.label': '[ Identité naine ]',
+    'auth.login.callsign.hint': '[nom d’utilisateur]',
+    'auth.login.callsign.placeholder': 'moe lester',
+    'auth.login.password.label': '[ Chiffrement ]',
+    'auth.login.password.hint': '[mot de passe]',
+    'auth.login.password.placeholder': '••••••••••••',
+    'auth.login.remember': 'Mémoriser la pierre runique du scribe pendant 30 cycles',
+    'auth.login.submit': '[ ENTRER DANS L’EXPÉDITION // CONNEXION ]',
+    'auth.login.submitPending': '[ VÉRIFICATION… ]',
+    'auth.login.error.invalidCredentials': 'Nom d’utilisateur ou mot de passe incorrect.',
+    'auth.login.togglePassword': 'Afficher ou masquer le mot de passe',
+    'auth.login.register.prompt': 'Nouveau dans la guilde souterraine ?',
+    'auth.login.register.label': '[ GRAVER UN NOUVEAU DOSSIER DE SCRIBE → ]',
+    // ------------------------------------------------------------ register screen
+    'auth.register.card.logoAlt': 'Logo de Dwarven Scriptures',
+    'auth.register.card.title': '[ CITADELLE DE GRANIT ]',
+    'auth.register.card.heading': 'TERMINAL D’ENRÔLEMENT DES SCRIBES',
+    'auth.register.card.subtitle': 'Guilde Deep Delve • Enrôlement d’un nouveau scribe',
+    'auth.register.card.status': '[STATUT : RECRUTEMENT]',
+    'auth.register.card.terminalId': 'ID_TERM : N° 84-R',
+    'auth.register.card.guidance': 'Gravez votre vie dans la pierre',
+    'auth.register.callsign.label': '[ Identité naine ]',
+    'auth.register.callsign.hint': '[nom d’utilisateur]',
+    'auth.register.callsign.placeholder': 'Joe Mama',
+    'auth.register.password.label': '[ Chiffrement ]',
+    'auth.register.password.hint': '[mot de passe]',
+    'auth.register.password.placeholder': '••••••••••••',
+    'auth.register.confirmPassword.label': '[ Re-chiffrement ]',
+    'auth.register.confirmPassword.hint': '[confirmation]',
+    'auth.register.confirmPassword.placeholder': '••••••••••••',
+    'auth.register.terms':
+      'Je jure le serment de la charte de la guilde et j’accepte les conditions gravées dans la pierre',
+    'auth.register.submit': '[ GRAVER // CRÉER LE COMPTE ]',
+    'auth.register.submitPending': '[ GRAVURE… ]',
+    'auth.register.strength.label': 'Robustesse du mot de passe',
+    'auth.register.strength.empty': 'Aucun mot de passe',
+    'auth.register.strength.weak': 'Trop faible',
+    'auth.register.strength.acceptable': 'Correct',
+    'auth.register.strength.strong': 'Robuste',
+    'auth.register.error.usernameTooLong': 'Le nom doit compter 32 caractères ou moins.',
+    'auth.register.error.usernameTaken': 'Ce nom est déjà pris.',
+    'auth.register.error.passwordTooShort': 'Le mot de passe doit compter au moins 12 caractères.',
+    'auth.register.error.passwordTooLong': 'Le mot de passe doit compter 128 caractères ou moins.',
+    'auth.register.error.passwordWeak':
+      'Le mot de passe manque de variété — mélangez majuscules, minuscules, chiffres et symboles.',
+    'auth.register.error.confirmRequired': 'Veuillez confirmer votre mot de passe.',
+    'auth.register.error.passwordsDoNotMatch': 'Les mots de passe ne correspondent pas.',
+    'auth.register.togglePassword': 'Afficher ou masquer le mot de passe',
+    'auth.register.toggleConfirmPassword': 'Afficher ou masquer la confirmation du mot de passe',
+    'auth.register.login.prompt': 'Déjà membre assermenté de la guilde ?',
+    'auth.register.login.label': '[ RETOUR À L’ACCÈS SCRIBE → ]',
+    // ------------------------------------------------------------ page titles
+    'pageTitle.login': 'Citadelle de Granit // Terminal d’accès des scribes',
+    'pageTitle.register': 'Citadelle de Granit // Terminal d’enrôlement des scribes',
   },
   en: {
     // ------------------------------------------------------------ home race section
@@ -1069,5 +1229,86 @@ export const MESSAGES: Record<Locale, Messages> = {
     'home.chronicles.pickaxes.time': '1 HOUR AGO',
     'home.chronicles.pickaxes.s1':
       'Crafted 3x Rune Pickaxes for apprentice typists entering the magma trial.',
+    // ------------------------------------------------------------ auth (shared chrome)
+    'auth.divider': '─── [ OR ATTUNE VIA EXTERNAL FORGE ] ───',
+    'auth.security': '• 256-BIT BASALT ENCRYPTION • GUILD PROTOCOL ASCII_V2 •',
+    'auth.provider.github': 'Forge with GitHub',
+    'auth.provider.discord': 'Attune Discord',
+    'auth.error.requiredUsername': 'A name is required.',
+    'auth.error.requiredPassword': 'A password is required.',
+    'auth.error.unexpected': 'Something went wrong. Please try again.',
+    'auth.showcase.ariaLabel': 'Citadel Fortress Live Feed',
+    'auth.showcase.topLeft': '[ CITADEL HALL ARCHIVE // EXPEDITION #84 ]',
+    'auth.showcase.feedStatus': '● FEED SYNCED',
+    'auth.showcase.imageAlt':
+      'Detailed pixel art scene of an ancient subterranean Dwarven fortress hall in Dwarf Fortress Steam Edition style. Grand stone carved pillars, warm glowing lava forge channels in the distance, mining carts on tracks, glowing runic engravings in emerald and amber, rugged dwarven scribes and miners at basalt desks with quills and picks, intricate stone masonry borders, atmospheric dark slate cavern with warm torchlight, retro isometric high detail 16-bit video game art',
+    'auth.showcase.hudTitle': '[ DEEP DELVE SANCTUM ]',
+    'auth.showcase.activeScribesLabel': 'Active Scribes & Miners:',
+    'auth.showcase.veinLabel': 'Vein:',
+    'auth.showcase.quote':
+      'Strike the granite true, young scribes. Every keystroke fortifies the mountain hall.',
+    'auth.showcase.bottomLeft': '[ SECTOR: LOWER_FORGE_LEVEL ]',
+    'auth.showcase.bottomRight': 'MAGMA RESERVOIR: 1,420°C // 98% CAPACITY',
+    // ------------------------------------------------------------ login screen
+    'auth.login.card.logoAlt': 'Logo of Dwarven Scriptures',
+    'auth.login.card.title': '[ CITADEL OF GRANITE ]',
+    'auth.login.card.heading': 'SCRIBE ACCESS TERMINAL',
+    'auth.login.card.subtitle': 'Deep Delve Guild • Scribe Verification',
+    'auth.login.card.status': '[STATUS: ONLINE]',
+    'auth.login.card.terminalId': 'TERM_ID: #84-S',
+    'auth.login.card.guidance': 'Connect to the dwarven servers',
+    'auth.login.callsign.label': '[ Dwarven identity ]',
+    'auth.login.callsign.hint': '[username]',
+    'auth.login.callsign.placeholder': 'moe lester',
+    'auth.login.password.label': '[ CIPHER ]',
+    'auth.login.password.hint': '[password]',
+    'auth.login.password.placeholder': '••••••••••••',
+    'auth.login.remember': 'Remember Scribe Rune-Stone for 30 cycles',
+    'auth.login.submit': '[ ENTER THE DELVE // LOGIN ]',
+    'auth.login.submitPending': '[ VERIFYING… ]',
+    'auth.login.error.invalidCredentials': 'Incorrect username or password.',
+    'auth.login.togglePassword': 'Toggle password visibility',
+    'auth.login.register.prompt': 'New to the subterranean guild?',
+    'auth.login.register.label': '[ ENGRAVE NEW SCRIBE DOSSIER → ]',
+    // ------------------------------------------------------------ register screen
+    'auth.register.card.logoAlt': 'Logo of Dwarven Scriptures',
+    'auth.register.card.title': '[ CITADEL OF GRANITE ]',
+    'auth.register.card.heading': 'SCRIBE REGISTRATION TERMINAL',
+    'auth.register.card.subtitle': 'Deep Delve Guild • New Scribe Enlistment',
+    'auth.register.card.status': '[STATUS: RECRUITING]',
+    'auth.register.card.terminalId': 'TERM_ID: #84-R',
+    'auth.register.card.guidance': 'Engrave your life on a stone',
+    'auth.register.callsign.label': '[ Dwarven identity ]',
+    'auth.register.callsign.hint': '[username]',
+    'auth.register.callsign.placeholder': 'Joe Mama',
+    'auth.register.password.label': '[ CIPHER ]',
+    'auth.register.password.hint': '[password]',
+    'auth.register.password.placeholder': '••••••••••••',
+    'auth.register.confirmPassword.label': '[ RE-CIPHER ]',
+    'auth.register.confirmPassword.hint': '[confirm]',
+    'auth.register.confirmPassword.placeholder': '••••••••••••',
+    'auth.register.terms': 'I swear the Guild Charter oath and accept the stonebound terms',
+    'auth.register.submit': '[ ENGRAVE // CREATE ACCOUNT ]',
+    'auth.register.submitPending': '[ ENGRAVING… ]',
+    'auth.register.strength.label': 'Password strength',
+    'auth.register.strength.empty': 'No password',
+    'auth.register.strength.weak': 'Too weak',
+    'auth.register.strength.acceptable': 'Good enough',
+    'auth.register.strength.strong': 'Strong',
+    'auth.register.error.usernameTooLong': 'Name must be 32 characters or fewer.',
+    'auth.register.error.usernameTaken': 'That name is already taken.',
+    'auth.register.error.passwordTooShort': 'Password must be at least 12 characters.',
+    'auth.register.error.passwordTooLong': 'Password must be 128 characters or fewer.',
+    'auth.register.error.passwordWeak':
+      'Password needs more variety — mix upper/lowercase letters, numbers and symbols.',
+    'auth.register.error.confirmRequired': 'Please confirm your password.',
+    'auth.register.error.passwordsDoNotMatch': 'Passwords do not match.',
+    'auth.register.togglePassword': 'Toggle password visibility',
+    'auth.register.toggleConfirmPassword': 'Toggle confirm password visibility',
+    'auth.register.login.prompt': 'Already a sworn member of the guild?',
+    'auth.register.login.label': '[ RETURN TO SCRIBE ACCESS → ]',
+    // ------------------------------------------------------------ page titles
+    'pageTitle.login': 'Citadel of Granite // Scribe Access Terminal',
+    'pageTitle.register': 'Citadel of Granite // Scribe Registration Terminal',
   },
 };

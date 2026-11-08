@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 import { AUTH_ALTERNATIVES } from '../../data/registerData';
+import type { Messages } from '../../i18n/messages';
 import { DiscordIcon, GitHubIcon } from '../ProviderIcon';
 
 // A plain anchor (not `next/link`) so the browser performs a full-page load
@@ -23,7 +24,7 @@ const PROVIDER_ICONS: Record<
   },
 };
 
-export default function RegisterOAuthButtons() {
+export default function RegisterOAuthButtons({ messages }: { messages: Messages }) {
   return (
     <div
       className="grid grid-cols-1 gap-2.5 sm:grid-cols-2"
@@ -39,7 +40,7 @@ export default function RegisterOAuthButtons() {
           >
             <Icon className={className} />
             <span className="text-label-sm font-bold tracking-tight">
-              {provider.label}
+              {messages[provider.labelKey]}
             </span>
           </a>
         );
