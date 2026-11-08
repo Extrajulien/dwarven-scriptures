@@ -33,11 +33,12 @@ export default async function InvitationErrorPage({
     typeof rawReason === 'string' && rawReason in REASON_KEYS
       ? (rawReason as keyof typeof REASON_KEYS)
       : 'unknown';
-  const messages = pick(await getLocale());
+  const locale = await getLocale();
+  const messages = pick(locale);
 
   return (
     <>
-      <Navbar user={null} />
+      <Navbar user={null} locale={locale} messages={messages} />
       <main className="w-full bg-surface pt-20 pb-12 min-h-screen">
         <div className="mx-auto w-full max-w-[1200px] px-margin py-space-lg sm:px-margin-tablet">
           <section className="mx-auto flex w-full max-w-md flex-col items-center gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl">

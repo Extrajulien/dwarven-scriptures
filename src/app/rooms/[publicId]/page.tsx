@@ -57,7 +57,8 @@ export default async function RoomPage({
 
   const session = await getSession();
   const guest = await getGuestSession();
-  const messages = pick(await getLocale());
+  const locale = await getLocale();
+  const messages = pick(locale);
 
   let viewer: Viewer = null;
   let internalUserId: number | null = null;
@@ -84,7 +85,11 @@ export default async function RoomPage({
 
   const shell = (children: ReactNode) => (
     <>
-      <Navbar user={viewer?.kind === 'user' ? { username: viewer.username } : null} />
+      <Navbar
+        user={viewer?.kind === 'user' ? { username: viewer.username } : null}
+        locale={locale}
+        messages={messages}
+      />
       <main className="w-full bg-surface pt-20 pb-12 min-h-screen">
         <div className="mx-auto w-full max-w-[1200px] px-margin py-space-lg sm:px-margin-tablet">
           {children}

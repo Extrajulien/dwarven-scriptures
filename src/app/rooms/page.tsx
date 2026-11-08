@@ -26,7 +26,8 @@ export default async function RoomsExplorerPage({
 }) {
   const filters = parseExplorerFilters(await searchParams);
   const session = await getSession();
-  const messages = pick(await getLocale());
+  const locale = await getLocale();
+  const messages = pick(locale);
 
   const rooms = await listPublicRoomsForPage({
     textLanguage: filters.lang ?? undefined,
@@ -35,7 +36,11 @@ export default async function RoomsExplorerPage({
 
   return (
     <>
-      <Navbar user={session ? { username: session.username } : null} />
+      <Navbar
+        user={session ? { username: session.username } : null}
+        locale={locale}
+        messages={messages}
+      />
       <main className="w-full bg-surface pt-20 pb-12 min-h-screen">
         <div className="mx-auto w-full max-w-[1200px] px-margin py-space-lg sm:px-margin-tablet">
           <div className="flex flex-col gap-space-md">

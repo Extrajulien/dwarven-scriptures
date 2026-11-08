@@ -1,9 +1,19 @@
 import { GUILD, NAV_LINKS } from '../../data/homepageData';
+import type { Locale, Messages } from '../../i18n/messages';
+import LocaleSelector from './LocaleSelector';
 import PersonalAccount from './PersonalAccount';
 
 export type NavUser = { username: string; pfpUrl?: string | null };
 
-export default function Navbar({ user = null }: { user?: NavUser | null }) {
+export default function Navbar({
+  user = null,
+  locale,
+  messages,
+}: {
+  user?: NavUser | null;
+  locale: Locale;
+  messages: Messages;
+}) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
       <div className="h-20 w-full px-margin-desktop flex items-center justify-between gap-gutter">
@@ -46,12 +56,8 @@ export default function Navbar({ user = null }: { user?: NavUser | null }) {
         </nav>
 
         <div className="flex items-center gap-space-md">
-          <div className="hidden md:flex items-center gap-space-xs bg-surface-container-low px-space-sm py-space-xs rounded">
-            <button
-              type="button"
-              className="font-label-sm text-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors"
-            >[ENG/FR]</button>
-          </div>
+          {/* I18N-02: visible on every breakpoint (desktop and mobile). */}
+          <LocaleSelector locale={locale} messages={messages} />
 
           <PersonalAccount user={user} />
         </div>

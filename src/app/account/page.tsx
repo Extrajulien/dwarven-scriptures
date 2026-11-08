@@ -10,6 +10,7 @@ import Navbar from '../../components/Navbar/Navbar';
 import { ACCOUNT_BREADCRUMB } from '../../data/accountData';
 import { listLinkedProviders } from '../../db/queries/oauth-accounts';
 import { getUserFullProfile } from '../../db/queries/users';
+import { getLocale, pick } from '../../i18n/messages';
 import { getSession } from '../../lib/session';
 import { toAccountProfile } from './profile';
 
@@ -32,10 +33,16 @@ export default async function AccountPage() {
 
   const linkedProviders = await listLinkedProviders(profile.id);
   const account = toAccountProfile(profile, linkedProviders);
+  const locale = await getLocale();
+  const messages = pick(locale);
 
   return (
     <>
-      <Navbar user={{ username: account.username, pfpUrl: account.pfpUrl }} />
+      <Navbar
+        user={{ username: account.username, pfpUrl: account.pfpUrl }}
+        locale={locale}
+        messages={messages}
+      />
 
       <main className="min-h-[calc(100vh-3rem)] w-full bg-surface pb-16 pt-20">
         <div className="mx-auto max-w-7xl space-y-6 px-margin md:px-margin-desktop">

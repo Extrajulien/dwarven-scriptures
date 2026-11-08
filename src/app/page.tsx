@@ -25,6 +25,7 @@ export default async function Page({
       user={session ? { username: session.username } : null}
       guestNickname={guest?.nickname ?? null}
       notice={notice}
+      locale={locale}
       messages={pick(locale)}
     />
   );

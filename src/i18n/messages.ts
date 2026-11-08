@@ -258,6 +258,14 @@ export interface Messages {
   'notice.kicked': string;
   'notice.noRooms': string;
   'notice.noRoomsGuest': string;
+  // ------------------------------------------------------------ locale selector (I18N-02)
+  'locale.fr': string;
+  'locale.en': string;
+  'locale.switchToFr': string;
+  'locale.switchToEn': string;
+  // ------------------------------------------------------------ page metadata
+  'meta.title': string;
+  'meta.description': string;
 }
 
 export const MESSAGES: Record<Locale, Messages> = {
@@ -453,6 +461,15 @@ export const MESSAGES: Record<Locale, Messages> = {
     'notice.kicked': 'Vous avez été expulsé de la salle.',
     'notice.noRooms': 'Aucune salle publique en attente — fondez la vôtre ci-dessous !',
     'notice.noRoomsGuest': 'Aucune salle publique en attente pour le moment.',
+    // ------------------------------------------------------------ locale selector (I18N-02)
+    'locale.fr': 'FR',
+    'locale.en': 'EN',
+    'locale.switchToFr': 'Passer l’interface en français',
+    'locale.switchToEn': 'Passer l’interface en anglais',
+    // ------------------------------------------------------------ page metadata
+    'meta.title': 'Dwarven Scriptures',
+    'meta.description':
+      'Dwarven Scriptures — une forteresse de guilde compétitive de course de frappe.',
   },
   en: {
     // ------------------------------------------------------------ home race section
@@ -646,5 +663,14 @@ export const MESSAGES: Record<Locale, Messages> = {
     'notice.kicked': 'You were kicked from the room.',
     'notice.noRooms': 'No public room waiting — forge your own below!',
     'notice.noRoomsGuest': 'No public room waiting right now.',
+    // ------------------------------------------------------------ locale selector (I18N-02)
+    'locale.fr': 'FR',
+    'locale.en': 'EN',
+    'locale.switchToFr': 'Switch the interface to French',
+    'locale.switchToEn': 'Switch the interface to English',
+    // ------------------------------------------------------------ page metadata
+    'meta.title': 'Dwarven Scriptures',
+    'meta.description':
+      'Dwarven Scriptures — a competitive typing-race guild stronghold.',
   },
 };
