@@ -1,0 +1,553 @@
+{
+  "id": "828b0963-eccd-4d90-8958-c20539ef37f5",
+  "prevId": "f3b8eb1b-59d8-4ef9-8aac-cecd1afb8175",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.oauth_accounts": {
+      "name": "oauth_accounts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "providerAccountId": {
+          "name": "providerAccountId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "oauth_accounts_userId_users_id_fk": {
+          "name": "oauth_accounts_userId_users_id_fk",
+          "tableFrom": "oauth_accounts",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "oauth_accounts_provider_account_unique": {
+          "name": "oauth_accounts_provider_account_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "provider",
+            "providerAccountId"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "oauth_accounts_provider_not_empty": {
+          "name": "oauth_accounts_provider_not_empty",
+          "value": "\"oauth_accounts\".\"provider\" <> ''"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.texts": {
+      "name": "texts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "language": {
+          "name": "language",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(160)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wordCount": {
+          "name": "wordCount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "complexity": {
+          "name": "complexity",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "avgWordLength": {
+          "name": "avgWordLength",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "longWordRatio": {
+          "name": "longWordRatio",
+          "type": "numeric(6, 4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "specialCharRatio": {
+          "name": "specialCharRatio",
+          "type": "numeric(6, 4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hasPunctuation": {
+          "name": "hasPunctuation",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "hasNumbers": {
+          "name": "hasNumbers",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "hasCapitals": {
+          "name": "hasCapitals",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "hasAccents": {
+          "name": "hasAccents",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "texts_language_complexity_idx": {
+          "name": "texts_language_complexity_idx",
+          "columns": [
+            {
+              "expression": "language",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "complexity",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "texts_language_valid": {
+          "name": "texts_language_valid",
+          "value": "\"texts\".\"language\" in ('fr', 'en')"
+        },
+        "texts_complexity_valid": {
+          "name": "texts_complexity_valid",
+          "value": "\"texts\".\"complexity\" in ('facile', 'moyen', 'difficile')"
+        },
+        "texts_word_count_positive": {
+          "name": "texts_word_count_positive",
+          "value": "\"texts\".\"wordCount\" > 0"
+        },
+        "texts_avg_word_length_non_negative": {
+          "name": "texts_avg_word_length_non_negative",
+          "value": "\"texts\".\"avgWordLength\" >= 0"
+        },
+        "texts_long_word_ratio_non_negative": {
+          "name": "texts_long_word_ratio_non_negative",
+          "value": "\"texts\".\"longWordRatio\" >= 0"
+        },
+        "texts_special_char_ratio_non_negative": {
+          "name": "texts_special_char_ratio_non_negative",
+          "value": "\"texts\".\"specialCharRatio\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.user_resources": {
+      "name": "user_resources",
+      "schema": "",
+      "columns": {
+        "userId": {
+          "name": "userId",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "coins": {
+          "name": "coins",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "gems": {
+          "name": "gems",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_resources_userId_users_id_fk": {
+          "name": "user_resources_userId_users_id_fk",
+          "tableFrom": "user_resources",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "user_resources_coins_non_negative": {
+          "name": "user_resources_coins_non_negative",
+          "value": "\"user_resources\".\"coins\" >= 0"
+        },
+        "user_resources_gems_non_negative": {
+          "name": "user_resources_gems_non_negative",
+          "value": "\"user_resources\".\"gems\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.user_stats": {
+      "name": "user_stats",
+      "schema": "",
+      "columns": {
+        "userId": {
+          "name": "userId",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "racesCompleted": {
+          "name": "racesCompleted",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "totalWords": {
+          "name": "totalWords",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "totalTimeMs": {
+          "name": "totalTimeMs",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "bestWpm": {
+          "name": "bestWpm",
+          "type": "numeric(6, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0.00'"
+        },
+        "wins": {
+          "name": "wins",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "correctKeystrokes": {
+          "name": "correctKeystrokes",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "totalKeystrokes": {
+          "name": "totalKeystrokes",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_stats_userId_users_id_fk": {
+          "name": "user_stats_userId_users_id_fk",
+          "tableFrom": "user_stats",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "user_stats_races_completed_non_negative": {
+          "name": "user_stats_races_completed_non_negative",
+          "value": "\"user_stats\".\"racesCompleted\" >= 0"
+        },
+        "user_stats_total_words_non_negative": {
+          "name": "user_stats_total_words_non_negative",
+          "value": "\"user_stats\".\"totalWords\" >= 0"
+        },
+        "user_stats_total_time_ms_non_negative": {
+          "name": "user_stats_total_time_ms_non_negative",
+          "value": "\"user_stats\".\"totalTimeMs\" >= 0"
+        },
+        "user_stats_best_wpm_non_negative": {
+          "name": "user_stats_best_wpm_non_negative",
+          "value": "\"user_stats\".\"bestWpm\" >= 0"
+        },
+        "user_stats_wins_non_negative": {
+          "name": "user_stats_wins_non_negative",
+          "value": "\"user_stats\".\"wins\" >= 0"
+        },
+        "user_stats_correct_keystrokes_non_negative": {
+          "name": "user_stats_correct_keystrokes_non_negative",
+          "value": "\"user_stats\".\"correctKeystrokes\" >= 0"
+        },
+        "user_stats_total_keystrokes_non_negative": {
+          "name": "user_stats_total_keystrokes_non_negative",
+          "value": "\"user_stats\".\"totalKeystrokes\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "publicId": {
+          "name": "publicId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "username": {
+          "name": "username",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "passwordHash": {
+          "name": "passwordHash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pfpUrl": {
+          "name": "pfpUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_publicId_unique": {
+          "name": "users_publicId_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "publicId"
+          ]
+        },
+        "users_username_unique": {
+          "name": "users_username_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "username"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.word_dictionaries": {
+      "name": "word_dictionaries",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "language": {
+          "name": "language",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "complexity": {
+          "name": "complexity",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "words": {
+          "name": "words",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "word_dictionaries_language_complexity_unique": {
+          "name": "word_dictionaries_language_complexity_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "language",
+            "complexity"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "word_dictionaries_language_valid": {
+          "name": "word_dictionaries_language_valid",
+          "value": "\"word_dictionaries\".\"language\" in ('fr', 'en')"
+        },
+        "word_dictionaries_complexity_valid": {
+          "name": "word_dictionaries_complexity_valid",
+          "value": "\"word_dictionaries\".\"complexity\" in ('facile', 'moyen', 'difficile')"
+        },
+        "word_dictionaries_words_min_length": {
+          "name": "word_dictionaries_words_min_length",
+          "value": "jsonb_array_length(\"word_dictionaries\".\"words\") >= 100"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
