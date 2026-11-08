@@ -48,6 +48,34 @@
   box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.75);
 }
 
+/* --- Account screen stone cards (rune corner marks) ------------------------ */
+/* Sourced from stitch/profile.html; kept as bespoke classes because the
+   ::before/::after runes are not reproducible with a single Tailwind utility.
+   Border and background are applied via Tailwind classes on the element. */
+.stone-card {
+  position: relative;
+}
+.stone-card::before {
+  content: "᚛";
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-size: 10px;
+  line-height: 1;
+  color: #9a907c;
+  opacity: 0.5;
+}
+.stone-card::after {
+  content: "᚜";
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 10px;
+  line-height: 1;
+  color: #9a907c;
+  opacity: 0.5;
+}
+
 .btn-chisel-gold {
   background: linear-gradient(180deg, #dbab2f 0%, #b88b1b 50%, #99710f 100%);
   border: 1px solid #f6cf63;

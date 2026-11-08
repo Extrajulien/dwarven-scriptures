@@ -1,7 +1,7 @@
 import { GUILD, NAV_LINKS } from '../../data/homepageData';
 import PersonalAccount from './PersonalAccount';
 
-export type NavUser = { username: string };
+export type NavUser = { username: string; pfpUrl?: string | null };
 
 export default function Navbar({ user = null }: { user?: NavUser | null }) {
   return (

@@ -8,6 +8,13 @@
       "when": 1791417237678,
       "tag": "0000_early_daimon_hellstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794067348278,
+      "tag": "0001_silly_lizard",
+      "breakpoints": true
     }
   ]
 }

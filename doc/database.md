@@ -40,19 +40,20 @@ are declared there rather than in a separate file.
 
 ## Schema
 
-Three tables, all keyed so that no internal id ever reaches a client: the
+Four tables, all keyed so that no internal id ever reaches a client: the
 `users.id` `bigserial` is used only for foreign keys, while `publicId` (uuid)
 and `username` are the public identifiers. `username` holds the trimmed
 **display name** (it may contain spaces, is unique and ≤ 32 chars) rather than a
-URL slug — see [`doc/auth.md`](auth.md) for how registration populates it.
-`user_stats` and `user_resources` reference `users(id)` with
-`ON DELETE CASCADE`.
+URL slug — see [`doc/auth.md`](auth.md) for how registration and OAuth populate
+it. `user_stats`, `user_resources` and `oauth_accounts` reference `users(id)`
+with `ON DELETE CASCADE`.
 
 | Table             | Key            | Notes                                                   |
 | ----------------- | -------------- | ------------------------------------------------------- |
-| `users`           | `id` bigserial | unique `publicId` (uuid, `gen_random_uuid()`), unique `username` (display name ≤ 32 chars), `passwordHash`, `pfpUrl`, `createdAt` |
+| `users`           | `id` bigserial | unique `publicId` (uuid, `gen_random_uuid()`), unique `username` (display name ≤ 32 chars), `passwordHash` (**nullable** for OAuth accounts), `pfpUrl`, `createdAt` |
 | `user_stats`      | `userId` → `users.id` | `racesCompleted`, `totalWords`, `totalTimeMs`, `bestWpm`, `updatedAt` |
 | `user_resources`  | `userId` → `users.id` | `coins`, `gems`, `updatedAt`                    |
+| `oauth_accounts`  | `userId` → `users.id` | unique `(provider, providerAccountId)`, `provider`, `providerAccountId`, `createdAt` |
 
 `totalWords`, `totalTimeMs` and `coins` are `bigint` (surfaced as JavaScript
 `bigint`); `bestWpm` is `numeric(6, 2)` (surfaced as a string so no precision is
@@ -61,7 +62,9 @@ defence behind the validation in `src/db/queries/users.ts`.
 
 ## Queries
 
-`src/db/queries/users.ts` is the only module that touches these tables.
+`src/db/queries/users.ts` owns the core user tables (profiles, stats,
+resources), while `src/db/queries/oauth-accounts.ts` owns `oauth_accounts` and
+the find-or-create entry point used by the OAuth callback.
 
 | Function | Behaviour |
 | -------- | --------- |
@@ -69,14 +72,17 @@ defence behind the validation in `src/db/queries/users.ts`.
 | `getUserFullProfile` | Joins by `publicId` **or** `username`, derives `avgWpm`, returns `null` when absent, and never returns `passwordHash` |
 | `recordCompletedRace` | Upserts `user_stats`; every counter is incremented in SQL and `bestWpm` uses `GREATEST`, so concurrent finishes cannot clobber each other |
 | `adjustUserCoins` | Applies a signed delta with `WHERE (coins + delta) >= 0`, throwing `InsufficientCoinsError` when the guard matches no row and `UserNotFoundError` when the row is absent |
+| `createOrLinkOAuthUser` | Returns the user linked to a provider identity or creates user + both child rows + the `oauth_accounts` link in one transaction; a username collision is retried with a random suffix |
+| `findUserByOAuthAccount` | Looks up the user for a `(provider, providerAccountId)` pair, returning `null` on first sign-in |
 
 `avgWpm` is `totalWords / (totalTimeMs / 60000)` and is `0` when no time has been
 recorded, so an untouched profile never divides by zero.
 
-Types: `User`, `NewUser`, `UserStat`, `UserResource`, … are inferred with
-`InferSelectModel` / `InferInsertModel`. `UserProfileWithStats` omits the
-internal `id` for API responses, while `UserProfileWithStatsInternal` keeps it
-for server-side follow-up writes. Neither includes `passwordHash`.
+Types: `User`, `NewUser`, `UserStat`, `UserResource`, `OAuthAccount`,
+`NewOAuthAccount`, … are inferred with `InferSelectModel` / `InferInsertModel`.
+`UserProfileWithStats` omits the internal `id` for API responses, while
+`UserProfileWithStatsInternal` keeps it for server-side follow-up writes.
+Neither includes `passwordHash`.
 
 ## Environment variables
 

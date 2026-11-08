@@ -196,7 +196,8 @@ export async function getUserFullProfile(
 export type UserCredentials = {
   publicId: string;
   username: string;
-  passwordHash: string;
+  /** `null` for OAuth-only accounts, which have no password. */
+  passwordHash: string | null;
 };
 
 /**
@@ -275,6 +276,50 @@ export async function recordCompletedRace(
     });
 }
 
+export type UpdateUserProfileParams = {
+  username: string;
+  pfpUrl: string | null;
+};
+
+/**
+ * Updates the editable account fields (display name and profile picture) for a
+ * user identified by internal id. The username is re-validated here so a caller
+ * can never persist an empty or over-long name, and a unique-violation on the
+ * `username` column is translated to `UsernameTakenError` for the action to map
+ * to a field error.
+ */
+export async function updateUserProfile(
+  internalUserId: number,
+  params: UpdateUserProfileParams,
+): Promise<void> {
+  if (!Number.isSafeInteger(internalUserId) || internalUserId <= 0) {
+    throw new InvalidUserInputError('internalUserId must be a positive integer');
+  }
+
+  const username = params.username?.trim();
+  assertNonEmptyString(username, 'username');
+  if (username.length > USERNAME_MAX_LENGTH) {
+    throw new InvalidUserInputError(
+      `username must be at most ${USERNAME_MAX_LENGTH} characters`,
+    );
+  }
+  if (params.pfpUrl != null && typeof params.pfpUrl !== 'string') {
+    throw new InvalidUserInputError('pfpUrl must be a string or null');
+  }
+
+  try {
+    await db
+      .update(users)
+      .set({ username, pfpUrl: params.pfpUrl })
+      .where(eq(users.id, internalUserId));
+  } catch (error) {
+    if (isUsernameUniqueViolation(error)) {
+      throw new UsernameTakenError();
+    }
+    throw error;
+  }
+}
+
 /**
  * Applies a signed coin delta atomically.
  *
@@ -345,7 +390,7 @@ const USERS_USERNAME_UNIQUE_CONSTRAINT = 'users_username_unique';
  * value (`publicId` is a random UUID), so a missing constraint name is still
  * treated as a username clash.
  */
-function isUsernameUniqueViolation(error: unknown): boolean {
+export function isUsernameUniqueViolation(error: unknown): boolean {
   const seen = new Set<unknown>();
   let current: unknown = error;
 
