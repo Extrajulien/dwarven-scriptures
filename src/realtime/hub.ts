@@ -53,16 +53,18 @@ import type {
  * - **Graceful shutdown:** closes every connection and marks all memberships
  *   left in one statement, so a restart leaves no ghost members behind.
  *
- * ## Phase-1 reconnection model (documented)
+ * ## Reconnection model (documented)
  *
- * There is no resume-in-place yet: a dropped connection is marked as left in
- * the database and broadcast as `memberLeft`. The client reconnects by
- * re-joining with the code/invitation token (COURSE-08's 30-second
- * mid-race resume arrives in Phase 2). A person who is still an active
- * member of the same room in the database (e.g. they joined through the
- * server action and open the socket afterwards) re-joins without creating a
- * second membership — the store reports `rejoin: true` and the hub only adds
- * the connection.
+ * A dropped connection is normally marked as left in the database and
+ * broadcast as `memberLeft`; the client reconnects by re-joining with the
+ * code/invitation token. Since Phase 2, a member racing (DÉCOMPTE/EN_COURSE)
+ * without a result is exempt: the race hooks keep their membership slot, no
+ * DB leave and no `memberLeft` happen, and a `rejoinRace` within 30 s
+ * resumes the race (COURSE-08). A person who is still an active member of
+ * the same room in the database (e.g. they joined through the server action
+ * and open the socket afterwards) re-joins without creating a second
+ * membership — the store reports `rejoin: true` and the hub only adds the
+ * connection.
  */
 
 export type HubIdentity =

@@ -439,8 +439,10 @@ player who returns within 30 s resumes in place (COURSE-08).
     `src/realtime/protocol.ts` (Zod message schemas): the race engine will
     import the hub, never `ws` (AGENTS.md). Server actions notify the hub
     through the same in-process seam (`src/realtime/events.ts`).
-  * Reconnection for checkpoint 1 is a plain re-join by code/invitation
-    (COURSE-08's 30-second resume is Phase 2).
+  * Reconnection is a re-join by code/invitation token; mid-race (DÉCOMPTE/
+    EN_COURSE) the race hooks keep the membership slot for 30 s and
+    `rejoinRace`/`raceSnapshot` resume the race (COURSE-08, implemented in
+    Phase 2).
 
 ### ADR-011 — Bots *(proposed approach)*
 
@@ -496,8 +498,10 @@ connection per membership (a second connection replaces the first, which is
 closed with `error(already_in_room)` — the newest tab wins); a ws-level
 heartbeat (~30 s ping, dead socket evicted in ~30–60 s) whose eviction applies
 the normal departure path; graceful shutdown closes every socket and marks all
-memberships left. **Phase-1 reconnection is a plain re-join by code/token** —
-COURSE-08's 30-second mid-race resume is Phase 2. After a `roomClosed` message
+memberships left. **Reconnection** is a re-join by code/token; since Phase 2,
+a mid-race reconnect (DÉCOMPTE/EN_COURSE) keeps the membership slot for 30 s
+and resumes through `rejoinRace`/`raceSnapshot` (COURSE-08 — see the race
+message flow below). After a `roomClosed` message
 the client hook does not schedule a reconnect (`shouldReconnect` in
 `src/realtime/useRoomSocket.ts`): retrying would only flip the "room closed"
 screen into a "not found" error.
@@ -542,27 +546,53 @@ sequenceDiagram
     S-->>C: memberLeft (+ hostChanged / roomClosed)
 ```
 
-### Planned (Phase 2) — race messages, design only
+### Race messages (Phase 2) — implemented, `src/realtime/race-engine.ts`
 
-The flow below extends the implemented protocol once the race engine lands;
-nothing here is built yet:
+The flow below is built and live-smoke-verified. Every race message in both
+directions is Zod-validated (TECH-07) and the pure machine
+(`src/lib/race/state.ts`) stays authoritative for phases and guards.
 
 ```mermaid
 sequenceDiagram
     participant C as Client
-    participant S as Server (authoritative)
+    participant S as Server (authoritative, one process)
+    participant E as RaceEngine (in-memory, per room)
     participant DB as PostgreSQL
-    C->>S: host starts the race (server action)
-    S-->>C: countdown sync (3-2-1, text revealed)
-    C->>S: progress (validated char index)
-    S-->>C: ticks <=10 msg/s: positions, WPM, ranking
-    S-->>C: bonus events (BONUS-03)
-    S-->>C: results (RES-01/02)
-    S->>DB: persist result + WPM series (RES-05)
+    C->>S: startRace (host; server action or ws message)
+    S->>E: startRace (host key re-verified, SEC-01)
+    E->>DB: rooms.status = 'decompte'
+    E-->>C: countdownStarted (startAt, full text revealed, COURSE-03)
+    Note over E: clock ticks (~250 ms) advance the state machine
+    E-->>C: raceStarted (startAt, after the 3-2-1 countdown)
+    C->>S: raceProgress (cumulative counters, ~<=10 msg/s)
+    S->>E: validation: monotonic, <= totalLength, delta <= 100 (COURSE-06)
+    E-->>C: raceTick (<=~4/s: positions, net WPM, finished flags)
+    E-->>C: participantFinished {rank} / participantQuit
+    E-->>C: raceFinished (COURSE-10 ranking) + rooms.status='resultats'
+    Note over E: GAME-5: 60 s without progress → raceAborted, back to en_attente
+    C->>S: (mid-race drop) reconnect within 30 s: joinRoom + rejoinRace
+    S-->>C: roomSnapshot + raceSnapshot (phase, text, own counters)
 ```
 
-Rules the flow must respect: the server validates every progress message and
-rejects impossible jumps (COURSE-06); per-keystroke writes to the database are
-forbidden (PERF-02); the track interpolates client-side between ticks
-(COURSE-05); a reconnect within 30 s resumes the race where it left off
-(COURSE-08).
+Rules the flow enforces:
+
+* The server validates every progress message and rejects impossible jumps
+  (COURSE-06); per-keystroke database writes are forbidden — only phase
+  changes touch `rooms.status` (PERF-02); the track interpolates client-side
+  between ticks (COURSE-05, the visual track is SP-2D).
+* A reconnect within 30 s resumes the race where it left off (COURSE-08,
+  GAME-4): during DÉCOMPTE/EN_COURSE a dropped socket keeps its membership
+  (the hub asks the engine's race hooks before applying the normal departure)
+  and `rejoinRace` answers with the `raceSnapshot` resume payload. Past the
+  window the participant is recorded as `quit` (abandon).
+* COURSE-07/RACE-6: `quitRace` turns the participant into a spectator
+  instantly — they stay in the room.
+* COURSE-10 ranking: finishers by finish time, then timeouts by progression,
+  then quits by progression at the moment of quitting; computed server-side.
+* GAME-5 interpretation (documented in the engine): a 60-second global
+  inactivity (no accepted progress from any participant) aborts the race —
+  `raceAborted` is broadcast, the room returns to `en_attente` and **no
+  ranking is produced**.
+* The final results payload stays in memory for the room's lifetime
+  (`RaceEngine.takeResults`); persistence (RES-05, Phase 3) consumes it —
+  see the seam documented in `src/realtime/race-engine.ts`.
