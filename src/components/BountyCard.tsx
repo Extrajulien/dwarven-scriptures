@@ -1,4 +1,11 @@
-function RailBody({ body }) {
+import type {
+  Bounty,
+  ProgressBountyBody,
+  RailBountyBody,
+  StatusBountyBody,
+} from '../data/homepageData';
+
+function RailBody({ body }: { body: RailBountyBody }) {
   return (
     <div className="bg-surface-container-lowest p-space-sm rounded font-label-sm text-label-sm flex flex-col gap-1">
       <div className="flex justify-between text-outline text-label-sm">
@@ -13,7 +20,7 @@ function RailBody({ body }) {
   );
 }
 
-function StatusBody({ body }) {
+function StatusBody({ body }: { body: StatusBountyBody }) {
   return (
     <div className="bg-surface-container-lowest p-space-sm rounded font-label-sm text-label-sm flex items-center justify-between">
       <span className="text-on-surface-variant font-body-sm text-body-sm">
@@ -24,7 +31,7 @@ function StatusBody({ body }) {
   );
 }
 
-function DecryptionBody({ body }) {
+function DecryptionBody({ body }: { body: ProgressBountyBody }) {
   return (
     <div className="bg-surface-container-lowest p-space-sm rounded font-label-sm text-label-sm flex flex-col gap-1">
       <div className="flex justify-between text-outline text-label-sm">
@@ -38,14 +45,8 @@ function DecryptionBody({ body }) {
   );
 }
 
-const BODY_RENDERERS = {
-  rail: RailBody,
-  status: StatusBody,
-  progress: DecryptionBody,
-};
-
-export default function BountyCard({ bounty }) {
-  const Body = BODY_RENDERERS[bounty.body.kind];
+export default function BountyCard({ bounty }: { bounty: Bounty }) {
+  const { body } = bounty;
 
   return (
     <div className="bg-surface-container p-space-md rounded flex flex-col gap-space-sm relative overflow-hidden shadow-sm">
@@ -80,7 +81,9 @@ export default function BountyCard({ bounty }) {
         </div>
       </div>
 
-      <Body body={bounty.body} />
+      {body.kind === 'rail' && <RailBody body={body} />}
+      {body.kind === 'status' && <StatusBody body={body} />}
+      {body.kind === 'progress' && <DecryptionBody body={body} />}
     </div>
   );
 }

@@ -1,6 +1,7 @@
+import type { Perk } from '../data/homepageData';
 import ProgressBar from './ProgressBar';
 
-export default function PerkCard({ perk }) {
+export default function PerkCard({ perk }: { perk: Perk }) {
   const cardClass = perk.locked
     ? 'bg-surface-container-low p-space-sm rounded flex flex-col gap-1 opacity-60'
     : `bg-surface-container p-space-sm rounded flex flex-col gap-1 border-l-4 ${perk.borderClass} shadow-sm`;
@@ -28,7 +29,7 @@ export default function PerkCard({ perk }) {
         {perk.description}
       </p>
 
-      {perk.progress && (
+      {perk.progress && perk.footer && (
         <>
           <ProgressBar
             percent={perk.progress.percent}

@@ -1,6 +1,7 @@
+import type { ActionButtonData } from '../data/homepageData';
 import Icon from './Icon';
 
-export default function ActionButton({ action }) {
+export default function ActionButton({ action }: { action: ActionButtonData }) {
   return (
     <button
       type="button"
