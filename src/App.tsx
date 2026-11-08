@@ -63,8 +63,8 @@ export default function App({
             </div>
 
             {/* Dev-only sprite system demo — remove when integrated into the real game. */}
-            <SpriteShowcase />
-            <AutoTileDemo />
+            <SpriteShowcase messages={messages} />
+            <AutoTileDemo messages={messages} />
           </div>
         </div>
       </main>

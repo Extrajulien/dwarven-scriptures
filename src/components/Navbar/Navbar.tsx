@@ -19,7 +19,7 @@ export default function Navbar({
       <div className="h-20 w-full px-margin-desktop flex items-center justify-between gap-gutter">
         <div className="flex items-center gap-space-md">
           <img
-            alt="Dwarf Fortress Delve Guild Emblem"
+            alt={messages['chrome.guildEmblemAlt']}
             className="h-8 w-auto object-contain"
             src={GUILD.logoUrl}
           />

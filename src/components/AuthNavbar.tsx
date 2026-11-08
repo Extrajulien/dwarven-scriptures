@@ -20,7 +20,7 @@ export default function AuthNavbar({
     <header className="sticky top-0 z-30 flex w-full items-center justify-between border-b border-dwarf-border bg-dwarf-bg/90 px-4 py-2.5 backdrop-blur-sm">
       <ButtonSecondary href="/" aria-label={SITE.name}>
         <img
-          alt={`${SITE.name} logo`}
+          alt={messages['chrome.siteLogoAlt']}
           className="h-6 w-6 rounded-sm object-contain"
           src={SITE.logoUrl}
         />

@@ -611,6 +611,30 @@ export interface Messages {
   'account.modal.error.usernameTooLong': string;
   'account.modal.error.usernameTaken': string;
   'account.modal.error.invalidUrl': string;
+  // ------------------------------------------------------------ dev-only sprite demos
+  'demo.preloading': string;
+  'demo.showcaseTitle': string;
+  'demo.showcaseSubtitle': string;
+  'demo.sectionTerrain': string;
+  'demo.sectionMining': string;
+  'demo.sectionActors': string;
+  'demo.sectionLayered': string;
+  'demo.sectionMonsters': string;
+  'demo.pickaxeSwing': string;
+  'demo.idleHighlight': string;
+  'demo.floorBeast': string;
+  'demo.autoTileTitle': string;
+  'demo.autoTileBody': string;
+  'demo.autoTileReset': string;
+  'demo.autoTileRestore': string;
+  'demo.autoTileMine': string;
+  'demo.legendGold': string;
+  'demo.legendRock': string;
+  'demo.legendFloor': string;
+  'demo.legendDwarf': string;
+  // ------------------------------------------------------------ chrome accessibility
+  'chrome.guildEmblemAlt': string;
+  'chrome.siteLogoAlt': string;
 }
 
 export const MESSAGES: Record<Locale, Messages> = {
@@ -1176,6 +1200,32 @@ export const MESSAGES: Record<Locale, Messages> = {
     'account.modal.error.usernameTooLong': 'Le nom doit compter au plus 32 caractères.',
     'account.modal.error.usernameTaken': 'Ce nom est déjà pris.',
     'account.modal.error.invalidUrl': 'Saisissez une URL d’image http(s) valide.',
+    // ------------------------------------------------------------ dev-only sprite demos
+    'demo.preloading': 'Préchargement des feuilles de sprites…',
+    'demo.showcaseTitle': 'Vitrine du registre de sprites',
+    'demo.showcaseSubtitle':
+      'Démo réservée au développement du registre de sprites typé et du rendu par feuilles CSS.',
+    'demo.sectionTerrain': 'Terrain et murs',
+    'demo.sectionMining': 'Progression de l’extraction (animée)',
+    'demo.sectionActors': 'Acteurs joueurs',
+    'demo.sectionLayered': 'Tuiles superposées (enfants / surcouches)',
+    'demo.sectionMonsters': 'Monstres dynamiques',
+    'demo.pickaxeSwing': 'balancement de pioche (animé)',
+    'demo.idleHighlight': 'inactif + teinte de surbrillance',
+    'demo.floorBeast': 'sol + surcouche de bête',
+    'demo.autoTileTitle': 'Auto-pavage et cellules superposées',
+    'demo.autoTileBody':
+      'Cliquez sur une tuile pour l’extraire (air). La roche enfouie est retirée ; la roche exposée affiche une paroi, et les veines d’or exposées une face minérale teintée avec des coins intérieurs. Un couloir est préextrait pour voir l’effet immédiatement.',
+    'demo.autoTileReset': 'Réinitialiser',
+    'demo.autoTileRestore': 'Restaurer la tuile',
+    'demo.autoTileMine': 'Extraire la tuile',
+    'demo.legendGold': 'veine d’or (teinte minérale)',
+    'demo.legendRock': 'paroi rocheuse exposée',
+    'demo.legendFloor': 'sol extrait (air)',
+    'demo.legendDwarf': 'occupant nain',
+    // ------------------------------------------------------------ chrome accessibility
+    'chrome.guildEmblemAlt': 'Emblème de la guilde Dwarf Fortress Delve',
+    'chrome.siteLogoAlt': 'Logo de Dwarven Scriptures',
   },
   en: {
     // ------------------------------------------------------------ home race section
@@ -1735,5 +1785,31 @@ export const MESSAGES: Record<Locale, Messages> = {
     'account.modal.error.usernameTooLong': 'Name must be at most 32 characters.',
     'account.modal.error.usernameTaken': 'That name is already taken.',
     'account.modal.error.invalidUrl': 'Enter a valid http(s) image URL.',
+    // ------------------------------------------------------------ dev-only sprite demos
+    'demo.preloading': 'Preloading sprite sheets…',
+    'demo.showcaseTitle': 'Sprite Registry Showcase',
+    'demo.showcaseSubtitle':
+      'Dev-only demo of the type-safe sprite registry and CSS sprite-sheet renderer.',
+    'demo.sectionTerrain': 'Terrain & Walls',
+    'demo.sectionMining': 'Mining Progress (animated)',
+    'demo.sectionActors': 'Player Actors',
+    'demo.sectionLayered': 'Layered Tiles (children / overlays)',
+    'demo.sectionMonsters': 'Dynamic Monsters',
+    'demo.pickaxeSwing': 'pickaxe swing (animated)',
+    'demo.idleHighlight': 'idle + highlight tint',
+    'demo.floorBeast': 'floor + beast overlay',
+    'demo.autoTileTitle': 'Auto-Tiling & Layered Cells',
+    'demo.autoTileBody':
+      'Click a tile to mine it out (air). Buried rock is culled; exposed rock renders a wall face, and exposed gold veins render a tinted mineral face with inner corners. A corridor is pre-mined so you can see the effect immediately.',
+    'demo.autoTileReset': 'Reset',
+    'demo.autoTileRestore': 'Restore tile',
+    'demo.autoTileMine': 'Mine tile',
+    'demo.legendGold': 'gold vein (mineral tint)',
+    'demo.legendRock': 'exposed rock wall',
+    'demo.legendFloor': 'mined floor (air)',
+    'demo.legendDwarf': 'dwarf occupant',
+    // ------------------------------------------------------------ chrome accessibility
+    'chrome.guildEmblemAlt': 'Dwarf Fortress Delve Guild Emblem',
+    'chrome.siteLogoAlt': 'Dwarven Scriptures logo',
   },
 };
