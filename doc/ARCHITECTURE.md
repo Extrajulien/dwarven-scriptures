@@ -21,7 +21,11 @@ race section (quick play, join by code, create-room card),
 `/rooms` public explorer with filters and ~5 s auto-refresh,
 `/rooms/[publicId]` lobby (live member list, host controls, invitation
 links), guest nickname flow and the `/i/[token]` invitation endpoint. The
-race engine, bots and bonuses are still not built.
+race **domain logic** is implemented as pure modules (`src/lib/race/`): the
+state machine (COURSE-01), the Annexe A WPM formulas (`stats.ts`), the seeded
+random-text generator, the coherent-text selection ranking and the race
+start rules. The realtime race wiring (start command, progress stream,
+results persistence), bots and bonuses are still not built.
 
 ## Folder layout
 
@@ -31,7 +35,7 @@ race engine, bots and bonuses are still not built.
 | `src/components/` | Presentational UI components (auth forms, account screen, theme shell) |
 | `src/data/` | Static UI data (site identity, form labels, mock content) |
 | `src/db/` | Drizzle schema (`schema.ts`), client, migration runner, `queries/` (one module per aggregate) |
-| `src/lib/` | Pure business logic: password hashing, validation, sessions, OAuth, token codecs |
+| `src/lib/` | Pure business logic: password hashing, validation, sessions, OAuth, token codecs, race domain logic (`race/`: state machine, stats, text generation/selection, start rules) |
 | `src/realtime/` | Realtime layer: `protocol.ts` (Zod schemas), `hub.ts` (transport-agnostic hub), `room-store.ts` (Postgres adapter), `server.ts` (ws wiring), `events.ts` (action→hub bridge), `useRoomSocket.ts` (client hook) |
 | `src/sprites/` | Sprite registry, auto-tiling and tile rendering (the visual identity) |
 | `server.ts` | Custom server entry (ADR-010): one process for Next.js + the `/ws` realtime layer |
@@ -181,16 +185,52 @@ committed migrations when each feature is built:
 
 ## Race state machine (COURSE-01)
 
+**Implemented** as a pure, clock-injected module: `src/lib/race/state.ts`
+(unit-tested exhaustively in `src/lib/race/state.test.ts` — every transition,
+every guard rejection and the countdown boundaries). The diagram below is
+exactly what the code enforces:
+
 ```mermaid
 stateDiagram-v2
     [*] --> EN_ATTENTE
-    EN_ATTENTE --> DECOMPTE: host starts (>=2 participants, >=1 human)
-    DECOMPTE --> EN_COURSE: countdown 3-2-1 done
-    EN_COURSE --> RESULTATS: all finished/quit or time up
-    RESULTATS --> EN_ATTENTE: host relaunches
-    RESULTATS --> FERMEE: host closes
+    EN_ATTENTE --> DECOMPTE: requestStart (host, >=2 racers, >=1 human, text)
+    DECOMPTE --> EN_COURSE: advance once now >= startAt
+    EN_COURSE --> RESULTATS: advance when all racers done/quit or time up
+    RESULTATS --> EN_ATTENTE: relaunch (participants kept, config replaceable)
+    RESULTATS --> FERMEE: closeRace
+    EN_ATTENTE --> FERMEE: closeRace
     FERMEE --> [*]
 ```
+
+Phase values are the `rooms.status` strings (`en_attente`, `decompte`,
+`en_course`, `resultats`, `fermee`); `src/lib/race/start-rules.ts` owns the
+room-status ↔ race-phase mapping (`roomStatusForPhase`, identity today) as
+the single source of truth. Semantics as implemented:
+
+* **Countdown (COURSE-03):** `requestStart` stamps `startedAt = now` and
+  `startAt = now + 3000 ms` (`COUNTDOWN_MS`) and stores the chosen text on
+  the race at that moment — the text is revealed from the very start of the
+  countdown (`textVisibleForPhase`). Any client joining mid-countdown derives
+  its remaining seconds from `countdownSecondsRemaining` (3 → 1, `0` past the
+  boundary); `advance` flips to `en_course` once `startAt` passes. The clock
+  is injected (`now`), so the whole machine is deterministic in tests.
+* **End conditions (COURSE-09):** in `en_course`, `advance` moves to
+  `resultats` when every racing participant (spectators excluded, bots
+  included) has a `finished`/`quit` result, or when
+  `config.timeLimitSeconds` (if set) has elapsed since `startAt` — the still
+  active participants are then recorded as `timeout` at that instant and
+  `finishedAt` is stamped. `finishParticipant` only records a result (it is
+  idempotent and cannot change the phase); the transition belongs to
+  `advance`, the single place where a clock decides.
+* **Relaunch / close (COURSE-11):** `relaunch` is legal only from
+  `resultats`, keeps the participant list and can replace the config
+  snapshot; `closeRace` is legal from `en_attente` or `resultats`.
+* **Annexe A formulas** (net/raw WPM, accuracy, progression) live in
+  `src/lib/race/stats.ts` so every phase reuses them verbatim (COURSE-04/10).
+
+The machine is pure data in / data out — the realtime wiring (start-command
+authorization against `rooms.hostUserId`, progress validation, broadcasts and
+persistence) lands in SP-2B.
 
 Only `EN_ATTENTE` and `RESULTATS` accept new members (SALLE-09). A disconnected
 player who returns within 30 s resumes in place (COURSE-08).

@@ -130,15 +130,20 @@ ambigus vont dans la section [Choix à documenter](#choix-à-documenter).
 
 ## COURSE — Déroulement d'une course
 
-- [ ] **COURSE-01** — États explicites, machine à états documentée : `EN_ATTENTE → DÉCOMPTE → EN_COURSE → RÉSULTATS → (EN_ATTENTE | FERMÉE)`.
-- [ ] **COURSE-02** — L'hôte ne peut lancer que si la salle compte au moins 2 participants dont au moins 1 humain (les bots comptent, pas les spectateurs).
-- [ ] **COURSE-03** — Décompte synchronisé (3, 2, 1) ; le texte n'est révélé qu'au début du décompte.
-- [ ] **COURSE-04** — Zone de frappe : retour visuel immédiat (caractère correct, incorrect, curseur), MPM et précision en direct, coller désactivé.
+- [x] **COURSE-01** — États explicites, machine à états documentée : `EN_ATTENTE → DÉCOMPTE → EN_COURSE → RÉSULTATS → (EN_ATTENTE | FERMÉE)`.
+  — Machine à états pure et à horloge injectée implémentée et testée dans `src/lib/race/state.ts` (phases = valeurs de `rooms.status`, transitions `requestStart`/`advance`/`finishParticipant`/`relaunch`/`closeRace`, rejets typés par code) ; diagramme à jour dans `doc/ARCHITECTURE.md`. Tests : `src/lib/race/state.test.ts` (chaque transition, chaque garde, cycle complet). Le câblage temps réel arrive en SP-2B.
+- [x] (partiel) **COURSE-02** — L'hôte ne peut lancer que si la salle compte au moins 2 participants dont au moins 1 humain (les bots comptent, pas les spectateurs).
+  — Garde implémentée et testée dans `requestStart` (`src/lib/race/state.ts` : `MIN_RACE_PARTICIPANTS`, `MIN_HUMAN_PARTICIPANTS`, spectateurs exclus, bots comptés) + `collectRaceParticipants`/`validateRaceConfig` dans `src/lib/race/start-rules.ts`. Tests : `src/lib/race/state.test.ts`, `src/lib/race/start-rules.test.ts`. Manque : l'application de la garde à la commande de lancement côté serveur (SP-2B).
+- [x] (partiel) **COURSE-03** — Décompte synchronisé (3, 2, 1) ; le texte n'est révélé qu'au début du décompte.
+  — Décompte de 3 s implémenté (`COUNTDOWN_MS`, `startedAt`/`startAt`, `countdownSecondsRemaining` → 3…1 pour tout client qui rejoint en cours de décompte) et révélation du texte au début du décompte (`chosenText` stocké par `requestStart`, visibilité dérivée de la phase via `textVisibleForPhase`) dans `src/lib/race/state.ts`. Tests : `src/lib/race/state.test.ts`. Manque : la diffusion temps réel du décompte (SP-2B).
+- [x] (partiel) **COURSE-04** — Zone de frappe : retour visuel immédiat (caractère correct, incorrect, curseur), MPM et précision en direct, coller désactivé.
+  — Formules de l'Annexe A implémentées telles quelles dans `src/lib/race/stats.ts` (`netWpm`, `rawWpm`, `accuracy`, `progression` avec longueur ajustée par bonus). Tests : `src/lib/race/stats.test.ts`. Manque : la zone de frappe et l'affichage en direct (SP-2C).
 - [ ] **COURSE-05** — Piste de progression en temps réel : avatar, nom, position et MPM courant par participant (humain ou bot) ; mouvement fluide (≥ ~4 mises à jour perçues par seconde, interpolation encouragée) ; joueur local mis en évidence ; les spectateurs voient la piste sans zone de frappe.
 - [ ] **COURSE-06** — Serveur autoritaire : temps de départ/fin, progression et classement, application des bonus ; rejet des progressions impossibles (saut de progression, vitesse irréaliste).
 - [ ] **COURSE-07** — Un joueur peut abandonner la course, avec confirmation.
 - [ ] **COURSE-08** — Déconnexion : reprise là où il en était s'il revient dans les 30 secondes ; passé ce délai, considéré comme ayant abandonné.
-- [ ] **COURSE-09** — La course se termine quand tous les participants ont terminé ou abandonné, ou quand le temps maximal est écoulé.
+- [x] (partiel) **COURSE-09** — La course se termine quand tous les participants ont terminé ou abandonné, ou quand le temps maximal est écoulé.
+  — Conditions de fin implémentées et testées dans `advance` (`src/lib/race/state.ts`) : passage à `resultats` quand tous les coureurs (spectateurs exclus) ont un résultat `finished`/`quit`, ou quand `config.timeLimitSeconds` est écoulé depuis `startAt` — les coureurs restants sont alors marqués `timeout` à cet instant. Tests : `src/lib/race/state.test.ts` (finitions mixtes, cas « tout le monde a abandonné », limite atteinte/limite nulle). Manque : le moteur branché sur le hub temps réel (SP-2B).
 - [ ] **COURSE-10** — Classement final : 1) finisseurs par temps d'arrivée ; 2) non-finisseurs par progression ; 3) abandons par progression au moment de l'abandon.
 - [ ] **COURSE-11** — Écran des résultats : l'hôte peut relancer une course (mêmes participants, configuration modifiable) ou fermer la salle ; les autres peuvent rester ou quitter.
 
@@ -248,7 +253,7 @@ Exigences ambiguës ou laissées à l'appréciation de l'équipe — chaque choi
 retenu doit être expliqué ici ou dans `doc/ARCHITECTURE.md` :
 
 - **CONF-05** — critères mesurables de la complexité (facile / moyen / difficile) : seuils documentés dans `doc/database.md` (section « Complexity ») et implémentés dans `src/lib/text-metrics.ts` (un vote par métrique, longueur moyenne des mots à poids double).
-- **CONF-07** — comportement retenu en mode cohérent (option désactivée ou filtrage des passages compatibles).
+- **CONF-07** — comportement retenu en mode cohérent : **les passages compatibles sont classés en premier** (`src/lib/race/text-select.ts`) — une option activée exige le drapeau correspondant du passage, une option désactivée exige son absence ; si aucun passage n'est entièrement compatible, le plus proche (moins de drapeaux divergents) est choisi plutôt que d'échouer. En mode aléatoire, les options s'appliquent directement à la génération (`src/lib/race/text-generator.ts`).
 - **BOT-01** — valeurs retenues si les plages de MPM/erreurs sont ajustées.
 - **BONUS-01** — règle exacte d'attribution des bonus (définition précise du « retard », cumul, choix du bonus).
 - **TECH-06** — ADR sur la technologie temps réel retenue.
