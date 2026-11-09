@@ -32,7 +32,7 @@ landed in Phase 4** (ADR-011) and **comeback bonuses are applied server-side
 in Phase 4** (BONUS-01..04 — see [Comeback bonuses](#comeback-bonuses-bonus-0104)):
 the pure rules, the engine integration, the protocol messages and the client
 state are done; the **visual** bonus announcements (track banners, the 2 s
-fog, the text adjustment rendering) are SP-4C.
+fog, the text adjustment rendering) landed in SP-4C (BONUS-03).
 
 ## Folder layout
 
@@ -42,7 +42,7 @@ fog, the text adjustment rendering) are SP-4C.
 | `src/components/` | Presentational UI components (auth forms, account screen, theme shell) |
 | `src/data/` | Static UI data (site identity, form labels, mock content) |
 | `src/db/` | Drizzle schema (`schema.ts`), client, migration runner, `queries/` (one module per aggregate) |
-| `src/lib/` | Pure business logic: password hashing, validation, sessions, OAuth, token codecs, race domain logic (`race/`: state machine, stats, text generation/selection, start rules) |
+| `src/lib/` | Pure business logic: password hashing, validation, sessions, OAuth, token codecs, rate limiting, i18n, avatar upload, room rules, the race domain (`race/`: state machine, stats, text generation/selection, typing, track, bonuses) and the bot schedule (`bots/schedule.ts`) |
 | `src/realtime/` | Realtime layer: `protocol.ts` (Zod schemas), `hub.ts` (transport-agnostic hub), `room-store.ts` (Postgres adapter), `server.ts` (ws wiring), `events.ts` (action→hub bridge), `useRoomSocket.ts` (client hook) |
 | `src/sprites/` | Sprite registry, auto-tiling and tile rendering (the visual identity) |
 | `server.ts` | Custom server entry (ADR-010): one process for Next.js + the `/ws` realtime layer |
@@ -63,6 +63,12 @@ erDiagram
         varchar passwordHash "nullable (OAuth accounts)"
         varchar pfpUrl
         timestamptz createdAt
+    }
+    user_avatars {
+        bigint userId PK, FK
+        varchar contentType "image/jpeg | image/png | image/webp (CHECK)"
+        bytea bytes "<= 2 MB (action-enforced)"
+        timestamptz updatedAt
     }
     user_stats {
         bigint userId PK, FK
@@ -176,6 +182,7 @@ erDiagram
     }
     users ||--|| user_stats : "1:1"
     users ||--|| user_resources : "1:1"
+    users ||--|| user_avatars : "avatar (AUTH-04)"
     users ||--o{ oauth_accounts : "has"
     users ||--o{ rooms : "hosts"
     users ||--o{ room_members : "joins as"
@@ -282,8 +289,10 @@ the single source of truth. Semantics as implemented:
   `src/lib/race/stats.ts` so every phase reuses them verbatim (COURSE-04/10).
 
 The machine is pure data in / data out — the realtime wiring (start-command
-authorization against `rooms.hostUserId`, progress validation, broadcasts and
-persistence) lands in SP-2B.
+authorization against `rooms.hostUserId`, progress validation, broadcasts,
+bonus application and persistence) is implemented in
+`src/realtime/race-engine.ts` (SP-2B → SP-4B) and described by the race
+message flow below.
 
 Only `EN_ATTENTE` and `RESULTATS` accept new members (SALLE-09). A disconnected
 player who returns within 30 s resumes in place (COURSE-08).
@@ -300,8 +309,9 @@ player who returns within 30 s resumes in place (COURSE-08).
   mutation entry points; route handlers cover OAuth callbacks.
 * **Consequences:** Server and client code share the repo; validation and
   business logic must live in plain modules (`src/lib`, `src/db/queries`) so
-  they stay testable outside React. `.jsx` presentational files still exist and
-  must be converted to satisfy TECH-02.
+  they stay testable outside React. TECH-02 is satisfied: the repo contains no
+  `.js`/`.jsx` source files (the historical `.jsx` components were converted
+  and `tailwind.config.js` renamed to `.cjs`).
 
 ### ADR-002 — Database: PostgreSQL + Drizzle with committed migrations
 
@@ -383,8 +393,10 @@ player who returns within 30 s resumes in place (COURSE-08).
 * **Decision:** Jest with jsdom, co-located `*.test.ts(x)` files; business logic
   tested as pure functions; DB queries tested with mocked clients plus a real
   `npm run db:verify` check for column defaults, cascades and CHECK constraints.
-* **Consequences:** Playwright E2E (TEST-02) is planned but not installed yet;
-  no `.github/workflows` CI exists yet either.
+* **Consequences:** Playwright E2E (TEST-02) and `.github/workflows/ci.yml`
+  (TECH-09) now exist; E2E runs locally only (documented in
+  `playwright.config.ts` — it needs the Postgres container, the custom server
+  and a seeded database), while CI runs lint / typecheck / unit tests.
 
 ### ADR-009 — Environments: Docker Compose locally, Railway in production
 
@@ -692,7 +704,7 @@ Rules the flow enforces:
   `raceAborted` is broadcast, the room returns to `en_attente` and **no
   ranking is produced**.
 * The final results payload stays in memory for the room's lifetime
-  (`RaceEngine.takeResults`); persistence (RES-05, Phase 3) consumes it —
+  (`RaceEngine.takeResults`); persistence (RES-05) consumed it in SP-3B —
   see the seam documented in `src/realtime/race-engine.ts`.
 
 ### Client-side track pipeline: interpolation, ranking and overtakes (SP-2D)
