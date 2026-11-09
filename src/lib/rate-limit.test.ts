@@ -6,6 +6,9 @@
  */
 
 import {
+  avatarUploadLimiter,
+  AVATAR_UPLOAD_MAX_ATTEMPTS,
+  AVATAR_UPLOAD_WINDOW_MS,
   RateLimitExceededError,
   roomCodeJoinLimiter,
   ROOM_CODE_JOIN_MAX_ATTEMPTS,
@@ -152,5 +155,21 @@ describe('shared defaults (SALLE-10)', () => {
   test('exports the documented cap and window', () => {
     expect(ROOM_CODE_JOIN_MAX_ATTEMPTS).toBe(10);
     expect(ROOM_CODE_JOIN_WINDOW_MS).toBe(60_000);
+  });
+});
+
+describe('shared avatar-upload limiter (AUTH-04: 5 per 60 s per user)', () => {
+  test('exports the documented cap and window', () => {
+    expect(AVATAR_UPLOAD_MAX_ATTEMPTS).toBe(5);
+    expect(AVATAR_UPLOAD_WINDOW_MS).toBe(60_000);
+  });
+
+  test('the shared limiter exists with the AUTH-04 defaults', () => {
+    expect(avatarUploadLimiter).toBeInstanceOf(SlidingWindowRateLimiter);
+    expect(avatarUploadLimiter.remaining('avatar:some-user')).toBe(AVATAR_UPLOAD_MAX_ATTEMPTS);
+  });
+
+  test('tracks upload keys independently from room-code keys', () => {
+    expect(avatarUploadLimiter).not.toBe(roomCodeJoinLimiter);
   });
 });
