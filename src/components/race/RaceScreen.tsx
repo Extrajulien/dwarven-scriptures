@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { Messages } from '../../i18n/messages';
+import type { Locale, Messages } from '../../i18n/messages';
 import type { RaceProgress, RaceView } from '../../realtime/client-types';
 import type { RoomStatus } from '../../realtime/protocol';
 import type { RoomConfig } from '../../db/schema';
@@ -11,6 +11,7 @@ import SectionHeader from '../SectionHeader';
 import MobileRaceGate from './MobileRaceGate';
 import OvertakeIndicator from './OvertakeIndicator';
 import ProgressTrack from './ProgressTrack';
+import ResultsScreen from './ResultsScreen';
 import Top3Panel from './Top3Panel';
 import TypingZone from './TypingZone';
 
@@ -33,9 +34,11 @@ import TypingZone from './TypingZone';
  *   {@link MobileRaceGate}'s physical-keyboard notice while the track and
  *   top-3 stay visible; the quit button and the host's start button are not
  *   typing input and remain available;
- * - `resultats` — a clearly-marked **provisional** results placeholder
- *   (top-3 + own line). The full results screen is Phase 3 (RES-01/02);
- *   this placeholder is explicitly labelled as provisional in code and i18n.
+ * - `resultats` — the full results screen (RES-01..04): podium, complete
+ *   table, WPM-over-time chart for all participants and the local player's
+ *   keyboard heatmap, with the personal-record indicator. A viewer who
+ *   joined after the race (no `raceFinished` payload) sees the honest
+ *   "results unavailable" state — replay arrives with SP-3B persistence.
  *
  * All participants see the same text because every client renders
  * `race.text` from the same `countdownStarted`/`raceSnapshot` payload
@@ -61,12 +64,6 @@ export function countdownSecondsRemaining(startAt: string | null, nowMs: number)
   return Math.min(COUNTDOWN_SECONDS, Math.max(0, seconds));
 }
 
-const RESULT_STATUS_KEYS = {
-  finished: 'race.results.status.finished',
-  timeout: 'race.results.status.timeout',
-  quit: 'race.results.status.quit',
-} as const;
-
 /** The race text as plain, read-only stone panel (spectator/result views). */
 function RaceText({ text }: { text: string }) {
   return (
@@ -87,6 +84,7 @@ type RacerViewProps = {
   messages: Messages;
   onQuitRace: () => void;
   onSendProgress: (progress: RaceProgress) => void;
+  onKeyErrors: (errors: Readonly<Record<string, number>>) => void;
 };
 
 /**
@@ -96,7 +94,7 @@ type RacerViewProps = {
  * naturally, without a reset effect), while a confirmed quit survives within
  * the race — the player stays a spectator until the next one (COURSE-07).
  */
-function RacerView({ race, config, messages, onQuitRace, onSendProgress }: RacerViewProps) {
+function RacerView({ race, config, messages, onQuitRace, onSendProgress, onKeyErrors }: RacerViewProps) {
   const [confirmQuit, setConfirmQuit] = useState(false);
   // Local "instant spectator" switch: confirming the quit dialog flips the
   // local view to spectator immediately (the server then announces
@@ -170,6 +168,7 @@ function RacerView({ race, config, messages, onQuitRace, onSendProgress }: Racer
           initialProgress={race.ownProgress ?? undefined}
           messages={messages}
           onProgress={onSendProgress}
+          onKeyErrors={onKeyErrors}
         />
       </MobileRaceGate>
     </section>
@@ -191,7 +190,11 @@ export type RaceScreenProps = {
   viewerParticipantId: string;
   /** participantId → profile picture URL for user participants (track avatars). */
   pfpUrls?: Record<string, string | null>;
+  /** The viewer's pre-race personal best net WPM (RES-04); `null` for guests. */
+  bestWpm: number | null;
   messages: Messages;
+  /** Active UI locale, for the locale-aware result formatting (I18N-03). */
+  locale: Locale;
   onStartRace: () => void;
   onQuitRace: () => void;
   onSendProgress: (progress: RaceProgress) => void;
@@ -206,12 +209,17 @@ export default function RaceScreen({
   participantCount,
   viewerParticipantId,
   pfpUrls = {},
+  bestWpm,
   messages,
+  locale,
   onStartRace,
   onQuitRace,
   onSendProgress,
 }: RaceScreenProps) {
   const [nowMs, setNowMs] = useState(() => Date.now());
+  // RES-03: the LOCAL session's per-key error counts, fed by the typing zone
+  // on every wrong keystroke (client-side; the server only sees counters).
+  const [keyErrors, setKeyErrors] = useState<Readonly<Record<string, number>>>({});
 
   // Countdown ticker: the overlay re-reads the client clock 4×/s.
   useEffect(() => {
@@ -222,7 +230,38 @@ export default function RaceScreen({
     return () => clearInterval(id);
   }, [roomStatus]);
 
-  if (roomStatus === 'en_attente' || race === null) {
+  if (roomStatus === 'resultats') {
+    // RES-01..04: the full results screen from the `raceFinished` payload.
+    // A viewer who joined after the race never received that payload
+    // (replay is SP-3B persistence) — show the honest empty state.
+    const finished = race?.finished ?? null;
+    if (finished === null) {
+      return (
+        <section className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl">
+          <SectionHeader title={messages['results.unavailable']} />
+          <p
+            data-testid="results-unavailable"
+            className="font-body-sm text-body-sm text-dwarf-parchmentMuted"
+          >
+            {messages['results.unavailableHint']}
+          </p>
+        </section>
+      );
+    }
+    return (
+      <ResultsScreen
+        results={finished}
+        localParticipantId={viewerParticipantId}
+        pfpUrls={pfpUrls}
+        keyErrors={viewerRole === 'participant' ? keyErrors : null}
+        bestWpm={bestWpm}
+        messages={messages}
+        locale={locale}
+      />
+    );
+  }
+
+  if (roomStatus === 'en_attente' || roomStatus === 'fermee' || race === null) {
     // Waiting: the host launches (COURSE-02 gating), everyone else waits.
     const needsMore = participantCount < 2;
     return (
@@ -336,64 +375,14 @@ export default function RaceScreen({
           messages={messages}
           onQuitRace={onQuitRace}
           onSendProgress={onSendProgress}
+          onKeyErrors={setKeyErrors}
         />
       </section>
     );
   }
 
-  // resultats — PROVISIONAL placeholder. The full results screen with the
-  // podium, the complete table, charts and relaunch is Phase 3 (RES-01/02,
-  // COURSE-11); this card only proves the end-to-end data path.
-  const results = race.finished?.results ?? [];
-  const top3 = results.slice(0, 3);
-  const ownEntry = results.find((entry) => entry.participantId === viewerParticipantId);
-  return (
-    <section className="flex flex-col gap-space-md">
-      <div className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl">
-        <SectionHeader title={messages['race.resultsTitle']} />
-        <p
-          data-testid="results-provisional"
-          className="font-label-sm text-label-sm text-dwarf-parchmentMuted"
-        >
-          {messages['race.resultsProvisional']}
-        </p>
-
-        {top3.length > 0 && (
-          <ol className="flex flex-col gap-space-xs">
-            {top3.map((entry) => (
-              <li
-                key={entry.participantId}
-                className="flex flex-wrap items-baseline justify-between gap-space-xs border-b border-dwarf-border/40 py-space-xs last:border-b-0"
-              >
-                <span className="font-body-sm text-body-sm text-dwarf-parchment">
-                  {entry.rank}. {entry.displayName}
-                </span>
-                <span className="font-label-sm text-label-sm text-dwarf-gold">
-                  {Math.round(entry.wpm)} {messages['race.liveWpmLabel']}
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
-
-        {ownEntry && (
-          <div className="border-t border-dwarf-border pt-space-sm">
-            <span className="font-label-sm text-label-sm uppercase text-dwarf-gold">
-              {messages['race.resultsYourRace']}
-            </span>
-            <div className="flex flex-wrap gap-space-md font-label-sm text-label-sm text-dwarf-parchmentMuted">
-              <span>
-                {messages['race.liveWpmLabel']}: {Math.round(ownEntry.wpm)}
-              </span>
-              <span>
-                {messages['race.liveAccuracyLabel']}: {Math.round(ownEntry.accuracy)}%
-              </span>
-              <span>{messages[RESULT_STATUS_KEYS[ownEntry.status]]}</span>
-            </div>
-          </div>
-        )}
-      </div>
-      {race.text !== null && <RaceText text={race.text} />}
-    </section>
-  );
+  // Every non-resultats status below requires a live race view: the resultats
+  // branch above handles the finished race, the en_attente branch above the
+  // waiting room — what remains is the racing view.
+  throw new Error('unreachable: unexpected room status in RaceScreen');
 }

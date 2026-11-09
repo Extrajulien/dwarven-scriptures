@@ -679,12 +679,43 @@ export interface Messages {
   'race.spectatorViewHint': string;
   'race.quitButton': string;
   'race.confirmQuitBody': string;
-  'race.resultsTitle': string;
-  'race.resultsProvisional': string;
-  'race.resultsYourRace': string;
   'race.results.status.finished': string;
   'race.results.status.timeout': string;
   'race.results.status.quit': string;
+  // ------------------------------------------------------------ race results screen (RES-01..04, COURSE-11)
+  'results.title': string;
+  'results.podium.title': string;
+  'results.table.caption': string;
+  'results.table.rank': string;
+  'results.table.participant': string;
+  'results.table.wpm': string;
+  'results.table.rawWpm': string;
+  'results.table.accuracy': string;
+  'results.table.errors': string;
+  'results.table.time': string;
+  'results.table.status': string;
+  'results.table.bonuses': string;
+  'results.botTag': string;
+  'results.chart.title': string;
+  'results.chart.caption': string;
+  'results.heatmap.title': string;
+  'results.heatmap.caption': string;
+  'results.heatmap.legendLabel': string;
+  'results.heatmap.legend.zero': string;
+  'results.heatmap.legend.few': string;
+  'results.heatmap.legend.many': string;
+  'results.heatmap.legend.top': string;
+  'results.heatmap.weakestLabel': string;
+  'results.heatmap.noErrors': string;
+  'results.heatmap.unavailable': string;
+  'results.record.beaten': string;
+  'results.record.previousBest': string;
+  'results.unavailable': string;
+  'results.unavailableHint': string;
+  'results.relaunch': string;
+  'results.closeRoom': string;
+  'results.stay': string;
+  'results.leave': string;
   // ------------------------------------------------------------ mobile race gate (DES-06)
   'mobile.raceTitle': string;
   'mobile.raceBody': string;
@@ -1338,13 +1369,46 @@ export const MESSAGES: Record<Locale, Messages> = {
     'race.spectatorViewHint': 'Vous suivez la course en spectateur.',
     'race.quitButton': 'Abandonner la course',
     'race.confirmQuitBody': 'Abandonner la course ? Vous deviendrez spectateur de la course en cours.',
-    'race.resultsTitle': 'RÉSULTATS (APERÇU)',
-    'race.resultsProvisional':
-      'Aperçu provisoire — l’écran de résultats complet arrive en phase 3.',
-    'race.resultsYourRace': 'VOTRE COURSE',
     'race.results.status.finished': 'Terminé',
     'race.results.status.timeout': 'Temps écoulé',
     'race.results.status.quit': 'Abandon',
+    // ------------------------------------------------------------ écran de résultats (RES-01..04, COURSE-11)
+    'results.title': 'RÉSULTATS DE LA COURSE',
+    'results.podium.title': 'PODIUM',
+    'results.table.caption': 'Classement final de la course',
+    'results.table.rank': 'Rang',
+    'results.table.participant': 'Participant',
+    'results.table.wpm': 'MPM',
+    'results.table.rawWpm': 'MPM brut',
+    'results.table.accuracy': 'Précision',
+    'results.table.errors': 'Erreurs',
+    'results.table.time': 'Temps',
+    'results.table.status': 'Statut',
+    'results.table.bonuses': 'Bonus reçus',
+    'results.botTag': 'BOT',
+    'results.chart.title': 'MPM AU FIL DU TEMPS',
+    'results.chart.caption': 'MPM net de chaque participant pendant la course',
+    'results.heatmap.title': 'TOUCHES LES PLUS MANQUÉES',
+    'results.heatmap.caption': 'erreurs de VOTRE clavier sur cette course',
+    'results.heatmap.legendLabel': 'Erreurs',
+    'results.heatmap.legend.zero': '0',
+    'results.heatmap.legend.few': '1–2',
+    'results.heatmap.legend.many': '3–5',
+    'results.heatmap.legend.top': '6+',
+    'results.heatmap.weakestLabel': 'Touche la plus manquée',
+    'results.heatmap.noErrors':
+      'Aucune erreur sur cette course — un clavier digne d’une légende naine.',
+    'results.heatmap.unavailable':
+      'Carte de clavier indisponible : seules les frappes locales sont enregistrées (spectateur ou arrivée en cours de route).',
+    'results.record.beaten': 'NOUVEAU RECORD PERSONNEL',
+    'results.record.previousBest': 'Ancien record',
+    'results.unavailable': 'RÉSULTATS NON DISPONIBLES',
+    'results.unavailableHint':
+      'Vous avez rejoint la salle après la fin de la course : le classement n’a pas été rediffusé. Il sera réaffichable une fois la persistance des courses en place.',
+    'results.relaunch': 'Relancer la course',
+    'results.closeRoom': 'Fermer la salle',
+    'results.stay': 'Rester',
+    'results.leave': 'Quitter la salle',
     // ------------------------------------------------------------ portail mobile (DES-06)
     'mobile.raceTitle': 'CLAVIER PHYSIQUE REQUIS',
     'mobile.raceBody':
@@ -1993,12 +2057,45 @@ export const MESSAGES: Record<Locale, Messages> = {
     'race.spectatorViewHint': 'You are watching this race as a spectator.',
     'race.quitButton': 'Abandon the race',
     'race.confirmQuitBody': 'Abandon the race? You will become a spectator of the current race.',
-    'race.resultsTitle': 'RESULTS (PREVIEW)',
-    'race.resultsProvisional': 'Provisional preview — the full results screen arrives in phase 3.',
-    'race.resultsYourRace': 'YOUR RACE',
     'race.results.status.finished': 'Finished',
     'race.results.status.timeout': 'Timed out',
     'race.results.status.quit': 'Quit',
+    // ------------------------------------------------------------ race results screen (RES-01..04, COURSE-11)
+    'results.title': 'RACE RESULTS',
+    'results.podium.title': 'PODIUM',
+    'results.table.caption': 'Final race standings',
+    'results.table.rank': 'Rank',
+    'results.table.participant': 'Participant',
+    'results.table.wpm': 'WPM',
+    'results.table.rawWpm': 'Raw WPM',
+    'results.table.accuracy': 'Accuracy',
+    'results.table.errors': 'Errors',
+    'results.table.time': 'Time',
+    'results.table.status': 'Status',
+    'results.table.bonuses': 'Bonuses received',
+    'results.botTag': 'BOT',
+    'results.chart.title': 'WPM OVER TIME',
+    'results.chart.caption': 'Each participant’s net WPM during the race',
+    'results.heatmap.title': 'MOST MISSED KEYS',
+    'results.heatmap.caption': 'errors from YOUR keyboard during this race',
+    'results.heatmap.legendLabel': 'Errors',
+    'results.heatmap.legend.zero': '0',
+    'results.heatmap.legend.few': '1–2',
+    'results.heatmap.legend.many': '3–5',
+    'results.heatmap.legend.top': '6+',
+    'results.heatmap.weakestLabel': 'Most missed key',
+    'results.heatmap.noErrors': 'No errors this race — a keyboard worthy of a dwarven legend.',
+    'results.heatmap.unavailable':
+      'Keyboard map unavailable: only local keystrokes are recorded (spectator, or joined mid-race).',
+    'results.record.beaten': 'NEW PERSONAL RECORD',
+    'results.record.previousBest': 'Previous record',
+    'results.unavailable': 'RESULTS UNAVAILABLE',
+    'results.unavailableHint':
+      'You joined the room after the race ended: the standings were not re-broadcast. They will be re-displayable once race persistence lands.',
+    'results.relaunch': 'Relaunch the race',
+    'results.closeRoom': 'Close the room',
+    'results.stay': 'Stay',
+    'results.leave': 'Leave the room',
     // ------------------------------------------------------------ mobile race gate (DES-06)
     'mobile.raceTitle': 'PHYSICAL KEYBOARD REQUIRED',
     'mobile.raceBody':

@@ -14,8 +14,9 @@ import RaceScreen, {
  * COURSE-02/03/07 + GAME-1: the race screen derives the countdown from
  * `startAt` and the client clock, gates the host's start button, renders the
  * spectator view (no typing zone), runs the confirmed quit flow with an
- * instant local spectator switch, and shows the clearly-marked provisional
- * results placeholder.
+ * instant local spectator switch, and shows the full results screen on
+ * `raceFinished` (RES-01..04) or the honest "unavailable" state for late
+ * joiners.
  */
 
 const messages = MESSAGES.fr;
@@ -69,7 +70,9 @@ function renderScreen(overrides: Partial<RaceScreenProps> = {}) {
     isHost: false,
     participantCount: 2,
     viewerParticipantId: ADA,
+    bestWpm: null,
     messages,
+    locale: 'fr',
     onStartRace,
     onQuitRace,
     onSendProgress,
@@ -273,66 +276,90 @@ describe('en_course views (GAME-1, COURSE-07)', () => {
   });
 });
 
-describe('provisional results placeholder (resultats)', () => {
-  test('shows the top-3, the own line and the provisional marker', () => {
+describe('results screen (resultats, RES-01..04)', () => {
+  test('renders the full results screen from the raceFinished payload', () => {
     renderScreen({
       roomStatus: 'resultats',
       race: makeRace({
         phase: 'resultats',
-        text: 'bonjour',
-        totalLength: 7,
         finished: {
           durationMs: 45_000,
           results: [
-            makeResult({ rank: 1, displayName: 'rival', wpm: 45 }),
-            makeResult({ rank: 2, participantId: '88888888-8888-4888-8888-888888888888', displayName: 'bob', wpm: 40 }),
-            makeResult({ rank: 3, participantId: '77777777-7777-4777-8777-777777777777', displayName: 'carl', wpm: 35, status: 'timeout' }),
+            makeResult({ rank: 1, displayName: 'rival', wpm: 45, wpmSeries: [{ elapsedMs: 1_000, wpm: 40 }, { elapsedMs: 20_000, wpm: 45 }] }),
+            makeResult({ rank: 2, participantId: '88888888-8888-4888-8888-888888888888', displayName: 'bob', wpm: 40, status: 'timeout' }),
+            makeResult({ rank: 3, participantId: '77777777-7777-4777-8777-777777777777', displayName: 'carl', wpm: 35, status: 'quit' }),
             makeResult({ rank: 4, participantId: ADA, displayName: 'ada', wpm: 42, accuracy: 97, status: 'finished' }),
           ],
         },
       }),
     });
 
-    expect(screen.getByText(messages['race.resultsTitle'])).toBeInTheDocument();
-    expect(screen.getByTestId('results-provisional')).toHaveTextContent(
-      messages['race.resultsProvisional'],
-    );
-    // Top 3 only (the own 4th line is rendered separately).
-    expect(screen.getByText('1. rival')).toBeInTheDocument();
-    expect(screen.getByText('2. bob')).toBeInTheDocument();
-    expect(screen.getByText('3. carl')).toBeInTheDocument();
-    expect(screen.queryByText(/4\./)).not.toBeInTheDocument();
-    // Own stats line (rank 4 is still the viewer's own race).
-    expect(screen.getByText(messages['race.resultsYourRace'])).toBeInTheDocument();
-    expect(screen.getByText('MPM: 42')).toBeInTheDocument();
-    expect(screen.getByText('Précision: 97%')).toBeInTheDocument();
-    expect(screen.getByText(messages['race.results.status.finished'])).toBeInTheDocument();
-    // The text stays visible on the results screen.
-    expect(screen.getByTestId('race-text')).toHaveTextContent('bonjour');
+    expect(screen.getByText(messages['results.title'])).toBeInTheDocument();
+    // Podium + full table render.
+    expect(screen.getByTestId('results-podium')).toBeInTheDocument();
+    expect(screen.getByTestId('results-table')).toBeInTheDocument();
+    expect(screen.getAllByTestId('results-row')).toHaveLength(4);
+    // The chart renders a line for the participant with a series.
+    expect(screen.getByTestId('results-wpm-chart-line')).toBeInTheDocument();
+    // The local participant raced: their heatmap renders (empty = clean race).
+    expect(screen.getByTestId('results-heatmap-no-errors')).toBeInTheDocument();
   });
 
-  test('hides the own line when the viewer has no result entry', () => {
+  test('a late joiner sees the honest unavailable state (no raceFinished payload)', () => {
     renderScreen({
       roomStatus: 'resultats',
+      race: null,
+    });
+    expect(screen.getByTestId('results-unavailable')).toHaveTextContent(
+      messages['results.unavailableHint'],
+    );
+    expect(screen.queryByTestId('results-podium')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('results-table')).not.toBeInTheDocument();
+  });
+
+  test('a spectator never sees a fabricated keyboard heatmap', () => {
+    renderScreen({
+      roomStatus: 'resultats',
+      viewerRole: 'spectator',
       race: makeRace({
         phase: 'resultats',
-        text: 'bonjour',
-        totalLength: 7,
         finished: {
           durationMs: 45_000,
-          results: [makeResult({ rank: 1, displayName: 'rival' })],
+          results: [
+            makeResult({ rank: 1, displayName: 'rival' }),
+            makeResult({ rank: 2, participantId: ADA, displayName: 'ada' }),
+          ],
         },
       }),
     });
-    expect(screen.queryByText(messages['race.resultsYourRace'])).not.toBeInTheDocument();
+    expect(screen.getByTestId('results-heatmap-unavailable')).toBeInTheDocument();
   });
 
-  test('renders the provisional marker even before raceFinished arrives', () => {
+  test('the record indicator appears only when the local wpm beats a prior best (RES-04)', () => {
+    const finished = {
+      durationMs: 45_000,
+      results: [
+        makeResult({ rank: 1, displayName: 'rival', wpm: 90 }),
+        makeResult({ rank: 2, participantId: ADA, displayName: 'ada', wpm: 42 }),
+      ],
+    };
+    const { unmount } = renderScreen({
+      roomStatus: 'resultats',
+      bestWpm: 40,
+      race: makeRace({ phase: 'resultats', finished }),
+    });
+    expect(screen.getByTestId('results-record')).toHaveTextContent(
+      messages['results.record.beaten'],
+    );
+    unmount();
+
+    // Not beaten (below the best) → no indicator.
     renderScreen({
       roomStatus: 'resultats',
-      race: makeRace({ phase: 'resultats', text: 'bonjour', totalLength: 7, finished: null }),
+      bestWpm: 99,
+      race: makeRace({ phase: 'resultats', finished }),
     });
-    expect(screen.getByTestId('results-provisional')).toBeInTheDocument();
+    expect(screen.queryByTestId('results-record')).not.toBeInTheDocument();
   });
 });
 

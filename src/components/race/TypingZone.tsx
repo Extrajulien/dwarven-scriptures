@@ -77,6 +77,12 @@ type TypingZoneProps = {
   messages: Messages;
   /** Progress sink; the parent wires `sendRaceProgress` from the hook. */
   onProgress: (progress: RaceProgress) => void;
+  /**
+   * RES-03: reports the per-key error counts on every change (wrong
+   * keystrokes only). The parent keeps the latest map for the results
+   * screen's keyboard heatmap — client-side, no server round-trip.
+   */
+  onKeyErrors?: (errors: Readonly<Record<string, number>>) => void;
 };
 
 export default function TypingZone({
@@ -86,6 +92,7 @@ export default function TypingZone({
   initialProgress,
   messages,
   onProgress,
+  onKeyErrors,
 }: TypingZoneProps) {
   const [state, dispatch] = useReducer(
     typingReducer,
@@ -103,10 +110,21 @@ export default function TypingZone({
   const sentTotalRef = useRef(initialProgress?.totalKeystrokes ?? 0);
   const completedRef = useRef(false);
   const onProgressRef = useRef(onProgress);
+  const onKeyErrorsRef = useRef(onKeyErrors);
 
   useEffect(() => {
     onProgressRef.current = onProgress;
   }, [onProgress]);
+
+  useEffect(() => {
+    onKeyErrorsRef.current = onKeyErrors;
+  }, [onKeyErrors]);
+
+  // RES-03: forward the per-key error map whenever a wrong keystroke changes
+  // it (the parent stores the latest value for the results heatmap).
+  useEffect(() => {
+    onKeyErrorsRef.current?.(state.keyErrors);
+  }, [state.keyErrors]);
 
   /** Sends counters, keeping the total monotonic for the server (COURSE-06). */
   const flush = useCallback((counters: RaceProgress) => {

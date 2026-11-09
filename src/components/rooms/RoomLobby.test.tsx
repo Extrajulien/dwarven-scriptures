@@ -154,6 +154,8 @@ function renderOpenLobby(
       viewer={viewer}
       initialInvitations={invitations}
       messages={messages}
+      locale="fr"
+      viewerBestWpm={null}
     />,
   );
 }
@@ -191,6 +193,8 @@ describe('lobby snapshot rendering (SALLE-01, CONF-12)', () => {
         viewer={memberViewer}
         initialInvitations={null}
         messages={messages}
+        locale="fr"
+        viewerBestWpm={null}
       />,
     );
     expect(mockJoin).toHaveBeenCalledWith({ invitationToken: 'tok123' });
@@ -295,6 +299,8 @@ describe('leave, kick notice and closed screen', () => {
         viewer={memberViewer}
         initialInvitations={null}
         messages={messages}
+        locale="fr"
+        viewerBestWpm={null}
       />,
     );
 
@@ -311,6 +317,8 @@ describe('leave, kick notice and closed screen', () => {
         viewer={memberViewer}
         initialInvitations={null}
         messages={messages}
+        locale="fr"
+        viewerBestWpm={null}
       />,
     );
 
@@ -334,6 +342,8 @@ describe('leave, kick notice and closed screen', () => {
         viewer={memberViewer}
         initialInvitations={null}
         messages={messages}
+        locale="fr"
+        viewerBestWpm={null}
       />,
     );
 
@@ -418,6 +428,8 @@ describe('race screen integration (COURSE-02/03, GAME-1)', () => {
         viewer={guestViewer}
         initialInvitations={null}
         messages={messages}
+        locale="fr"
+        viewerBestWpm={null}
       />,
     );
     expect(screen.getByTestId('spectator-badge')).toBeInTheDocument();
@@ -449,6 +461,8 @@ describe('config editing and live sync (CONF-01..12)', () => {
         viewer={viewer}
         initialInvitations={null}
         messages={messages}
+        locale="fr"
+        viewerBestWpm={null}
       />,
     );
   }
