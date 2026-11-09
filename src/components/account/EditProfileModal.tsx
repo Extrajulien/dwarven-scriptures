@@ -1,10 +1,15 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import type { ComponentType, ReactNode } from 'react';
+import type { ChangeEvent, ComponentType, ReactNode } from 'react';
 import type { AccountProfile } from '../../app/account/profile';
-import { unlinkAccount, updateProfile } from '../../app/account/actions';
+import { unlinkAccount, updateProfile, uploadAvatar } from '../../app/account/actions';
+import {
+  AVATAR_CONTENT_TYPES,
+  AVATAR_MAX_BYTES,
+  type AvatarUploadErrorCode,
+} from '../../lib/avatar-upload';
 import type { Messages } from '../../i18n/messages';
 import ButtonPrimary from '../ButtonPrimary';
 import ButtonSecondary from '../ButtonSecondary';
@@ -53,6 +58,20 @@ const AVATAR_ERROR_KEYS: Record<string, keyof Messages> = {
   invalidUrl: 'account.modal.error.invalidUrl',
 };
 
+/** Every failure code the upload path can produce, server or client side. */
+type UploadErrorCode = AvatarUploadErrorCode | 'unauthenticated' | 'rateLimited' | 'unexpected';
+
+/** Server-side upload failure codes → localized message keys (AUTH-04). */
+const UPLOAD_ERROR_KEYS: Record<UploadErrorCode, keyof Messages> = {
+  missingFile: 'upload.error.missingFile',
+  emptyFile: 'upload.error.emptyFile',
+  fileTooLarge: 'upload.error.fileTooLarge',
+  unsupportedType: 'upload.error.unsupportedType',
+  unauthenticated: 'upload.error.unauthenticated',
+  rateLimited: 'upload.error.rateLimited',
+  unexpected: 'upload.error.unexpected',
+};
+
 const SOUND_OPTION_KEYS: readonly (keyof Messages)[] = [
   'account.modal.sound1',
   'account.modal.sound2',
@@ -85,12 +104,89 @@ export default function EditProfileModal({
   const [activeTab, setActiveTab] = useState<Tab>('identity');
   const [state, formAction, pending] = useActionState(updateProfile, null);
 
+  // Avatar upload (AUTH-04): the file is checked client-side as a hint only
+  // (size + declared type), previewed, then handed to the `uploadAvatar`
+  // server action which decides the real type from the bytes.
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<UploadErrorCode | null>(null);
+  const [uploadPending, startUploadTransition] = useTransition();
+  const blobUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (state && state.ok) {
       router.refresh();
       onClose();
     }
   }, [state, router, onClose]);
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>): void {
+    const file = event.target.files?.[0] ?? null;
+    // Clear the input value so re-selecting the same file re-fires `change`.
+    event.target.value = '';
+
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+
+    if (!file) {
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      setUploadError(null);
+      return;
+    }
+
+    const clientError = previewUploadError(file);
+    if (clientError) {
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      setUploadError(clientError);
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    blobUrlRef.current = url;
+    setSelectedFile(file);
+    setPreviewUrl(url);
+    setUploadError(null);
+  }
+
+  function handleUpload(): void {
+    if (!selectedFile || uploadPending) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('avatar', selectedFile);
+
+    startUploadTransition(async () => {
+      const result = await uploadAvatar(formData);
+      if (result.ok) {
+        if (blobUrlRef.current) {
+          URL.revokeObjectURL(blobUrlRef.current);
+          blobUrlRef.current = null;
+        }
+        setSelectedFile(null);
+        setUploadError(null);
+        // The new pfpUrl is the serving route; refresh so every avatar on the
+        // page (navbar, identity card, modal) picks up the fresh URL.
+        setPreviewUrl(result.pfpUrl);
+        router.refresh();
+      } else {
+        setUploadError(result.error);
+      }
+    });
+  }
 
   if (!open) {
     return null;
@@ -201,7 +297,7 @@ export default function EditProfileModal({
                   )}
                 </div>
 
-                {/* Avatar URL */}
+                {/* Avatar URL (kept as-is: the URL-edit path stays available) */}
                 <div className="space-y-2 border-t border-outline-variant/60 pt-1">
                   <label
                     htmlFor="profile-pfpUrl"
@@ -212,7 +308,7 @@ export default function EditProfileModal({
                   <div className="flex flex-wrap items-center gap-3">
                     <div className="relative h-14 w-14 flex-shrink-0 rounded border-2 border-primary bg-surface-container-lowest p-0.5 shadow-gold-glow">
                       <UserAvatar
-                        pfpUrl={profile.pfpUrl}
+                        pfpUrl={previewUrl ?? profile.pfpUrl}
                         username={profile.username}
                         className="h-full w-full"
                         iconClassName="text-headline-md"
@@ -239,6 +335,43 @@ export default function EditProfileModal({
                   )}
                   <p className="font-label-sm text-label-sm text-outline">
                     {messages['account.modal.avatarHint']}
+                  </p>
+                </div>
+
+                {/* Avatar upload (AUTH-04) */}
+                <div className="space-y-1.5 border-t border-outline-variant/60 pt-2">
+                  <label
+                    htmlFor="profile-avatar-file"
+                    className="block font-label-sm text-label-sm font-bold uppercase tracking-widest text-outline"
+                  >
+                    {messages['upload.chooseFile']}
+                  </label>
+                  <input
+                    id="profile-avatar-file"
+                    name="avatar"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={uploadPending}
+                    onChange={handleFileChange}
+                    className="w-full cursor-pointer rounded border border-outline-variant bg-surface-container-lowest px-2 py-1.5 font-mono font-body-sm text-body-sm text-on-surface file:mr-3 file:cursor-pointer file:rounded file:border file:border-outline-variant file:bg-surface-container-high file:px-2 file:py-1 file:font-mono file:font-label-sm file:text-label-sm file:font-bold file:uppercase file:tracking-wider file:text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  />
+                  {uploadError && (
+                    <p role="alert" className="font-label-sm text-label-sm font-medium text-error">
+                      {messages[UPLOAD_ERROR_KEYS[uploadError] ?? 'upload.error.unexpected']}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                    <ButtonPrimary
+                      type="button"
+                      onClick={handleUpload}
+                      disabled={uploadPending || !selectedFile}
+                    >
+                      <Icon name="upload" className="text-headline-sm" />
+                      {uploadPending ? messages['upload.uploading'] : messages['upload.upload']}
+                    </ButtonPrimary>
+                  </div>
+                  <p className="font-label-sm text-label-sm text-outline">
+                    {messages['upload.hint']}
                   </p>
                 </div>
               </div>
@@ -373,4 +506,27 @@ function TabButton({
       {children}
     </button>
   );
+}
+
+const ACCEPTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
+
+/** Client-side hint codes; the server action re-validates everything. */
+type UploadHintError = 'emptyFile' | 'fileTooLarge' | 'unsupportedType';
+
+/**
+ * Pre-submit sanity check (AUTH-04): the size comes from `File.size` and the
+ * type from the declared MIME/extension — a convenience only, the server
+ * decides the real type from the magic bytes (SEC-02).
+ */
+function previewUploadError(file: File): UploadHintError | null {
+  if (file.size === 0) {
+    return 'emptyFile';
+  }
+  if (file.size > AVATAR_MAX_BYTES) {
+    return 'fileTooLarge';
+  }
+  const name = file.name.toLowerCase();
+  const declaredTypeKnown = (AVATAR_CONTENT_TYPES as readonly string[]).includes(file.type);
+  const extensionKnown = ACCEPTED_EXTENSIONS.some((extension) => name.endsWith(extension));
+  return declaredTypeKnown || extensionKnown ? null : 'unsupportedType';
 }
