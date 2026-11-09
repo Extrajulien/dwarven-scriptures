@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import type { Messages } from '../../i18n/messages';
+import { localizeBotDisplayName } from '../../lib/race/bot-display';
 import type { RankedTrackParticipant } from '../../lib/race/track';
 import type { RaceTrackParticipant } from '../../realtime/client-types';
 import UserAvatar from '../UserAvatar';
@@ -9,14 +10,14 @@ import GuestAvatar from '../rooms/GuestAvatar';
 
 /**
  * One participant marker on the progress track (COURSE-05): the avatar
- * (UserAvatar / GuestAvatar pattern; bots get a distinct stone rune until
- * their dedicated Phase-4 marker — BOT-04), the display name, a live WPM chip
- * and, for finishers, the finish-order badge. The marker is positioned by the
- * parent through a `--track-progress` custom property: the marker column is
- * `var(--track-marker-w)` wide and its `left` is
- * `calc(progress * (100% - var(--track-marker-w)))`, so the marker never
- * spills out of the lane even at progress 0 or 1 (no horizontal overflow at
- * 360 px — DES-06).
+ * (UserAvatar / GuestAvatar pattern; bots get a distinct muted stone rune —
+ * BOT-04), the display name (bots are localized from their neutral wire
+ * name, BOT-04/I18N-01), a live WPM chip and, for finishers, the finish-order
+ * badge. The marker is positioned by the parent through a `--track-progress`
+ * custom property: the marker column is `var(--track-marker-w)` wide and its
+ * `left` is `calc(progress * (100% - var(--track-marker-w)))`, so the marker
+ * never spills out of the lane even at progress 0 or 1 (no horizontal
+ * overflow at 360 px — DES-06).
  *
  * The local participant gets a gold ring + glow and the i18n "you" tag; the
  * live top-3 get a gold name. Markers are labelled (`role="group"` +
@@ -49,9 +50,8 @@ function MarkerAvatar({
         />
       );
     case 'bot':
-      // Bots get their own marker design in Phase 4 (BOT-04); until then they
-      // ride the track with a distinct muted stone rune so they never look
-      // like human participants.
+      // Distinct muted stone rune (BOT-04): bots never ride a human avatar
+      // and are identifiable at a glance on the track.
       return (
         <span
           data-testid="track-marker-bot"
@@ -72,6 +72,8 @@ export type TrackMarkerProps = {
   /** Finish rank (1 = first) when this participant has finished; else null. */
   finishRank: number | null;
   pfpUrl?: string | null;
+  /** BONUS-03: a bonus just hit this participant — brief glow, timer-cleared. */
+  bonusFlash?: boolean;
   messages: Messages;
 };
 
@@ -81,12 +83,17 @@ export default function TrackMarker({
   isLocal,
   finishRank,
   pfpUrl,
+  bonusFlash = false,
   messages,
 }: TrackMarkerProps) {
   const isTop3 = participant.rank <= 3;
+  const displayName =
+    participant.kind === 'bot'
+      ? localizeBotDisplayName(participant.displayName, messages)
+      : participant.displayName;
   const ariaLabel = [
     `${messages['track.rankLabel']} ${participant.rank}`,
-    participant.displayName,
+    displayName,
     `${Math.round(participant.wpm)} ${messages['race.liveWpmLabel']}`,
     finishRank !== null ? `${messages['track.finishLabel']} ${finishRank}` : null,
   ]
@@ -100,6 +107,7 @@ export default function TrackMarker({
       data-local={isLocal ? 'true' : 'false'}
       data-top3={isTop3 ? 'true' : 'false'}
       data-finished={participant.finished ? 'true' : 'false'}
+      data-bonus-flash={bonusFlash ? 'true' : 'false'}
       data-progress={progress.toFixed(3)}
       role="group"
       aria-label={ariaLabel}
@@ -135,9 +143,17 @@ export default function TrackMarker({
             isTop3 || isLocal ? 'text-dwarf-gold' : 'text-dwarf-parchment'
           }`}
         >
-          {participant.displayName}
+          {displayName}
         </span>
-        <span className={`relative rounded ${isLocal ? 'ring-2 ring-dwarf-gold shadow-gold-glow' : ''}`}>
+        <span
+          className={`relative rounded ${
+            isLocal
+              ? 'ring-2 ring-dwarf-gold shadow-gold-glow'
+              : bonusFlash
+                ? 'ring-2 ring-dwarf-rune-bright shadow-gold-glow animate-pulse'
+                : ''
+          }`}
+        >
           <MarkerAvatar participant={participant} pfpUrl={pfpUrl} />
           {isLocal && (
             <span

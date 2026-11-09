@@ -1,4 +1,5 @@
 import type {
+  BonusAppliedMessage,
   MemberInfo,
   RaceResultEntry,
   RaceTickParticipant,
@@ -109,6 +110,13 @@ export type RaceView = {
   /** participantId → finish rank, from `participantFinished`. */
   finishRanks: Record<string, number>;
   finished: RaceResultsView | null;
+  /**
+   * Comeback-bonus events received during this race, in order (BONUS-03
+   * announcement data). SP-4C renders the announcements and the text
+   * adjustments from this log; the reducer also folds each event's
+   * `payload.totalLength` into the targeted `raceTick` participant.
+   */
+  bonusLog: BonusAppliedMessage[];
 };
 
 /** The full hook state: the room socket state plus the active-race view. */

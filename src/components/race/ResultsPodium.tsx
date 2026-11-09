@@ -2,6 +2,7 @@
 
 import type { Locale, Messages } from '../../i18n/messages';
 import { formatNumber } from '../../i18n/format';
+import { localizeBotDisplayName } from '../../lib/race/bot-display';
 import type { RaceResultEntry } from '../../realtime/protocol';
 import UserAvatar from '../UserAvatar';
 import GuestAvatar from '../rooms/GuestAvatar';
@@ -31,6 +32,18 @@ function ParticipantAvatar({
 }) {
   if (entry.kind === 'guest') {
     return <GuestAvatar seed={entry.participantId} className="h-12 w-12 text-headline-md" />;
+  }
+  if (entry.kind === 'bot') {
+    // Distinct muted stone rune (BOT-04): bots never stand on a human avatar.
+    return (
+      <span
+        data-testid="results-podium-bot-rune"
+        aria-hidden="true"
+        className="flex h-12 w-12 items-center justify-center rounded border border-dwarf-border bg-dwarf-basalt font-display text-headline-md text-dwarf-parchmentMuted"
+      >
+        {'ᛝ'}
+      </span>
+    );
   }
   return (
     <UserAvatar
@@ -85,7 +98,9 @@ export default function ResultsPodium({
               <div className="flex flex-col items-center gap-space-xs text-center">
                 <ParticipantAvatar entry={entry} pfpUrls={pfpUrls} />
                 <span className="max-w-full truncate font-body-sm text-body-sm text-dwarf-parchment">
-                  {entry.displayName}
+                  {entry.kind === 'bot'
+                    ? localizeBotDisplayName(entry.displayName, messages)
+                    : entry.displayName}
                   {entry.kind === 'bot' && (
                     <span className="ml-space-xs font-label-sm text-label-sm text-dwarf-magma">
                       {messages['results.botTag']}

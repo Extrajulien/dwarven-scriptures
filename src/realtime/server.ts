@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, Server as HttpServer } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { getRoomForJoin, setRoomStatus } from '../db/queries/rooms';
+import { getDictionaryWords } from '../db/queries/texts';
 import { persistRaceResult } from '../db/queries/races';
 import { getUserFullProfile } from '../db/queries/users';
 // Pure token codecs — the realtime server runs before the Next request
@@ -171,6 +172,13 @@ function createRaceEngine(getHub: () => RoomHub): RaceEngine {
       };
     },
     pickText: pickRaceText,
+    // BONUS-01/02: the `addWords` word pool — the dictionary of the same
+    // language × complexity pair (the tick loop itself stays I/O-free).
+    pickBonusWordPool: (config) =>
+      getDictionaryWords({
+        language: config.textLanguage,
+        complexity: config.textComplexity,
+      }),
     persistStatus: (roomId, status) => setRoomStatus(roomId, status),
     // RES-05: the engine hands over the finished race exactly once; the
     // persistence layer writes race + participants + user stats in one

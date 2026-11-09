@@ -128,6 +128,7 @@ function emptyRace(phase: RaceView['phase']): RaceView {
     lastTickAt: null,
     finishRanks: {},
     finished: null,
+    bonusLog: [],
   };
 }
 
@@ -307,6 +308,28 @@ export function applyServerMessage(
           code: message.code,
           message: message.message ?? `server error: ${message.code}`,
           fatal: isFatalErrorCode(message.code),
+        },
+      };
+
+    case 'bonusApplied':
+      // BONUS-01..04: apply the event to the client state — the target
+      // participant's effective length is updated immediately (the next tick
+      // confirms it) and the event joins the bonus log SP-4C renders as the
+      // track/fog/text announcements (BONUS-03). The actual text adjustment
+      // rendering stays SP-4C; this reducer only carries the data.
+      if (!previous.race) {
+        return previous;
+      }
+      return {
+        ...previous,
+        race: {
+          ...previous.race,
+          participants: previous.race.participants.map((participant) =>
+            participant.participantId === message.targetParticipantId
+              ? { ...participant, totalLength: message.payload.totalLength }
+              : participant,
+          ),
+          bonusLog: [...previous.race.bonusLog, message],
         },
       };
 

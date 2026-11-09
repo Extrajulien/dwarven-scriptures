@@ -1,8 +1,28 @@
-import type { RoomConfig } from '../db/schema';
+import type { BotLevel, RoomConfig } from '../db/schema';
+import {
+  extendBotSchedule,
+  generateBotSchedule,
+  truncateBotSchedule,
+  type BotSchedule,
+} from '../lib/bots/schedule';
 import {
   RateLimitExceededError,
   SlidingWindowRateLimiter,
 } from '../lib/rate-limit';
+import {
+  BONUS_SEED_SALT,
+  BONUS_WORDS_SEED_SALT,
+  BONUS_WORDS_PER_EVENT,
+  evaluateBonusEvent,
+  findBonusLeader,
+  generateBonusWords,
+  newlyCrossedCheckpoints,
+  pickBonusHelpTarget,
+  pickBonusType,
+  type BonusParticipantState,
+  type BonusType,
+} from '../lib/race/bonuses';
+import { createSeededRandom } from '../lib/race/text-generator';
 import {
   advance,
   createRace,
@@ -12,13 +32,15 @@ import {
   textVisibleForPhase,
   type ParticipantFinalState,
   type ParticipantKind,
+  type RaceParticipant,
   type RacePhase,
   type RaceState,
   type RaceText,
 } from '../lib/race/state';
 import { collectRaceParticipants } from '../lib/race/start-rules';
-import { accuracy, netWpm, rawWpm } from '../lib/race/stats';
+import { accuracy, netWpm, progression, rawWpm } from '../lib/race/stats';
 import type {
+  BonusAppliedMessage,
   CountdownStartedMessage,
   RaceFinishedMessage,
   RaceSnapshotMessage,
@@ -77,6 +99,31 @@ import type {
  * - **Ranking (COURSE-10):** finishers by finish time, then timeouts by
  *   progression, then quits by progression at the moment of quitting.
  *   Computed server-side at the `en_course → resultats` transition.
+ * - **Bots (BOT-01/04/05, ADR-011):** at start, the engine appends one
+ *   participant per configured bot (`config.bots`, CONF-10) and drives each
+ *   of them through the same race model as humans — a seeded per-character
+ *   schedule (`src/lib/bots/schedule.ts`) applied inside the tick loop,
+ *   updating exactly the same cumulative counters. Bots finish when their
+ *   schedule completes, rank like humans (COURSE-10), appear in `raceTick`/
+ *   `raceFinished`, and persist as `kind: 'bot'` rows (no `user_stats`).
+ *   They have no hub key, so quit/reconnect paths never apply; a time limit
+ *   (COURSE-09) or an abort (GAME-5) ends them like anyone else. Bot seeds
+ *   are `raceSeed + botNumber` — deterministic and replayable (BOT-05):
+ *   relaunch draws a fresh race seed, so schedules (and synthetic ids)
+ *   regenerate.
+ * - **Comeback bonuses (BONUS-01/04, CONF-09):** when `config.bonusesEnabled`,
+ *   the tick loop evaluates the pure rules of `src/lib/race/bonuses.ts`:
+ *   leader-progression checkpoints at 25/50/75 %, one seeded effect per
+ *   crossing (hinder on the leader, help on the most-behind eligible
+ *   participant), applied to each participant's **effective text** — the
+ *   engine keeps a per-participant text (starts as the base text, adjusted
+ *   by `addWords`/`removeWords`), so finish, progress validation and the
+ *   track's `totalLength` all use the bonus-adjusted length (BONUS-04).
+ *   Bots adapt through the same state: a shrunk text truncates their
+ *   schedule, a grown text extends it deterministically (ADR-011 — no
+ *   bot-specific paths). Every applied event broadcasts `bonusApplied` and
+ *   increments the target's `bonusesReceived` (capped at 3 per race),
+ *   persisted with the results (RES-05).
  *
  * ## Persistence and replay (Phase 3)
  *
@@ -120,6 +167,14 @@ export const RACE_WPM_SERIES_MAX_POINTS = 2_400;
 
 export const RACE_ABORT_REASON_AFK = 'afk_timeout';
 export const RACE_ABORT_REASON_HOST_CLOSED = 'host_closed';
+
+/**
+ * SALLE-05/COURSE-02: the track holds at most 30 racers, humans and bots
+ * alike. The room capacity already caps humans at 30; the bot creation below
+ * applies the same ceiling to the combined field so the track and the
+ * persistence batch (races.ts) can never overflow.
+ */
+export const RACE_MAX_PARTICIPANTS = 30;
 
 /** Machine-readable failure codes the engine reports (protocol `WsErrorCode` subset). */
 export type RaceEngineErrorCode =
@@ -179,6 +234,13 @@ export type RaceEngineDeps = {
   loadRoom(roomId: number): Promise<RaceEngineRoomData | null>;
   /** Picks the race text; `null` when the corpus/dictionary cannot provide one. */
   pickText(config: RoomConfig, seed: number): Promise<RaceText | null>;
+  /**
+   * BONUS-01/02: the word pool for `addWords` bonuses — the dictionary of the
+   * same language × complexity pair (loaded once at start when
+   * `config.bonusesEnabled`, so the tick loop never performs I/O). An empty
+   * pool simply makes `addWords` events skip (`no_extra_words`).
+   */
+  pickBonusWordPool(config: RoomConfig): Promise<string[]>;
   /** Persists `rooms.status` on every phase change (COURSE-01). */
   persistStatus(roomId: number, status: RacePhase): Promise<void>;
   /**
@@ -236,6 +298,8 @@ export type RaceEngineResultEntry = {
   /** Validated characters at the moment the status was recorded (COURSE-10). */
   progressChars: number;
   rank: number;
+  /** Comeback bonuses received during the race (BONUS-01, cap 3). */
+  bonusesReceived: number;
   /**
    * WPM-over-time series for the results charts (RES-03); sampled at most
    * once per tick broadcast and closed by a final sample at `endedAtMs`.
@@ -279,12 +343,27 @@ type ParticipantRuntime = {
   /** Guest cookie id for guest participants (persistence identity). */
   guestToken: string | null;
   progress: RaceEngineProgress;
+  /**
+   * The participant's current effective text (BONUS-04): starts as the race
+   * text and is adjusted in place by `addWords`/`removeWords` bonuses. Its
+   * length is the participant's total length for progress validation, the
+   * finish condition, the track's `totalLength` and the progression ratio.
+   */
+  text: string;
+  /** Comeback bonuses received so far this race (BONUS-01 cap). */
+  bonusesReceived: number;
   connected: boolean;
   /** Timestamp (ms) of the socket drop, while the reconnect window runs. */
   disconnectedAt: number | null;
   rateLimiter: SlidingWindowRateLimiter;
   /** WPM-over-time samples (RES-03), appended at tick-broadcast rate. */
   wpmSeries: WpmSeriesPoint[];
+  /** Bot timeline (BOT-01); `null` for human participants. */
+  botSchedule: BotSchedule | null;
+  /** Bot level (needed to extend the schedule after an `addWords` bonus). */
+  botLevel: BotLevel | null;
+  /** Next unapplied schedule step index (bots only). */
+  botStepCursor: number;
 };
 
 /** One room's race: the pure machine state plus the transport runtime data. */
@@ -296,6 +375,8 @@ type RoomRace = {
   runtimes: Map<string, ParticipantRuntime>;
   /** hubKey → memberId. */
   byHubKey: Map<string, string>;
+  /** Seed drawn at start (text, bots AND bonuses all derive from it, BOT-05). */
+  raceSeed: number;
   /** Seed of the random-mode text, recorded for reproducibility; null otherwise. */
   textSeed: number | null;
   /** Last `raceTick` broadcast, ms. */
@@ -308,6 +389,16 @@ type RoomRace = {
   progressAtEnd: Map<string, number>;
   /** Final ranking, kept in memory after `resultats` (Phase-3 seam). */
   finalResults: RaceResultsPayload | null;
+  /** Bonus checkpoints already fired (fractions of BONUS_CHECKPOINTS). */
+  firedCheckpoints: number[];
+  /** The leader's progression at the previous bonus evaluation. */
+  lastLeaderProgress: number | null;
+  /** Seeded bonus-type RNG (raceSeed + BONUS_SEED_SALT). */
+  bonusRng: () => number;
+  /** Dictionary words for `addWords`; empty when bonuses are disabled. */
+  bonusWordPool: string[];
+  /** Number of checkpoint events evaluated (ordinals for the word seeds). */
+  bonusEvents: number;
 };
 
 function zeroProgress(): RaceEngineProgress {
@@ -323,6 +414,87 @@ function mapStartError(error: RaceTransitionError): RaceEngineOutcome {
     return { ok: false, code: 'not_host', message: error.message };
   }
   return { ok: false, code: 'race_not_running', message: error.message };
+}
+
+/**
+ * BOT-05: deterministic synthetic participant id for a bot, shaped as a
+ * UUID v4 so the wire protocol (`participantId: z.uuid()`) accepts it
+ * unchanged. Derived from the bot's seed through the same mulberry32 PRNG as
+ * the schedule, so the same `raceSeed + botNumber` always yields the same
+ * id. Collision with a real member UUID is cryptographically negligible.
+ */
+export function syntheticBotParticipantId(seed: number): string {
+  const rand = createSeededRandom(seed);
+  const hex = Array.from({ length: 8 }, () =>
+    Math.floor(rand() * 0x1_0000_0000)
+      .toString(16)
+      .padStart(8, '0'),
+  ).join('');
+  const variant = '89ab'[Math.floor(rand() * 4)];
+  return (
+    `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-` +
+    `${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`
+  );
+}
+
+/** One configured bot turned into a race participant plus its schedule. */
+export type BotRaceEntry = {
+  participant: RaceParticipant;
+  /** Wire identity — the synthetic UUID, used as the machine's memberId too. */
+  participantId: string;
+  botNumber: number;
+  /** Bot level (BOT-01) — kept so a bonus-extended schedule can regenerate. */
+  level: BotLevel;
+  schedule: BotSchedule;
+};
+
+/**
+ * BOT-01/04/05, CONF-10: turns `config.bots` into race participants and
+ * per-bot schedules. Bots count towards the start guards like humans
+ * (COURSE-02), are numbered across levels (`botNumber`), seeded with
+ * `raceSeed + botNumber` and capped so the combined field never exceeds
+ * {@link RACE_MAX_PARTICIPANTS} (SALLE-05 ceiling — excess configured bots
+ * are skipped, documented choice). `humanRacerCount` is the number of racing
+ * humans already collected from the room membership.
+ */
+export function buildBotRaceEntries(options: {
+  config: RoomConfig;
+  raceSeed: number;
+  text: string;
+  humanRacerCount: number;
+}): BotRaceEntry[] {
+  const entries: BotRaceEntry[] = [];
+  let botNumber = 0;
+  for (const bot of options.config.bots) {
+    for (let offset = 0; offset < bot.count; offset++) {
+      if (options.humanRacerCount + entries.length >= RACE_MAX_PARTICIPANTS) {
+        return entries;
+      }
+      botNumber += 1;
+      const seed = options.raceSeed + botNumber;
+      const participantId = syntheticBotParticipantId(seed);
+      entries.push({
+        participant: {
+          memberId: participantId,
+          kind: 'bot',
+          // Neutral `"<level> <number>"` code — the UI localizes it (BOT-04);
+          // never rendered raw.
+          displayName: `${bot.level} ${botNumber}`,
+          isSpectator: false,
+        },
+        participantId,
+        botNumber,
+        level: bot.level,
+        schedule: generateBotSchedule({
+          text: options.text,
+          level: bot.level,
+          seed,
+          errorMode: options.config.errorMode,
+        }),
+      });
+    }
+  }
+  return entries;
 }
 
 export class RaceEngine implements RaceEngineHooks {
@@ -456,11 +628,33 @@ export class RaceEngine implements RaceEngineHooks {
       };
     }
 
+    // BONUS-01/02, CONF-09: the `addWords` word pool is loaded exactly once,
+    // at start, so the synchronous tick loop never performs I/O. An empty
+    // pool (or a disabled config) simply makes `addWords` events skip.
+    const bonusWordPool = room.config.bonusesEnabled
+      ? await this.deps.pickBonusWordPool(room.config)
+      : [];
+
+    // BOT-01/04/05: bots join from the config (CONF-10) with per-bot seeded
+    // schedules. Bot seeds derive from the race seed drawn above (the same
+    // value `pickText` received, i.e. the textSeed in random mode), so the
+    // whole race — text and bots — replays from one seed; a relaunch draws a
+    // fresh seed and therefore fresh schedules and synthetic ids.
+    const botEntries = buildBotRaceEntries({
+      config: room.config,
+      raceSeed: seed,
+      text: text.body,
+      humanRacerCount: participants.length,
+    });
+
     const now = this.deps.now();
     let started: RaceState;
     try {
       started = requestStart(
-        createRace({ participants, config: room.config }),
+        createRace({
+          participants: [...participants, ...botEntries.map((entry) => entry.participant)],
+          config: room.config,
+        }),
         now,
         { isHost: true },
         text,
@@ -489,6 +683,8 @@ export class RaceEngine implements RaceEngineHooks {
         userId: member.userId,
         guestToken: member.guestToken,
         progress: zeroProgress(),
+        text: text.body,
+        bonusesReceived: 0,
         connected: true,
         disconnectedAt: null,
         rateLimiter: new SlidingWindowRateLimiter({
@@ -497,8 +693,42 @@ export class RaceEngine implements RaceEngineHooks {
           now: () => this.deps.now().getTime(),
         }),
         wpmSeries: [],
+        botSchedule: null,
+        botLevel: null,
+        botStepCursor: 0,
       });
       byHubKey.set(member.hubKey, memberId);
+    }
+    for (const botEntry of botEntries) {
+      const runtime: ParticipantRuntime = {
+        memberId: botEntry.participantId,
+        // Bots have no hub membership: no socket, no hub key, unreachable by
+        // progress/quit/rejoin paths — they only advance through their
+        // schedule (BOT-04: server-side only, no ws messages to them).
+        hubKey: '',
+        publicId: botEntry.participantId,
+        kind: 'bot',
+        displayName: botEntry.participant.displayName,
+        userId: null,
+        guestToken: null,
+        progress: zeroProgress(),
+        text: text.body,
+        bonusesReceived: 0,
+        connected: true,
+        disconnectedAt: null,
+        // Never consulted: bots have no hub key, so the progress rate cap
+        // cannot address them. Built with the standard cap for uniformity.
+        rateLimiter: new SlidingWindowRateLimiter({
+          maxAttempts: RACE_PROGRESS_MAX_PER_SECOND,
+          windowMs: RACE_PROGRESS_RATE_WINDOW_MS,
+          now: () => this.deps.now().getTime(),
+        }),
+        wpmSeries: [],
+        botSchedule: botEntry.schedule,
+        botLevel: botEntry.level,
+        botStepCursor: 0,
+      };
+      runtimes.set(botEntry.participantId, runtime);
     }
 
     const entry: RoomRace = {
@@ -507,12 +737,18 @@ export class RaceEngine implements RaceEngineHooks {
       state: started,
       runtimes,
       byHubKey,
+      raceSeed: seed,
       textSeed: room.config.textType === 'random' ? seed : null,
       lastTickAt: started.startAt?.getTime() ?? now.getTime(),
       lastActivityAt: started.startAt?.getTime() ?? now.getTime(),
       finishOrder: [],
       progressAtEnd: new Map(),
       finalResults: null,
+      firedCheckpoints: [],
+      lastLeaderProgress: null,
+      bonusRng: createSeededRandom(seed + BONUS_SEED_SALT),
+      bonusWordPool,
+      bonusEvents: 0,
     };
     this.rooms.set(roomId, entry);
 
@@ -577,6 +813,16 @@ export class RaceEngine implements RaceEngineHooks {
         }
       }
 
+      // BOT-01/04: drive every bot against its seeded schedule before the
+      // AFK check — bot progress counts as race activity, so a race never
+      // aborts while a bot is still typing.
+      this.advanceBots(roomId, entry, now);
+
+      // BONUS-01/04: evaluate the leader-progression checkpoints (25/50/75 %)
+      // and apply the effects — before the tick broadcast, so the track
+      // carries the bonus-adjusted lengths.
+      this.applyCheckpointBonuses(roomId, entry, now);
+
       // GAME-5: global inactivity aborts the race (no ranking is produced).
       if (now.getTime() - entry.lastActivityAt >= RACE_AFK_TIMEOUT_MS) {
         this.abortRace(roomId, entry, RACE_ABORT_REASON_AFK);
@@ -627,6 +873,248 @@ export class RaceEngine implements RaceEngineHooks {
   // -------------------------------------------------------------- progress
 
   /**
+   * BOT-01/04: applies every schedule step whose `atMs` has passed to the
+   * bot's cumulative counters — the exact same counters a human's typed
+   * progress updates (ADR-011: no bot-specific state machine paths).
+   *
+   * - `correct`/`correction`: `validatedChars` + `correctKeystrokes` +
+   *   `totalKeystrokes` (validated characters only move on a correct key,
+   *   Annexe A).
+   * - `error`: `totalKeystrokes` only — the wrong key is counted, the error
+   *   counter (`total − correct`) grows, and the following `correction`
+   *   validates the character (both CONF-08 modes, see the schedule module).
+   *
+   * When the schedule is exhausted the bot finished: `participantFinished`
+   * is broadcast with the finish-order rank (COURSE-10), exactly like a
+   * human's auto-finish. Bot progress refreshes `lastActivityAt` (GAME-5:
+   * a bot typing is activity). Abort cleanup needs nothing here: an aborted
+   * race's runtimes (including schedules) are discarded on the next
+   * `startRace`, which rebuilds them from a fresh seed.
+   */
+  private advanceBots(roomId: number, entry: RoomRace, now: Date): void {
+    if (entry.state.phase !== 'en_course') {
+      return;
+    }
+    const startMs = entry.state.startAt?.getTime() ?? now.getTime();
+    const elapsedMs = Math.max(0, now.getTime() - startMs);
+
+    for (const runtime of entry.runtimes.values()) {
+      const schedule = runtime.botSchedule;
+      if (schedule === null || hasResult(entry.state, runtime.memberId)) {
+        continue;
+      }
+
+      let progressed = false;
+      while (
+        runtime.botStepCursor < schedule.steps.length &&
+        schedule.steps[runtime.botStepCursor].atMs <= elapsedMs
+      ) {
+        const step = schedule.steps[runtime.botStepCursor];
+        runtime.botStepCursor += 1;
+        if (step.kind === 'error') {
+          runtime.progress.totalKeystrokes += 1;
+        } else {
+          runtime.progress.validatedChars += 1;
+          runtime.progress.correctKeystrokes += 1;
+          runtime.progress.totalKeystrokes += 1;
+        }
+        progressed = true;
+      }
+
+      if (progressed) {
+        entry.lastActivityAt = now.getTime();
+      }
+
+      if (
+        runtime.botStepCursor >= schedule.steps.length &&
+        !hasResult(entry.state, runtime.memberId)
+      ) {
+        const finished = finishParticipant(entry.state, runtime.memberId, now, 'finished');
+        if (finished !== entry.state) {
+          entry.state = finished;
+          entry.progressAtEnd.set(runtime.memberId, runtime.progress.validatedChars);
+          entry.finishOrder.push(runtime.memberId);
+          this.deps.broadcast(roomId, {
+            type: 'participantFinished',
+            roomPublicId: entry.publicId,
+            participantId: runtime.publicId,
+            rank: entry.finishOrder.length,
+          });
+        }
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------ bonuses
+
+  /**
+   * The pure bonus view of every still-racing participant (humans and bots
+   * alike — ADR-011): identity, validated prefix, effective text, bonus
+   * counter and the ended flag. `memberId` doubles as the deterministic
+   * tie-break key of `src/lib/race/bonuses.ts`.
+   */
+  private bonusParticipantsOf(entry: RoomRace): BonusParticipantState[] {
+    const participants: BonusParticipantState[] = [];
+    for (const participant of entry.state.participants) {
+      if (participant.isSpectator) {
+        continue;
+      }
+      const runtime = entry.runtimes.get(participant.memberId);
+      if (!runtime) {
+        continue;
+      }
+      participants.push({
+        memberId: participant.memberId,
+        kind: participant.kind,
+        validatedChars: runtime.progress.validatedChars,
+        text: runtime.text,
+        bonusesReceived: runtime.bonusesReceived,
+        finished: hasResult(entry.state, participant.memberId),
+      });
+    }
+    return participants;
+  }
+
+  /**
+   * BONUS-01/04, CONF-09: the checkpoint evaluation of one tick. When the
+   * leader's progression (validated ÷ the leader's own effective length)
+   * crosses an unfired 25/50/75 % threshold, one seeded effect is drawn and
+   * applied — the draw always happens for every crossed checkpoint (even
+   * when the effect is then skipped), so the RNG stream stays reproducible
+   * for the same race seed (BOT-05). The leader's progression is recorded
+   * every tick, so a later drop (the leader's text grew) never re-fires an
+   * already fired checkpoint.
+   */
+  private applyCheckpointBonuses(roomId: number, entry: RoomRace, now: Date): void {
+    if (!entry.state.config.bonusesEnabled) {
+      return;
+    }
+    const participants = this.bonusParticipantsOf(entry);
+    const leader = findBonusLeader(participants);
+    if (!leader) {
+      return;
+    }
+    const leaderProgress = progression({
+      validatedChars: leader.validatedChars,
+      totalTextLength: leader.text.length,
+    });
+    const crossed = newlyCrossedCheckpoints({
+      previousProgress: entry.lastLeaderProgress ?? 0,
+      currentProgress: leaderProgress,
+      fired: entry.firedCheckpoints,
+    });
+    entry.lastLeaderProgress = leaderProgress;
+    if (crossed.length === 0) {
+      return;
+    }
+    for (const checkpoint of crossed) {
+      entry.firedCheckpoints.push(checkpoint);
+      const type = pickBonusType(entry.bonusRng);
+      this.applyBonusEventTo(roomId, entry, now, type, entry.bonusEvents);
+      entry.bonusEvents += 1;
+    }
+  }
+
+  /**
+   * Applies one drawn bonus event (BONUS-01/02/04): the pure rules of
+   * `src/lib/race/bonuses.ts` pick the target (leader for hinders, the
+   * most-behind eligible participant for help), evaluate the effect and
+   * update the shared runtime state — the target's effective text, the
+   * `bonusesReceived` counter, and, for bots, the schedule (truncated by a
+   * shrink, extended deterministically by a growth). The `bonusApplied`
+   * message is broadcast to the whole room (BONUS-03 announcement data);
+   * skipped events broadcast nothing but still consumed a type draw.
+   */
+  private applyBonusEventTo(
+    roomId: number,
+    entry: RoomRace,
+    now: Date,
+    type: BonusType,
+    eventOrdinal: number,
+  ): void {
+    const participants = this.bonusParticipantsOf(entry);
+    const leader = findBonusLeader(participants);
+    if (!leader) {
+      return;
+    }
+    const target =
+      type === 'removeWords'
+        ? pickBonusHelpTarget({ participants, leader })
+        : leader;
+    if (!target) {
+      return;
+    }
+    const runtime = entry.runtimes.get(target.memberId);
+    if (!runtime) {
+      return;
+    }
+
+    const extraWords =
+      type === 'addWords' && entry.bonusWordPool.length > 0
+        ? generateBonusWords({
+            wordPool: entry.bonusWordPool,
+            count: BONUS_WORDS_PER_EVENT,
+            language: entry.state.config.textLanguage,
+            accents: entry.state.config.options.accents,
+            rng: createSeededRandom(entry.raceSeed + BONUS_WORDS_SEED_SALT + eventOrdinal),
+          })
+        : [];
+
+    const evaluation = evaluateBonusEvent({
+      type,
+      target,
+      extraWords,
+      now,
+    });
+    if (!evaluation.applied) {
+      return;
+    }
+
+    runtime.text = evaluation.newText;
+    runtime.bonusesReceived += 1;
+
+    // BOT-04/ADR-011: bots adapt through the same state fields. A shrink
+    // truncates their timeline (they finish sooner); a growth extends it
+    // deterministically at their level's cadence.
+    if (runtime.botSchedule !== null) {
+      if (evaluation.textLengthDelta < 0) {
+        runtime.botSchedule = truncateBotSchedule(runtime.botSchedule, runtime.text.length);
+      } else if (evaluation.textLengthDelta > 0) {
+        runtime.botSchedule = extendBotSchedule({
+          schedule: runtime.botSchedule,
+          appendedText: evaluation.newText.slice(
+            evaluation.newText.length - evaluation.textLengthDelta,
+          ),
+          level: runtime.botLevel ?? entry.state.config.bots[0]?.level ?? 'intermediaire',
+          errorMode: entry.state.config.errorMode,
+          seed: entry.raceSeed + BONUS_WORDS_SEED_SALT + eventOrdinal,
+        });
+      }
+    }
+
+    const message: BonusAppliedMessage = {
+      type: 'bonusApplied',
+      roomPublicId: entry.publicId,
+      targetParticipantId: runtime.publicId,
+      bonusType: type,
+      payload: {
+        ...(evaluation.payload.words !== undefined
+          ? { words: evaluation.payload.words }
+          : {}),
+        ...(evaluation.payload.wordCount !== undefined
+          ? { wordCount: evaluation.payload.wordCount }
+          : {}),
+        ...(evaluation.payload.durationMs !== undefined
+          ? { durationMs: evaluation.payload.durationMs }
+          : {}),
+        totalLength: evaluation.payload.totalLength,
+        at: evaluation.payload.at.toISOString(),
+      },
+    };
+    this.deps.broadcast(roomId, message);
+  }
+
+  /**
    * COURSE-06/PERF-02: applies one cumulative progress message after the
    * plausibility checks (monotonicity, text length, keystroke consistency,
    * per-message delta cap) and the per-participant rate cap. Reaching
@@ -660,7 +1148,10 @@ export class RaceEngine implements RaceEngineHooks {
       throw error;
     }
 
-    const totalLength = entry.state.chosenText?.body.length ?? 0;
+    // BONUS-04: the participant's own effective text length (bonus-adjusted)
+    // bounds the counters — an `addWords` hinder moves the finish line back
+    // for the leader, a `removeWords` help moves it forward for the laggard.
+    const totalLength = runtime.text.length;
     const previous = runtime.progress;
     const invalid =
       payload.validatedChars > totalLength ||
@@ -756,6 +1247,10 @@ export class RaceEngine implements RaceEngineHooks {
    * The resume payload for a (re)joining member: current phase, the text
    * when the phase reveals it (COURSE-03) and the member's own cumulative
    * progress — `null` for spectators and for participants who already ended.
+   * BONUS-04: a racing member resumes with their own **bonus-adjusted**
+   * text (`runtime.text`) and its effective length, so the client's local
+   * text stays byte-identical to the server's and completion checks stay
+   * coherent; spectators keep the shared base text.
    * Returns `null` when the room has no live race snapshot to resume.
    */
   raceSnapshotFor(roomId: number, hubKey: string): RaceSnapshotMessage | null {
@@ -780,10 +1275,17 @@ export class RaceEngine implements RaceEngineHooks {
       startedAt: state.startedAt?.toISOString() ?? null,
       startAt: state.startAt?.toISOString() ?? null,
       textId: visible ? (state.chosenText as NonNullable<RaceState['chosenText']>).id : null,
-      text: visible ? (state.chosenText as NonNullable<RaceState['chosenText']>).body : null,
-      totalLength: visible
-        ? (state.chosenText as NonNullable<RaceState['chosenText']>).body.length
+      text: visible
+        ? racing
+          ? runtime.text
+          : (state.chosenText as NonNullable<RaceState['chosenText']>).body
         : null,
+      // BONUS-04: a racing member resumes with their own effective length.
+      totalLength: racing
+        ? runtime.text.length
+        : visible
+          ? (state.chosenText as NonNullable<RaceState['chosenText']>).body.length
+          : null,
       progress: racing && runtime ? { ...runtime.progress } : null,
     };
   }
@@ -836,8 +1338,8 @@ export class RaceEngine implements RaceEngineHooks {
     for (const participant of entry.state.participants) {
       const runtime = entry.runtimes.get(participant.memberId);
       if (!runtime) {
-        // Bots arrive in Phase 4 as state participants without a member
-        // runtime; the tick still broadcasts them from the machine's view.
+        // Defensive only: every state participant (humans and bots alike)
+        // has a runtime since Phase 4.
         continue;
       }
       const wpm = netWpm({ correctChars: runtime.progress.validatedChars, elapsedMs });
@@ -848,6 +1350,9 @@ export class RaceEngine implements RaceEngineHooks {
         position: runtime.progress.validatedChars,
         wpm,
         finished: ended.has(participant.memberId),
+        // BONUS-04: the effective per-participant length, so clients derive
+        // progression as position / totalLength for each participant.
+        totalLength: runtime.text.length,
       });
       // RES-03: sample the WPM series at tick-broadcast rate (≤ ~4/s). The
       // series is NEVER part of the tick payload itself (PERF-02).
@@ -952,6 +1457,7 @@ export class RaceEngine implements RaceEngineHooks {
         endedAt: result.endedAt,
         progressChars: correctChars,
         rank: index + 1,
+        bonusesReceived: runtime?.bonusesReceived ?? 0,
         wpmSeries: runtime ? [...runtime.wpmSeries] : [],
       };
     });
@@ -986,6 +1492,7 @@ export class RaceEngine implements RaceEngineHooks {
         status: result.status,
         finishedAtMs: result.endedAtMs,
         rank: result.rank,
+        bonusesReceived: result.bonusesReceived,
         wpmSeries: result.wpmSeries,
       })),
     };

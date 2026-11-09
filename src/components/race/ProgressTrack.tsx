@@ -28,6 +28,11 @@ import TrackMarker from './TrackMarker';
  * fake timers); in a real browser a 16 ms interval tracks the display
  * refresh closely enough for identical smoothness.
  *
+ * BONUS-04 coherence: every marker's percentage is derived from the
+ * participant's OWN effective total length (`raceTick.totalLength`), so a
+ * bonus-adjusted text never distorts the track. A bonus flash (BONUS-03)
+ * briefly glows the targeted marker via {@link TrackMarker}'s `bonusFlash`.
+ *
  * Accessibility: markers are labelled groups, the local marker carries an
  * i18n "you" tag, and a visually-hidden `aria-live="polite"` region
  * announces the local participant's rank changes (GAME-3 tie-in).
@@ -46,24 +51,24 @@ export type ProgressTrackProps = {
   participants: RaceTrackParticipant[];
   /** `tickAt` of the latest tick, used as the interpolation window's end. */
   lastTickAt: string | null;
-  /** Total characters of the race text (spaces included); null before the race. */
-  totalLength: number | null;
   /** The viewer's participant id, for the local highlight and announcements. */
   localParticipantId: string;
   /** participantId → finish rank, from `participantFinished` (finish badges). */
   finishRanks: Record<string, number>;
   /** participantId → profile picture URL for user participants (optional). */
   pfpUrls?: Record<string, string | null>;
+  /** The participant a bonus just hit (BONUS-03): its marker glows ~2 s. */
+  flashParticipantId?: string | null;
   messages: Messages;
 };
 
 export default function ProgressTrack({
   participants,
   lastTickAt,
-  totalLength,
   localParticipantId,
   finishRanks,
   pfpUrls = {},
+  flashParticipantId = null,
   messages,
 }: ProgressTrackProps) {
   // Client-clock pulse: while markers exist, re-render ~60×/s so the
@@ -163,10 +168,14 @@ export default function ProgressTrack({
         </div>
 
         {ranking.map((entry) => {
+          // BONUS-04: every marker's percentage comes from the participant's
+          // OWN effective total length (bonus-adjusted), never the shared
+          // base length — interpolated positions use the same per-participant
+          // denominators inside `interpolatePosition`.
           const progress =
             currentTick !== null
-              ? interpolatePosition(entry, prevTick, currentTick, nowMs, totalLength)
-              : positionFraction(entry.position, totalLength);
+              ? interpolatePosition(entry, prevTick, currentTick, nowMs)
+              : positionFraction(entry.position, entry.totalLength);
           return (
             <TrackMarker
               key={entry.participantId}
@@ -175,6 +184,7 @@ export default function ProgressTrack({
               isLocal={entry.participantId === localParticipantId}
               finishRank={finishRanks[entry.participantId] ?? null}
               pfpUrl={pfpUrls[entry.participantId]}
+              bonusFlash={entry.participantId === flashParticipantId}
               messages={messages}
             />
           );

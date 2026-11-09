@@ -27,6 +27,7 @@ function participant(overrides: Partial<RaceTrackParticipant> = {}): RaceTrackPa
     position: 0,
     wpm: 0,
     finished: false,
+    totalLength: 1_000,
     ...overrides,
   };
 }
@@ -35,7 +36,6 @@ function renderTrack(overrides: Partial<ProgressTrackProps> = {}) {
   const props: ProgressTrackProps = {
     participants: [],
     lastTickAt: null,
-    totalLength: 1_000,
     localParticipantId: ADA,
     finishRanks: {},
     messages,
@@ -130,7 +130,6 @@ describe('ProgressTrack (COURSE-05, DES-04)', () => {
       const props: ProgressTrackProps = {
         participants: tick1,
         lastTickAt: new Date(T0).toISOString(),
-        totalLength: 1_000,
         localParticipantId: ADA,
         finishRanks: {},
         messages,
@@ -167,6 +166,42 @@ describe('ProgressTrack (COURSE-05, DES-04)', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  test('each marker percentage uses its own effective length (BONUS-04 regression)', () => {
+    // Same shared base text, different bonus-adjusted lengths: 400/400 is
+    // finished while 400/1000 is at 40 % — a shared denominator would lie
+    // for at least one of them.
+    renderTrack({
+      lastTickAt: new Date(T0).toISOString(),
+      participants: [
+        participant({ participantId: ADA, displayName: 'ada', position: 400, totalLength: 400 }),
+        participant({ participantId: BOB, displayName: 'bob', position: 400, totalLength: 1_000 }),
+      ],
+    });
+
+    expect(screen.getByTestId(`track-marker-${ADA}`)).toHaveAttribute('data-progress', '1.000');
+    expect(screen.getByTestId(`track-marker-${BOB}`)).toHaveAttribute('data-progress', '0.400');
+  });
+
+  test('the flash prop glows the targeted marker only (BONUS-03)', () => {
+    renderTrack({
+      lastTickAt: new Date(T0).toISOString(),
+      flashParticipantId: BOB,
+      participants: [
+        participant({ participantId: ADA, displayName: 'ada', position: 400 }),
+        participant({ participantId: BOB, displayName: 'bob', position: 500 }),
+      ],
+    });
+
+    const adaMarker = screen.getByTestId(`track-marker-${ADA}`);
+    const bobMarker = screen.getByTestId(`track-marker-${BOB}`);
+    expect(adaMarker).toHaveAttribute('data-bonus-flash', 'false');
+    expect(bobMarker).toHaveAttribute('data-bonus-flash', 'true');
+    // The glow is a distinct stone ring, not the local marker's treatment.
+    expect(bobMarker.querySelector('.ring-dwarf-rune-bright')).not.toBeNull();
+    expect(bobMarker.querySelector('.shadow-gold-glow')).not.toBeNull();
+    expect(bobMarker.querySelector('.ring-dwarf-gold')).toBeNull();
   });
 
   test('keeps the responsive structure for 360 px (structural assertions only)', () => {

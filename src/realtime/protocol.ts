@@ -21,7 +21,8 @@ import { roomConfigSchema } from '../lib/room-config';
  *   members), the presence events, host/config/closure events, the race
  *   events (`countdownStarted`, `raceStarted`, `raceTick`,
  *   `participantFinished`, `participantQuit`, `raceFinished`, `raceAborted`),
- *   the `raceSnapshot` resume payload (COURSE-08), `error` and `pong`.
+ *   the comeback-bonus event (`bonusApplied`, BONUS-01..04), the
+ *   `raceSnapshot` resume payload (COURSE-08), `error` and `pong`.
  *
  * ## Error codes (server → client)
  *
@@ -355,7 +356,10 @@ export const raceStartedMessageSchema = z
 /**
  * One participant on the track inside a `raceTick`. `position` is the
  * validated character count; `wpm` is the net WPM (Annexe A) computed by the
- * server; `finished` covers finished, quit and timed-out participants.
+ * server; `finished` covers finished, quit and timed-out participants;
+ * `totalLength` is the participant's **effective** text length
+ * (bonus-adjusted, BONUS-04) so clients derive `position / totalLength`
+ * per participant instead of dividing by the shared base length.
  */
 export const raceTickParticipantSchema = z
   .object({
@@ -365,6 +369,8 @@ export const raceTickParticipantSchema = z
     position: z.number().int().min(0),
     wpm: z.number().min(0),
     finished: z.boolean(),
+    /** Effective total length of this participant's text (BONUS-04). */
+    totalLength: z.number().int().positive(),
   })
   .strict();
 
@@ -435,6 +441,8 @@ export const raceResultEntrySchema = z
     /** Milliseconds after the typing start at which the status was recorded. */
     finishedAtMs: z.number().int().min(0),
     rank: z.number().int().positive(),
+    /** Comeback bonuses received during the race (BONUS-01, cap 3). */
+    bonusesReceived: z.number().int().min(0),
     /** WPM-over-time series for the results charts (RES-03). */
     wpmSeries: z.array(wpmSeriesPointSchema),
   })
@@ -468,6 +476,71 @@ export const raceAbortedMessageSchema = z
     reason: z.string().min(1).max(100),
   })
   .strict();
+
+/**
+ * BONUS-01/02/03: a comeback bonus was applied at a checkpoint. Broadcast to
+ * the whole room (emitted in-room), so every client can announce it on the
+ * track; the targeted client additionally adjusts its own text rendering
+ * (SP-4C). The payload carries exactly what each type needs:
+ *
+ * - `addWords` — `words`, the exact words appended after the target's
+ *   current text (the client appends them verbatim, GAME-1 text coherence);
+ * - `removeWords` — `wordCount`, how many words were removed from the END of
+ *   the target's remaining text (never before the caret, clamped ≥ 1 char);
+ * - `fog` — `durationMs`, the blur SP-4C renders on the targeted client
+ *   (leader only; the server never targets a bot with fog).
+ *
+ * `payload.totalLength` is the target's effective text length after the
+ * event (BONUS-04), so the reducer can update the track without waiting for
+ * the next tick; `payload.at` is the server timestamp of the event.
+ */
+export const bonusTypeSchema = z.enum(['addWords', 'removeWords', 'fog']);
+
+export const bonusAppliedMessageSchema = z
+  .object({
+    type: z.literal('bonusApplied'),
+    roomPublicId: z.uuid(),
+    /** The participant the bonus was applied to (hinder: leader; help: laggard). */
+    targetParticipantId: z.uuid(),
+    bonusType: bonusTypeSchema,
+    payload: z
+      .object({
+        /** `addWords`: the words appended after the target's current text. */
+        words: z.array(z.string().min(1).max(32)).min(1).max(10).optional(),
+        /** `removeWords`: words actually removed from the remaining text. */
+        wordCount: z.number().int().min(1).max(10).optional(),
+        /** `fog`: blur duration in milliseconds (SP-4C renders it). */
+        durationMs: z.number().int().min(1).max(10_000).optional(),
+        /** The target's effective total length after the event (BONUS-04). */
+        totalLength: z.number().int().positive(),
+        at: z.iso.datetime(),
+      })
+      .strict(),
+  })
+  .strict()
+  .superRefine((message, ctx) => {
+    if (message.bonusType === 'addWords' && message.payload.words === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'an addWords bonus must carry the appended words',
+        path: ['payload', 'words'],
+      });
+    }
+    if (message.bonusType === 'removeWords' && message.payload.wordCount === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'a removeWords bonus must carry the removed word count',
+        path: ['payload', 'wordCount'],
+      });
+    }
+    if (message.bonusType === 'fog' && message.payload.durationMs === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'a fog bonus must carry the blur duration',
+        path: ['payload', 'durationMs'],
+      });
+    }
+  });
 
 /**
  * COURSE-08 resume snapshot: sent in answer to `rejoinRace` (mid-race
@@ -511,6 +584,7 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
   participantQuitMessageSchema,
   raceFinishedMessageSchema,
   raceAbortedMessageSchema,
+  bonusAppliedMessageSchema,
   raceSnapshotMessageSchema,
   errorMessageSchema,
   pongMessageSchema,
@@ -532,6 +606,8 @@ export type WpmSeriesPoint = z.infer<typeof wpmSeriesPointSchema>;
 export type RaceResultEntry = z.infer<typeof raceResultEntrySchema>;
 export type RaceFinishedMessage = z.infer<typeof raceFinishedMessageSchema>;
 export type RaceAbortedMessage = z.infer<typeof raceAbortedMessageSchema>;
+export type BonusType = z.infer<typeof bonusTypeSchema>;
+export type BonusAppliedMessage = z.infer<typeof bonusAppliedMessageSchema>;
 export type RaceSnapshotMessage = z.infer<typeof raceSnapshotMessageSchema>;
 export type ErrorMessage = z.infer<typeof errorMessageSchema>;
 export type PongMessage = z.infer<typeof pongMessageSchema>;

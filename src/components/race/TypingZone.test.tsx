@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MESSAGES } from '../../i18n/messages';
+import type { BonusAppliedMessage } from '../../realtime/protocol';
 import TypingZone, {
   PROGRESS_FLUSH_INTERVAL_MS,
   shouldFlush,
@@ -320,5 +321,117 @@ describe('live readout (client-side Annexe A stats, i18n fr)', () => {
     });
     // 1 correct / 2 total → 50 %.
     expect(screen.getByTestId('typing-accuracy')).toHaveTextContent('50');
+  });
+});
+
+describe('bonus text adjustments and fog (BONUS-04)', () => {
+  const LOCAL_ID = '22222222-2222-4222-8222-222222222222';
+
+  function bonusEvent(
+    bonusType: BonusAppliedMessage['bonusType'],
+    payload: Partial<BonusAppliedMessage['payload']> = {},
+  ): BonusAppliedMessage {
+    return {
+      type: 'bonusApplied',
+      roomPublicId: '8f9c2a55-3b4a-4c1e-8a2d-9e7f6a5b4c3d',
+      targetParticipantId: LOCAL_ID,
+      bonusType,
+      payload: { totalLength: 7, at: '2026-11-08T18:00:10.000Z', ...payload },
+    };
+  }
+
+  test('appended bonus words render at the end of the text', () => {
+    renderZone({
+      text: 'bonjour',
+      bonusEvents: [bonusEvent('addWords', { words: ['nain', 'forge'], totalLength: 18 })],
+    });
+    const zone = screen.getByTestId('typing-text');
+    expect(zone).toHaveTextContent('bonjour nain forge');
+    expect(zone.children).toHaveLength(18);
+    // The progress readout follows the new effective length.
+    expect(screen.getByText('Progression: 0 / 18')).toBeInTheDocument();
+  });
+
+  test('removed bonus words disappear from the end of the remaining text', () => {
+    renderZone({
+      text: 'bonjour le monde',
+      bonusEvents: [bonusEvent('removeWords', { wordCount: 1, totalLength: 10 })],
+    });
+    expect(screen.getByTestId('typing-text')).toHaveTextContent('bonjour le');
+    expect(screen.getByText('Progression: 0 / 10')).toBeInTheDocument();
+  });
+
+  test('completion follows the adjusted length: the appended words must be typed', () => {
+    const { onProgress } = renderZone({
+      text: 'bonjour',
+      bonusEvents: [bonusEvent('addWords', { words: ['nain'], totalLength: 12 })],
+    });
+    for (const char of 'bonjour') {
+      typeKey(char);
+    }
+    expect(screen.queryByText(messages['race.completeNotice'])).not.toBeInTheDocument();
+    for (const char of ' nain') {
+      typeKey(char);
+    }
+    expect(screen.getByText(messages['race.completeNotice'])).toBeInTheDocument();
+    expect(onProgress).toHaveBeenLastCalledWith({
+      validatedChars: 12,
+      correctKeystrokes: 12,
+      totalKeystrokes: 12,
+    });
+  });
+
+  test('a bonus event arriving after mount adjusts the text and keeps the caret', () => {
+    const props = {
+      text: 'bonjour',
+      errorMode: 'accumulate' as const,
+      enabled: true,
+      messages,
+      onProgress: jest.fn(),
+    };
+    const { rerender } = render(<TypingZone {...props} />);
+    typeKey('b');
+    typeKey('o');
+    expect(screen.getByText('Progression: 2 / 7')).toBeInTheDocument();
+
+    rerender(
+      <TypingZone
+        {...props}
+        bonusEvents={[bonusEvent('addWords', { words: ['nain'], totalLength: 12 })]}
+      />,
+    );
+    expect(screen.getByTestId('typing-text')).toHaveTextContent('bonjour nain');
+    expect(screen.getByText('Progression: 2 / 12')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('typing-text').querySelector('[data-caret="true"]')?.getAttribute('data-char-index'),
+    ).toBe('2');
+  });
+
+  test('fog blurs the upcoming region and lifts when the duration elapses (fake timers)', () => {
+    jest.useFakeTimers({ now: 0 });
+    try {
+      renderZone({
+        text: 'bonjour',
+        bonusEvents: [bonusEvent('fog', { durationMs: 2_000, totalLength: 7 })],
+      });
+      const zone = screen.getByTestId('typing-text');
+      expect(zone).toHaveAttribute('data-fog', 'true');
+      // The upcoming characters are blurred; the text itself is unchanged.
+      expect(zone.querySelector('[data-char-index="0"]')?.className).toContain('blur-sm');
+      expect(screen.getByText('Progression: 0 / 7')).toBeInTheDocument();
+
+      act(() => {
+        jest.advanceTimersByTime(1_999);
+      });
+      expect(screen.getByTestId('typing-text')).toHaveAttribute('data-fog', 'true');
+
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+      expect(screen.getByTestId('typing-text')).toHaveAttribute('data-fog', 'false');
+      expect(zone.querySelector('[data-char-index="0"]')?.className).not.toContain('blur-sm');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

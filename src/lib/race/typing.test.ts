@@ -11,6 +11,7 @@
  */
 
 import {
+  applyTextDelta,
   createTypingState,
   errorKeyFor,
   isComplete,
@@ -406,5 +407,94 @@ describe('liveStats (Annexe A on the current counters)', () => {
       correctKeystrokes: 1,
       totalKeystrokes: 2,
     });
+  });
+});
+
+describe('applyTextDelta (BONUS-04 text adjustments)', () => {
+  test('addWords appends the words with a separator space and preserves the whole state', () => {
+    let state = typeAll(stateFor('le roi nain'), ['l', 'e']);
+    state = typingReducer(state, { type: 'typeChar', char: 'z' }); // error at 2, caret 3
+    const before = { ...state };
+
+    const next = applyTextDelta(state, { words: ['forge', 'rune'] });
+
+    expect(next.text).toBe('le roi nain forge rune');
+    // Everything except the text survives: counters, caret, marks, heatmap.
+    expect(next.validatedChars).toBe(2);
+    expect(next.correctKeystrokes).toBe(2);
+    expect(next.totalKeystrokes).toBe(3);
+    expect(next.currentIndex).toBe(3);
+    expect(next.errors).toEqual([2]);
+    expect(next.keyErrors).toEqual({ z: 1 });
+    expect(next.errorMode).toBe('accumulate');
+    // Pure: the previous state is untouched.
+    expect(state).toEqual(before);
+  });
+
+  test('addWords with no words changes nothing (same reference)', () => {
+    const state = stateFor('le roi');
+    expect(applyTextDelta(state, { words: [] })).toBe(state);
+  });
+
+  test('removeWords removes words beyond the caret, never before it', () => {
+    let state = typeAll(stateFor('un deux trois quatre'), ['u', 'n', ' ']); // caret 3
+    state = typingReducer(state, { type: 'typeChar', char: 'z' }); // error at 3, caret 4
+
+    // More words requested than remain: only what exists is removed, and the
+    // typed prefix (with its error mark) is untouched.
+    const next = applyTextDelta(state, { wordCount: 10 });
+
+    expect(next.text).toBe('un deux');
+    expect(next.validatedChars).toBe(3);
+    expect(next.currentIndex).toBe(4);
+    expect(next.errors).toEqual([3]);
+    expect(next.correctKeystrokes).toBe(3);
+    expect(next.totalKeystrokes).toBe(4);
+  });
+
+  test('removeWords clamps: a single remaining word or an empty suffix removes nothing', () => {
+    const almostDone = typeAll(
+      stateFor('bonjour le monde'),
+      ['b', 'o', 'n', 'j', 'o', 'u', 'r', ' ', 'l', 'e', ' '],
+    );
+    expect(applyTextDelta(almostDone, { wordCount: 3 })).toBe(almostDone);
+
+    const done = typeAll(stateFor('bonjour'), ['b', 'o', 'n', 'j', 'o', 'u', 'r']);
+    expect(applyTextDelta(done, { wordCount: 3 })).toBe(done);
+  });
+
+  test('completion follows the adjusted length: growth reopens the text, shrinkage shortens it', () => {
+    // Growth: a completed text becomes incomplete again with the extra words.
+    const complete = typeAll(stateFor('bonjour'), ['b', 'o', 'n', 'j', 'o', 'u', 'r']);
+    expect(isComplete(complete)).toBe(true);
+    const grown = applyTextDelta(complete, { words: ['nain'] });
+    expect(grown.text).toBe('bonjour nain');
+    expect(isComplete(grown)).toBe(false);
+    const refinished = typeAll(grown, [' ', 'n', 'a', 'i', 'n']);
+    expect(isComplete(refinished)).toBe(true);
+    expect(refinished.validatedChars).toBe(grown.text.length);
+
+    // Shrinkage: the remaining work is measured against the new effective
+    // length, so the player finishes after typing the shrunken text.
+    const beforeShrink = typeAll(
+      stateFor('bonjour le monde'),
+      ['b', 'o', 'n', 'j', 'o', 'u', 'r', ' '],
+    );
+    const shrunk = applyTextDelta(beforeShrink, { wordCount: 1 });
+    expect(shrunk.text).toBe('bonjour le');
+    expect(isComplete(shrunk)).toBe(false);
+    const finished = typeAll(shrunk, ['l', 'e']);
+    expect(isComplete(finished)).toBe(true);
+    expect(finished.validatedChars).toBe(10); // the new effective length
+  });
+
+  test('the reducer dispatches applyTextDelta actions', () => {
+    const grown = typingReducer(stateFor('bonjour'), {
+      type: 'applyTextDelta',
+      delta: { words: ['nain'] },
+    });
+    expect(grown.text).toBe('bonjour nain');
+    const shrunk = typingReducer(grown, { type: 'applyTextDelta', delta: { wordCount: 1 } });
+    expect(shrunk.text).toBe('bonjour');
   });
 });

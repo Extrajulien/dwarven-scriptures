@@ -126,6 +126,7 @@ function makeRace(overrides: Partial<RaceView> = {}): RaceView {
     lastTickAt: null,
     finishRanks: {},
     finished: null,
+    bonusLog: [],
     ...overrides,
   };
 }
@@ -457,6 +458,7 @@ describe('race screen integration (COURSE-02/03, GAME-1)', () => {
               status: 'finished',
               finishedAtMs: 41_000,
               rank: 1,
+              bonusesReceived: 0,
               wpmSeries: [{ elapsedMs: 1_000, wpm: 40 }],
             },
             {
@@ -470,6 +472,7 @@ describe('race screen integration (COURSE-02/03, GAME-1)', () => {
               status: 'timeout',
               finishedAtMs: 45_000,
               rank: 2,
+              bonusesReceived: 0,
               wpmSeries: [],
             },
           ],
@@ -503,6 +506,7 @@ describe('race screen integration (COURSE-02/03, GAME-1)', () => {
               status: 'finished',
               finishedAtMs: 41_000,
               rank: 1,
+              bonusesReceived: 0,
               wpmSeries: [],
             },
           ],

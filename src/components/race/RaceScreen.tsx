@@ -8,6 +8,7 @@ import type { RoomConfig } from '../../db/schema';
 import ButtonPrimary from '../ButtonPrimary';
 import ButtonSecondary from '../ButtonSecondary';
 import SectionHeader from '../SectionHeader';
+import BonusAnnouncer from './BonusAnnouncer';
 import MobileRaceGate from './MobileRaceGate';
 import OvertakeIndicator from './OvertakeIndicator';
 import ProgressTrack from './ProgressTrack';
@@ -48,6 +49,9 @@ import TypingZone from './TypingZone';
 /** Countdown length (COURSE-03: 3, 2, 1) — mirrored from `state.ts`. */
 export const COUNTDOWN_SECONDS = 3;
 
+/** How long a bonus flash glows on the targeted track marker (BONUS-03). */
+export const BONUS_MARKER_FLASH_MS = 2_000;
+
 /**
  * Seconds left on the countdown from `race.startAt` and the client clock —
  * the client-side re-implementation of the server's pure helper (same math:
@@ -82,6 +86,8 @@ type RacerViewProps = {
   race: RaceView;
   config: RoomConfig;
   messages: Messages;
+  /** The viewer's wire identity, to filter the local player's bonus events (BONUS-04). */
+  localParticipantId: string;
   onQuitRace: () => void;
   onSendProgress: (progress: RaceProgress) => void;
   onKeyErrors: (errors: Readonly<Record<string, number>>) => void;
@@ -94,12 +100,26 @@ type RacerViewProps = {
  * naturally, without a reset effect), while a confirmed quit survives within
  * the race — the player stays a spectator until the next one (COURSE-07).
  */
-function RacerView({ race, config, messages, onQuitRace, onSendProgress, onKeyErrors }: RacerViewProps) {
+function RacerView({
+  race,
+  config,
+  messages,
+  localParticipantId,
+  onQuitRace,
+  onSendProgress,
+  onKeyErrors,
+}: RacerViewProps) {
   const [confirmQuit, setConfirmQuit] = useState(false);
   // Local "instant spectator" switch: confirming the quit dialog flips the
   // local view to spectator immediately (the server then announces
   // `participantQuit` and the authoritative state follows).
   const [quitLocal, setQuitLocal] = useState(false);
+
+  // BONUS-04: only the LOCAL participant's events adjust this zone's text
+  // (events for other participants are announcements, never text changes).
+  const localBonusEvents = race.bonusLog.filter(
+    (event) => event.targetParticipantId === localParticipantId,
+  );
 
   const handleQuit = () => {
     setConfirmQuit(false);
@@ -169,6 +189,7 @@ function RacerView({ race, config, messages, onQuitRace, onSendProgress, onKeyEr
           messages={messages}
           onProgress={onSendProgress}
           onKeyErrors={onKeyErrors}
+          bonusEvents={localBonusEvents}
         />
       </MobileRaceGate>
     </section>
@@ -226,6 +247,27 @@ export default function RaceScreen({
   // RES-03: the LOCAL session's per-key error counts, fed by the typing zone
   // on every wrong keystroke (client-side; the server only sees counters).
   const [keyErrors, setKeyErrors] = useState<Readonly<Record<string, number>>>({});
+
+  // BONUS-03: a fresh bonus event makes the targeted track marker glow for
+  // ~2 s. Detected *during render* from the log length (the "adjust state
+  // when props change" pattern — same-value updates bail out), timer-cleared.
+  const [prevBonusCount, setPrevBonusCount] = useState(0);
+  const [flashTargetId, setFlashTargetId] = useState<string | null>(null);
+  const bonusCount = race?.bonusLog.length ?? 0;
+  if (prevBonusCount !== bonusCount) {
+    setPrevBonusCount(bonusCount);
+    const latest = race?.bonusLog[bonusCount - 1];
+    if (latest !== undefined) {
+      setFlashTargetId(latest.targetParticipantId);
+    }
+  }
+  useEffect(() => {
+    if (flashTargetId === null) {
+      return;
+    }
+    const timer = setTimeout(() => setFlashTargetId(null), BONUS_MARKER_FLASH_MS);
+    return () => clearTimeout(timer);
+  }, [flashTargetId]);
 
   // Countdown ticker: the overlay re-reads the client clock 4×/s.
   useEffect(() => {
@@ -345,13 +387,19 @@ export default function RaceScreen({
           localParticipantId={viewerParticipantId}
           messages={messages}
         />
+        <BonusAnnouncer
+          bonusLog={race.bonusLog}
+          participants={race.participants}
+          localParticipantId={viewerParticipantId}
+          messages={messages}
+        />
         <ProgressTrack
           participants={race.participants}
           lastTickAt={race.lastTickAt}
-          totalLength={race.totalLength}
           localParticipantId={viewerParticipantId}
           finishRanks={race.finishRanks}
           pfpUrls={pfpUrls}
+          flashParticipantId={flashTargetId}
           messages={messages}
         />
       </div>
@@ -384,6 +432,7 @@ export default function RaceScreen({
           race={race}
           config={config}
           messages={messages}
+          localParticipantId={viewerParticipantId}
           onQuitRace={onQuitRace}
           onSendProgress={onSendProgress}
           onKeyErrors={setKeyErrors}

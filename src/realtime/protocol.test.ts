@@ -364,6 +364,7 @@ describe('server → client messages', () => {
           position: 31,
           wpm: 52.4,
           finished: true,
+        totalLength: 100,
         },
         {
           participantId: GUEST_TOKEN,
@@ -372,6 +373,7 @@ describe('server → client messages', () => {
           position: 12,
           wpm: 18.2,
           finished: false,
+        totalLength: 100,
         },
         {
           participantId: '3a4b5c6d-7e8f-4a9b-8c0d-1e2f3a4b5c6d',
@@ -380,6 +382,7 @@ describe('server → client messages', () => {
           position: 9,
           wpm: 15,
           finished: false,
+        totalLength: 100,
         },
       ],
     });
@@ -407,6 +410,7 @@ describe('server → client messages', () => {
             position: -2,
             wpm: 10,
             finished: false,
+          totalLength: 100,
           },
         ],
       }).success,
@@ -422,6 +426,7 @@ describe('server → client messages', () => {
             position: 2,
             wpm: 10,
             finished: false,
+          totalLength: 100,
           },
         ],
       }).success,
@@ -480,6 +485,7 @@ describe('server → client messages', () => {
           status: 'finished',
           finishedAtMs: 41_000,
           rank: 1,
+          bonusesReceived: 0,
           wpmSeries: [
             { elapsedMs: 1_000, wpm: 40 },
             { elapsedMs: 41_000, wpm: 61.2 },
@@ -496,6 +502,7 @@ describe('server → client messages', () => {
           status: 'timeout',
           finishedAtMs: 45_321,
           rank: 2,
+          bonusesReceived: 0,
           wpmSeries: [{ elapsedMs: 45_321, wpm: 12.3 }],
         },
         {
@@ -509,6 +516,7 @@ describe('server → client messages', () => {
           status: 'quit',
           finishedAtMs: 22_000,
           rank: 3,
+          bonusesReceived: 0,
           wpmSeries: [],
         },
       ],
@@ -542,6 +550,7 @@ describe('server → client messages', () => {
           status: 'finished',
           finishedAtMs: 9_000,
           rank: 1,
+          bonusesReceived: 0,
           wpmSeries: [{ elapsedMs: 9_000, wpm: 60 }],
         },
       ],
@@ -603,6 +612,7 @@ describe('server → client messages', () => {
           status: 'finished' as string,
           finishedAtMs: 9_000,
           rank: 1,
+          bonusesReceived: 0,
           wpmSeries: [],
         },
       ],
@@ -690,6 +700,96 @@ describe('server → client messages', () => {
   test('the inferred server type stays a discriminated union', () => {
     const message: ServerMessage = { type: 'pong' };
     expect(message.type).toBe('pong');
+  });
+
+  describe('bonusApplied (BONUS-03)', () => {
+    const base = {
+      type: 'bonusApplied',
+      roomPublicId: ROOM_PUBLIC_ID,
+      targetParticipantId: USER_PUBLIC_ID,
+      payload: { totalLength: 30, at: '2026-11-08T18:00:07.000Z' },
+    };
+
+    test('accepts the three bonus types with their per-type payloads', () => {
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'addWords',
+          payload: { ...base.payload, words: ['forge', 'nain', 'rune'] },
+        }).success,
+      ).toBe(true);
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'removeWords',
+          payload: { ...base.payload, wordCount: 3 },
+        }).success,
+      ).toBe(true);
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'fog',
+          payload: { ...base.payload, durationMs: 2_000 },
+        }).success,
+      ).toBe(true);
+    });
+
+    test('rejects events whose payload misses the per-type field', () => {
+      expect(serverMessageSchema.safeParse({ ...base, bonusType: 'addWords' }).success).toBe(
+        false,
+      );
+      expect(serverMessageSchema.safeParse({ ...base, bonusType: 'removeWords' }).success).toBe(
+        false,
+      );
+      expect(serverMessageSchema.safeParse({ ...base, bonusType: 'fog' }).success).toBe(false);
+    });
+
+    test('rejects unknown bonus types, bad targets and malformed payloads', () => {
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'freeze',
+          payload: { ...base.payload, durationMs: 2_000 },
+        }).success,
+      ).toBe(false);
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          targetParticipantId: 'not-a-uuid',
+          bonusType: 'fog',
+          payload: { ...base.payload, durationMs: 2_000 },
+        }).success,
+      ).toBe(false);
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'removeWords',
+          payload: { ...base.payload, wordCount: 0 },
+        }).success,
+      ).toBe(false);
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'addWords',
+          payload: { ...base.payload, words: [''] },
+        }).success,
+      ).toBe(false);
+      // Strict payload: unknown keys are rejected.
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'fog',
+          payload: { ...base.payload, durationMs: 2_000, extra: true },
+        }).success,
+      ).toBe(false);
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'fog',
+          payload: { durationMs: 2_000, at: '2026-11-08T18:00:07.000Z' },
+        }).success,
+      ).toBe(false);
+    });
   });
 });
 

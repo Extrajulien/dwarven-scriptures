@@ -62,12 +62,16 @@ export function easeOutCubic(t: number): number {
  * Interpolates one participant's track progress (0..1) between two
  * consecutive `raceTick` samples using the client clock.
  *
+ * BONUS-04: each sample uses the participant's OWN effective total length
+ * (`raceTick.totalLength`), never the shared base text length — a comeback
+ * bonus between two ticks changes the denominator, and every marker keeps
+ * its percentage coherent with the server's per-participant lengths. A
+ * defensive backwards sample (e.g. the text grew) trusts the latest value.
+ *
  * @param participant the participant to place — its entry in `nextTick`
  * @param prevTick the previous aggregated tick (`null` on the first tick)
  * @param nextTick the latest aggregated tick (must contain `participant`)
  * @param nowMs client clock (epoch ms)
- * @param totalLength total characters of the race text (spaces included);
- *   `null` before the text is known
  * @param easing `'linear'` or `'ease-out'` (default: `'ease-out'`, see above)
  * @returns a progress in [0, 1], clamped even outside the tick window
  */
@@ -76,10 +80,9 @@ export function interpolatePosition(
   prevTick: TrackTick | null,
   nextTick: TrackTick,
   nowMs: number,
-  totalLength: number | null,
   easing: TrackEasing = 'ease-out',
 ): number {
-  const nextProgress = positionFraction(participant.position, totalLength);
+  const nextProgress = positionFraction(participant.position, participant.totalLength);
   if (prevTick === null) {
     return nextProgress;
   }
@@ -98,10 +101,11 @@ export function interpolatePosition(
     // there is no meaningful window to interpolate across.
     return nextProgress;
   }
-  const prevProgress = positionFraction(previous.position, totalLength);
+  const prevProgress = positionFraction(previous.position, previous.totalLength);
   if (nextProgress < prevProgress) {
     // The server only ever moves positions forward (COURSE-06 monotonic
-    // counters); on a defensive backwards sample, trust the latest value.
+    // counters); on a defensive backwards sample — a grown text lowers the
+    // fraction without moving the caret (BONUS-04) — trust the latest value.
     return nextProgress;
   }
   const alpha = clamp01((nowMs - prevAtMs) / (nextAtMs - prevAtMs));
@@ -168,8 +172,9 @@ export type RankChangeEvent = {
   type: 'overtook' | 'overtaken';
   /** 'up': the local participant gained a rank; 'down': they lost one. */
   direction: 'up' | 'down';
-  /** The directly involved other participant (passed / passer). */
-  other: { participantId: string; displayName: string };
+  /** The directly involved other participant (passed / passer). `kind` lets
+   * the UI localize bot display names (BOT-04). */
+  other: { participantId: string; displayName: string; kind: RaceTrackParticipant['kind'] };
   /** The local participant's rank after the change (1-based). */
   rank: number;
 };
@@ -204,7 +209,11 @@ export function detectRankChanges(
       {
         type: 'overtook',
         direction: 'up',
-        other: { participantId: overtaken.participantId, displayName: overtaken.displayName },
+        other: {
+          participantId: overtaken.participantId,
+          displayName: overtaken.displayName,
+          kind: overtaken.kind,
+        },
         rank: nextLocal.rank,
       },
     ];
@@ -220,7 +229,11 @@ export function detectRankChanges(
       {
         type: 'overtaken',
         direction: 'down',
-        other: { participantId: passer.participantId, displayName: passer.displayName },
+        other: {
+          participantId: passer.participantId,
+          displayName: passer.displayName,
+          kind: passer.kind,
+        },
         rank: nextLocal.rank,
       },
     ];

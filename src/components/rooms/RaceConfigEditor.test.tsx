@@ -62,7 +62,8 @@ describe('RaceConfigEditor (CONF-01..10)', () => {
 
     expect(screen.getByLabelText('Bonus de remontée')).toBeChecked();
     expect(screen.queryByLabelText('Niveau')).not.toBeInTheDocument();
-    expect(screen.getByText('Les bots rejoignent les courses à partir de la phase 4.')).toBeInTheDocument();
+    // Bots join races now (Phase 4): the "bots join from Phase 4" note is gone.
+    expect(screen.queryByText(/phase 4/i)).not.toBeInTheDocument();
 
     for (const id of ['config-text-language', 'config-word-count', 'config-bonuses']) {
       expect(document.getElementById(id)).toBeEnabled();
