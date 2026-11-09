@@ -134,9 +134,14 @@ describe('typeChar — wrong keystrokes in both error modes', () => {
   test('the counter behaviour is identical in both modes (only the marking differs)', () => {
     const accumulate = typeAll(stateFor('abc', 'accumulate'), ['x', 'a', 'y', 'b', 'c']);
     const stop = typeAll(stateFor('abc', 'stop'), ['x', 'a', 'y', 'b', 'c']);
-    const { errorMode: _accumulateMode, ...accumulateCounters } = accumulate;
-    const { errorMode: _stopMode, ...stopCounters } = stop;
-    expect(accumulateCounters).toEqual(stopCounters);
+    const counters = (state: TypingState) => ({
+      validatedChars: state.validatedChars,
+      correctKeystrokes: state.correctKeystrokes,
+      totalKeystrokes: state.totalKeystrokes,
+      currentIndex: state.currentIndex,
+      lastError: state.lastError,
+    });
+    expect(counters(accumulate)).toEqual(counters(stop));
     expect(accumulate.validatedChars).toBe(3);
     expect(accumulate.correctKeystrokes).toBe(3);
     expect(accumulate.totalKeystrokes).toBe(5);
