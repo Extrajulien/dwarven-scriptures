@@ -170,6 +170,29 @@ export interface Messages {
   'lobby.option.off': string;
   'lobby.bonuses.on': string;
   'lobby.bonuses.off': string;
+  'lobby.bot.noob': string;
+  'lobby.bot.debutant': string;
+  'lobby.bot.intermediaire': string;
+  'lobby.bot.expert': string;
+  'lobby.bot.impossible': string;
+  'lobby.config.edit': string;
+  'lobby.config.save': string;
+  'lobby.config.saving': string;
+  'lobby.config.saved': string;
+  'lobby.config.timeLimitHint': string;
+  'lobby.config.accentsHint': string;
+  'lobby.config.botsNote': string;
+  'lobby.config.addBot': string;
+  'lobby.config.removeBot': string;
+  'lobby.config.botLevel': string;
+  'lobby.config.botCount': string;
+  'lobby.config.lockedRace': string;
+  'lobby.config.lockedNotHost': string;
+  'lobby.config.error.wordCount': string;
+  'lobby.config.error.timeLimit': string;
+  'lobby.config.error.botCount': string;
+  'lobby.config.error.invalid': string;
+  'lobby.config.error.unexpected': string;
   'lobby.membersTitle': string;
   'lobby.role.host': string;
   'lobby.role.participant': string;
@@ -783,6 +806,29 @@ export const MESSAGES: Record<Locale, Messages> = {
     'lobby.option.off': 'Désactivé',
     'lobby.bonuses.on': 'Activés',
     'lobby.bonuses.off': 'Désactivés',
+    'lobby.bot.noob': 'Noob',
+    'lobby.bot.debutant': 'Débutant',
+    'lobby.bot.intermediaire': 'Intermédiaire',
+    'lobby.bot.expert': 'Expert',
+    'lobby.bot.impossible': 'Impossible',
+    'lobby.config.edit': 'Modifier la configuration',
+    'lobby.config.save': 'Enregistrer la configuration',
+    'lobby.config.saving': 'Enregistrement en cours…',
+    'lobby.config.saved': 'Configuration enregistrée — toutes les personnes présentes la voient.',
+    'lobby.config.timeLimitHint': '30 s à 10 min ; vide = aucune limite',
+    'lobby.config.accentsHint': 'Les accents ne s’appliquent qu’au français.',
+    'lobby.config.botsNote': 'Les bots rejoignent les courses à partir de la phase 4.',
+    'lobby.config.addBot': 'Ajouter un bot',
+    'lobby.config.removeBot': 'Retirer ce bot',
+    'lobby.config.botLevel': 'Niveau',
+    'lobby.config.botCount': 'Nombre',
+    'lobby.config.lockedRace': 'La configuration est figée une fois la course lancée.',
+    'lobby.config.lockedNotHost': 'Seul l’hôte peut modifier la configuration.',
+    'lobby.config.error.wordCount': 'Entre 10 et 200 mots.',
+    'lobby.config.error.timeLimit': 'Entre 30 secondes et 10 minutes.',
+    'lobby.config.error.botCount': 'Entre 1 et 30 bots par niveau.',
+    'lobby.config.error.invalid': 'Configuration invalide — corrigez les champs signalés.',
+    'lobby.config.error.unexpected': 'Une erreur est survenue. Réessayez.',
     'lobby.membersTitle': 'MEMBRES PRÉSENTS',
     'lobby.role.host': 'Hôte',
     'lobby.role.participant': 'Participant',
@@ -1415,6 +1461,29 @@ export const MESSAGES: Record<Locale, Messages> = {
     'lobby.option.off': 'Off',
     'lobby.bonuses.on': 'On',
     'lobby.bonuses.off': 'Off',
+    'lobby.bot.noob': 'Noob',
+    'lobby.bot.debutant': 'Beginner',
+    'lobby.bot.intermediaire': 'Intermediate',
+    'lobby.bot.expert': 'Expert',
+    'lobby.bot.impossible': 'Impossible',
+    'lobby.config.edit': 'Edit configuration',
+    'lobby.config.save': 'Save configuration',
+    'lobby.config.saving': 'Saving…',
+    'lobby.config.saved': 'Configuration saved — everyone in the room sees it.',
+    'lobby.config.timeLimitHint': '30 s to 10 min; empty = no limit',
+    'lobby.config.accentsHint': 'Accents apply to French text only.',
+    'lobby.config.botsNote': 'Bots join races from Phase 4.',
+    'lobby.config.addBot': 'Add a bot',
+    'lobby.config.removeBot': 'Remove this bot',
+    'lobby.config.botLevel': 'Level',
+    'lobby.config.botCount': 'Count',
+    'lobby.config.lockedRace': 'The configuration is frozen once the race has started.',
+    'lobby.config.lockedNotHost': 'Only the host can change the configuration.',
+    'lobby.config.error.wordCount': 'Between 10 and 200 words.',
+    'lobby.config.error.timeLimit': 'Between 30 seconds and 10 minutes.',
+    'lobby.config.error.botCount': 'Between 1 and 30 bots per level.',
+    'lobby.config.error.invalid': 'Invalid configuration — fix the flagged fields.',
+    'lobby.config.error.unexpected': 'Something went wrong. Try again.',
     'lobby.membersTitle': 'MEMBERS PRESENT',
     'lobby.role.host': 'Host',
     'lobby.role.participant': 'Participant',
