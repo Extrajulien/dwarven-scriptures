@@ -493,19 +493,59 @@ player who returns within 30 s resumes in place (COURSE-08).
     `rejoinRace`/`raceSnapshot` resume the race (COURSE-08, implemented in
     Phase 2).
 
-### ADR-011 — Bots *(proposed approach)*
+### ADR-011 — Bots
 
-* **Status:** Proposed
+* **Status:** Accepted
 * **Context:** BOT-01..05: five levels, variable speed, errors with correction
   time, bonus-aware, deterministic from a seed.
-* **Decision (intent):** Bots drive the same race model as humans — a
-  deterministic simulation seeded per bot/race generates a per-character
-  schedule (accelerations, hesitations, hard-word slowdowns, injected errors
-  plus correction delay). The error behavior follows the configured error mode
-  (CONF-08). No bot-specific code paths in the race engine itself.
-* **Consequences:** The whole bot engine is unit-testable from its seed
-  (BOT-05); the five level ranges (BOT-01) map to schedule parameters to be
-  documented when implemented.
+* **Decision:** Bots drive the same race model as humans — a deterministic
+  simulation seeded per bot/race generates a per-character keystroke schedule
+  (accelerations, hesitations, hard-word slowdowns, injected errors plus
+  correction delay) and the engine applies it through the same cumulative
+  counters as a human's typed progress (`src/realtime/race-engine.ts`,
+  `advanceBots`). No bot-specific state-machine paths. Implemented specifics:
+  * **Seed (BOT-05):** `raceSeed + botNumber`, where `raceSeed` is the random
+    seed drawn at `startRace` (the same value `pickText` receives — i.e. the
+    textSeed in random mode). The whole race (text + bots) replays from one
+    seed; a relaunch draws a fresh seed, so schedules regenerate.
+  * **Identity:** synthetic participant ids derived from the bot seed through
+    the same mulberry32 PRNG, shaped as UUID v4 so the wire protocol
+    (`participantId: z.uuid()`) accepts them unchanged. The display name on
+    the wire and in `race_participants` is the **neutral** code
+    `"<level> <n>"` (e.g. `expert 2`); every UI surface localizes it per
+    viewer language (`src/lib/race/bot-display.ts`, keys `bot.level.*` +
+    `bot.nameSuffix`). Bots rank like humans (COURSE-10), persist as
+    `kind: 'bot'` rows (no `user_stats`) and count towards the start guards
+    (COURSE-02); the combined field is capped at 30 racers (SALLE-05).
+  * **Errors (BOT-03):** the wrong key is typed first (`totalKeystrokes`
+    only), then a level-scaled correction delay, then the correct key.
+    **Both CONF-08 modes produce the same natural timeline today** —
+    immediate correction — because immediate correction is valid typing in
+    `accumulate` too and keeps `validatedChars === correctKeystrokes`, so the
+    counters stay valid for both modes (documented in
+    `src/lib/bots/schedule.ts`).
+  * **BOT-04, bonus/malus half:** bots are identified in the UI (track rune,
+    results rune + tag, localized names) and are subject to bonuses exactly
+    like humans — i.e. BONUS-01..04 do not exist yet for anyone; when they
+    land, bots keep riding the shared race model.
+* **Consequences:** the whole bot engine is unit-testable from its seed
+  (BOT-05). The five level ranges (BOT-01) map to schedule parameters as
+  follows (`BOT_LEVEL_PARAMS` in `src/lib/bots/schedule.ts`); the typing-WPM
+  range sits **above** the EXIGENCES target band so the achieved net WPM
+  (Annexe A, errors/hesitations/slowdowns included) lands inside the target
+  band on representative texts — the documented adjustment the EXIGENCES
+  allow. Common knobs: per-keystroke jitter ±20 %, a time-neutral linear
+  burst ramp through each word (`burstStartFactor` on the first character,
+  `2 − factor` on the last), sentence pause 0.4–1.0× the base interval after
+  `. ! ?`.
+
+  | Level | Target net WPM | Typing WPM | Error rate | Correction delay | Hard word ≥ | Hard-word speed | Hesitation chance | Hesitation length | Burst first char |
+  | ----- | -------------- | ---------- | ---------- | ---------------- | ----------- | --------------- | ----------------- | ----------------- | ---------------- |
+  | noob | 10–20 | 15–25 | 12 % | 1.0–2.0× base interval | 6 letters | 0.65–0.85× | 10 % | 1.5–2.5× | 1.6× |
+  | debutant | 20–35 | 27–38 | 8 % | 0.8–1.6× | 7 letters | 0.70–0.88× | 8 % | 1.4–2.2× | 1.5× |
+  | intermediaire | 35–60 | 45–62 | 5 % | 0.7–1.4× | 8 letters | 0.75–0.90× | 6 % | 1.3–2.0× | 1.4× |
+  | expert | 70–100 | 84–100 | 2 % | 0.5–1.1× | 9 letters | 0.80–0.92× | 4 % | 1.2–1.8× | 1.3× |
+  | impossible | 140+ | 165–230 | 0.5 % | 0.4–0.9× | 10 letters | 0.85–0.95× | 2 % | 1.2–1.6× | 1.2× |
 
 ## Real-time message flow
 
