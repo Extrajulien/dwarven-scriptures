@@ -22,6 +22,7 @@ import {
   RoomFullError,
   RoomMemberKickedError,
   RoomMemberNotFoundError,
+  RoomConfigLockedError,
   RoomNotFoundError,
   RoomNotJoinableError,
   transferHost as transferHostQuery,
@@ -36,6 +37,7 @@ import {
   publishMemberKicked,
   publishMemberLeft,
   publishRoomClosed,
+  requestEngineStart,
 } from '../../realtime/events';
 import {
   createGuestSession,
@@ -100,7 +102,22 @@ export type RoomActionError =
   | 'kicked'
   | 'alreadyInRoom'
   | 'targetNotFound'
-  | 'notHostCandidate';
+  | 'notHostCandidate'
+  | 'configLocked';
+
+/**
+ * Error codes of the `startRace` action (COURSE-02, SEC-01). Kept separate
+ * from {@link RoomActionError} so the exhaustive join-form error maps in the
+ * UI never need codes that only the race start can produce.
+ */
+export type StartRaceActionError =
+  | 'invalidInput'
+  | 'authRequired'
+  | 'notHost'
+  | 'roomNotFound'
+  | 'raceAlreadyRunning'
+  | 'raceNotRunning'
+  | 'unexpected';
 
 export type ActionFailure = { ok: false; error: RoomActionError };
 export type ActionSuccess = { ok: true };
@@ -339,7 +356,7 @@ export async function joinRoomByCode(
 async function requireHostRoom(
   actor: Actor,
   roomPublicId: string,
-): Promise<{ roomId: number; hostUserId: number } | { error: RoomActionError }> {
+): Promise<{ roomId: number; hostUserId: number } | { error: 'authRequired' | 'roomNotFound' | 'notHost' }> {
   if (actor.kind !== 'user') {
     return { error: 'authRequired' };
   }
@@ -385,7 +402,59 @@ export async function updateRoomConfig(
     if (isZodValidationError(error)) {
       return { ok: false, error: 'invalidConfig' };
     }
+    if (error instanceof RoomConfigLockedError) {
+      // CONF-12: the config is snapshotted at race start — edits are only
+      // accepted in EN_ATTENTE; mid-race attempts map to a typed denial.
+      return { ok: false, error: 'configLocked' };
+    }
+    if (error instanceof NotRoomHostError) {
+      return { ok: false, error: 'notHost' };
+    }
     console.error('updateRoomConfig: unexpected failure', error);
+    return { ok: false, error: 'unexpected' };
+  }
+}
+
+export type StartRaceActionResult =
+  | { ok: true }
+  | { ok: false; error: StartRaceActionError };
+
+/**
+ * Starts the race (COURSE-02, SEC-01). The caller must be the room host —
+ * verified here against `rooms.hostUserId` inside `requireHostRoom`, and
+ * re-verified by the in-process race engine (ADR-010, Decision A: the action
+ * reaches the engine instance directly through `src/realtime/events.ts`),
+ * which applies the COURSE-02 participant guards, picks the text and
+ * broadcasts `countdownStarted` to the room.
+ */
+export async function startRace(input: RoomActionInput): Promise<StartRaceActionResult> {
+  const parsed = roomActionSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: 'invalidInput' };
+  }
+
+  try {
+    const actor = await resolveActor();
+    const room = await requireHostRoom(actor, parsed.data.roomPublicId);
+    if ('error' in room) {
+      return { ok: false, error: room.error };
+    }
+
+    const outcome = await requestEngineStart(room.roomId, room.hostUserId);
+    if (outcome === null) {
+      // No realtime engine in this process (unit tests, non-realtime
+      // context): the action cannot start a race.
+      return { ok: false, error: 'unexpected' };
+    }
+    if (!outcome.ok) {
+      if (outcome.code === 'race_already_running') {
+        return { ok: false, error: 'raceAlreadyRunning' };
+      }
+      return { ok: false, error: 'raceNotRunning' };
+    }
+    return { ok: true };
+  } catch (error) {
+    console.error('startRace: unexpected failure', error);
     return { ok: false, error: 'unexpected' };
   }
 }

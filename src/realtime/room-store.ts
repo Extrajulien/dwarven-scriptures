@@ -49,8 +49,10 @@ import type { RoomStatus, WsErrorCode } from './protocol';
  * - `RoomNotFoundError`, `RoomNotJoinableError` (SALLE-09) and unknown or
  *   private rooms (SALLE-03: the answer never reveals a code's validity) →
  *   `room_not_found`
- * - `AlreadyInRoomError` → a **rejoin**: the person is already an active
- *   member of this room, so no new membership is created.
+ * - an **active member reconnecting** — whatever the room's current status
+ *   (COURSE-08: the engine may hold their slot mid-race, while SALLE-09
+ *   blocks fresh joins) — reports `rejoin: true`: the membership itself is
+ *   the credential, no new membership is created.
  * - anything else → `invalid_input` (logged, never leaked).
  */
 
@@ -152,11 +154,18 @@ export class PostgresRoomStore implements RoomStore {
       return { ok: false, error: 'room_not_found' };
     }
 
+    // COURSE-08/SALLE-03/04: an *active member* reconnecting is not a join —
+    // their membership is the credential (the engine may have kept their
+    // slot mid-race, and SALLE-09 blocks fresh joins during a race). This
+    // check runs before admission, so a reconnect works whatever the
+    // room's current status is.
+    const memberId = await getActiveMemberId(room.id, identityFields(input.identity));
+    if (memberId !== null) {
+      return { ok: true, roomId: room.id, rejoin: true };
+    }
+
     if (room.visibility === 'private') {
-      const memberId = await getActiveMemberId(room.id, identityFields(input.identity));
-      return memberId !== null
-        ? { ok: true, roomId: room.id, rejoin: true }
-        : { ok: false, error: 'room_not_found' };
+      return { ok: false, error: 'room_not_found' };
     }
 
     try {
@@ -183,6 +192,13 @@ export class PostgresRoomStore implements RoomStore {
     const link = await getInvitationByToken(invitationToken);
     if (!link || link.status === 'revoked') {
       return { ok: false, error: 'room_not_found' };
+    }
+
+    // COURSE-08: an active member reconnecting mid-race is not a join
+    // (same rule as `joinByCode`; SALLE-09 blocks fresh joins in flight).
+    const activeMemberId = await getActiveMemberId(link.roomId, identityFields(input.identity));
+    if (activeMemberId !== null) {
+      return { ok: true, roomId: link.roomId, rejoin: true };
     }
 
     if (link.status === 'used') {

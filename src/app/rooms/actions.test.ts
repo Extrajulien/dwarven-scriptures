@@ -24,6 +24,7 @@ import {
   listPublicRooms,
   markMemberLeft,
   NotHostCandidateError,
+  RoomConfigLockedError,
   RoomFullError,
   RoomMemberKickedError,
   RoomNotFoundError,
@@ -100,6 +101,11 @@ jest.mock('../../db/queries/invitations', () => {
   return { ...actual, createInvitationLinks: jest.fn() };
 });
 
+jest.mock('../../realtime/events', () => {
+  const actual = jest.requireActual('../../realtime/events');
+  return { ...actual, requestEngineStart: jest.fn() };
+});
+
 import {
   closeRoom,
   createRoom,
@@ -111,9 +117,11 @@ import {
   leaveRoom,
   quickPlay,
   setGuestNickname,
+  startRace,
   transferHost,
   updateRoomConfig,
 } from './actions';
+import { requestEngineStart } from '../../realtime/events';
 import { redirect } from 'next/navigation';
 import { defaultRoomConfig } from '../../lib/room-config';
 import type { RoomConfig } from '../../db/schema';
@@ -137,6 +145,7 @@ const updateRoomConfigQueryMock = updateRoomConfigQuery as jest.Mock;
 const transferHostQueryMock = transferHostQuery as jest.Mock;
 const markMemberLeftMock = markMemberLeft as jest.Mock;
 const createInvitationLinksQueryMock = createInvitationLinksQuery as jest.Mock;
+const requestEngineStartMock = requestEngineStart as jest.Mock;
 const limiterCheckMock = roomCodeJoinLimiter.check as jest.Mock;
 const limiterResetMock = roomCodeJoinLimiter.reset as jest.Mock;
 const redirectMock = redirect as unknown as jest.Mock;
@@ -477,6 +486,16 @@ describe('host-only actions (SEC-01)', () => {
     expect(updateRoomConfigQueryMock).not.toHaveBeenCalled();
   });
 
+  test('updateRoomConfig maps a frozen config to the typed configLocked denial (CONF-12)', async () => {
+    userActor();
+    getRoomInternalByPublicIdMock.mockResolvedValue(roomRow);
+    updateRoomConfigQueryMock.mockRejectedValue(new RoomConfigLockedError('en_course'));
+
+    await expect(
+      updateRoomConfig({ roomPublicId: ROOM_PUBLIC_ID, config: defaultRoomConfig }),
+    ).resolves.toEqual({ ok: false, error: 'configLocked' });
+  });
+
   test('closeRoom closes only for the host', async () => {
     userActor();
     getRoomInternalByPublicIdMock.mockResolvedValue(roomRow);
@@ -509,6 +528,89 @@ describe('host-only actions (SEC-01)', () => {
       error: 'authRequired',
     });
     expect(getRoomInternalByPublicIdMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('startRace (COURSE-02, SEC-01)', () => {
+  test('starts the race through the in-process engine for the host', async () => {
+    userActor();
+    getRoomInternalByPublicIdMock.mockResolvedValue(roomRow);
+    requestEngineStartMock.mockResolvedValue({ ok: true });
+
+    await expect(startRace({ roomPublicId: ROOM_PUBLIC_ID })).resolves.toEqual({ ok: true });
+    expect(requestEngineStartMock).toHaveBeenCalledWith(42, 7);
+  });
+
+  test('refuses a non-host before reaching the engine (SEC-01)', async () => {
+    userActor();
+    getRoomInternalByPublicIdMock.mockResolvedValue({ ...roomRow, hostUserId: 8 });
+
+    await expect(startRace({ roomPublicId: ROOM_PUBLIC_ID })).resolves.toEqual({
+      ok: false,
+      error: 'notHost',
+    });
+    expect(requestEngineStartMock).not.toHaveBeenCalled();
+  });
+
+  test('refuses guests and anonymous callers', async () => {
+    guestActor();
+    await expect(startRace({ roomPublicId: ROOM_PUBLIC_ID })).resolves.toEqual({
+      ok: false,
+      error: 'authRequired',
+    });
+
+    noActor();
+    await expect(startRace({ roomPublicId: ROOM_PUBLIC_ID })).resolves.toEqual({
+      ok: false,
+      error: 'authRequired',
+    });
+    expect(requestEngineStartMock).not.toHaveBeenCalled();
+  });
+
+  test('maps an already-running race to raceAlreadyRunning', async () => {
+    userActor();
+    getRoomInternalByPublicIdMock.mockResolvedValue(roomRow);
+    requestEngineStartMock.mockResolvedValue({ ok: false, code: 'race_already_running' });
+
+    await expect(startRace({ roomPublicId: ROOM_PUBLIC_ID })).resolves.toEqual({
+      ok: false,
+      error: 'raceAlreadyRunning',
+    });
+  });
+
+  test('maps the engine guards (participants, host, text) to raceNotRunning', async () => {
+    userActor();
+    getRoomInternalByPublicIdMock.mockResolvedValue(roomRow);
+    requestEngineStartMock.mockResolvedValue({
+      ok: false,
+      code: 'race_not_running',
+      message: 'a race needs at least 2 participants',
+    });
+
+    await expect(startRace({ roomPublicId: ROOM_PUBLIC_ID })).resolves.toEqual({
+      ok: false,
+      error: 'raceNotRunning',
+    });
+  });
+
+  test('returns unexpected when no realtime engine is registered in this process', async () => {
+    userActor();
+    getRoomInternalByPublicIdMock.mockResolvedValue(roomRow);
+    requestEngineStartMock.mockResolvedValue(null);
+
+    await expect(startRace({ roomPublicId: ROOM_PUBLIC_ID })).resolves.toEqual({
+      ok: false,
+      error: 'unexpected',
+    });
+  });
+
+  test('rejects a malformed publicId', async () => {
+    userActor();
+    await expect(startRace({ roomPublicId: 'not-a-uuid' })).resolves.toEqual({
+      ok: false,
+      error: 'invalidInput',
+    });
+    expect(requestEngineStartMock).not.toHaveBeenCalled();
   });
 });
 

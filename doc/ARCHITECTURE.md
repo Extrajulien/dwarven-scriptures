@@ -21,7 +21,11 @@ race section (quick play, join by code, create-room card),
 `/rooms` public explorer with filters and ~5 s auto-refresh,
 `/rooms/[publicId]` lobby (live member list, host controls, invitation
 links), guest nickname flow and the `/i/[token]` invitation endpoint. The
-race engine, bots and bonuses are still not built.
+race **domain logic** is implemented as pure modules (`src/lib/race/`): the
+state machine (COURSE-01), the Annexe A WPM formulas (`stats.ts`), the seeded
+random-text generator, the coherent-text selection ranking and the race
+start rules. The realtime race wiring (start command, progress stream,
+results persistence), bots and bonuses are still not built.
 
 ## Folder layout
 
@@ -31,7 +35,7 @@ race engine, bots and bonuses are still not built.
 | `src/components/` | Presentational UI components (auth forms, account screen, theme shell) |
 | `src/data/` | Static UI data (site identity, form labels, mock content) |
 | `src/db/` | Drizzle schema (`schema.ts`), client, migration runner, `queries/` (one module per aggregate) |
-| `src/lib/` | Pure business logic: password hashing, validation, sessions, OAuth, token codecs |
+| `src/lib/` | Pure business logic: password hashing, validation, sessions, OAuth, token codecs, race domain logic (`race/`: state machine, stats, text generation/selection, start rules) |
 | `src/realtime/` | Realtime layer: `protocol.ts` (Zod schemas), `hub.ts` (transport-agnostic hub), `room-store.ts` (Postgres adapter), `server.ts` (ws wiring), `events.ts` (action→hub bridge), `useRoomSocket.ts` (client hook) |
 | `src/sprites/` | Sprite registry, auto-tiling and tile rendering (the visual identity) |
 | `server.ts` | Custom server entry (ADR-010): one process for Next.js + the `/ws` realtime layer |
@@ -181,16 +185,64 @@ committed migrations when each feature is built:
 
 ## Race state machine (COURSE-01)
 
+**Implemented** as a pure, clock-injected module: `src/lib/race/state.ts`
+(unit-tested exhaustively in `src/lib/race/state.test.ts` — every transition,
+every guard rejection and the countdown boundaries). The diagram below is
+exactly what the code enforces:
+
 ```mermaid
 stateDiagram-v2
     [*] --> EN_ATTENTE
-    EN_ATTENTE --> DECOMPTE: host starts (>=2 participants, >=1 human)
-    DECOMPTE --> EN_COURSE: countdown 3-2-1 done
-    EN_COURSE --> RESULTATS: all finished/quit or time up
-    RESULTATS --> EN_ATTENTE: host relaunches
-    RESULTATS --> FERMEE: host closes
+    EN_ATTENTE --> DECOMPTE: requestStart (host, >=2 racers, >=1 human, text)
+    DECOMPTE --> EN_COURSE: advance once now >= startAt
+    EN_COURSE --> RESULTATS: advance when all racers done/quit or time up
+    RESULTATS --> EN_ATTENTE: relaunch (participants kept, config replaceable)
+    RESULTATS --> FERMEE: closeRace
+    EN_ATTENTE --> FERMEE: closeRace
     FERMEE --> [*]
 ```
+
+Phase values are the `rooms.status` strings (`en_attente`, `decompte`,
+`en_course`, `resultats`, `fermee`); `src/lib/race/start-rules.ts` owns the
+room-status ↔ race-phase mapping (`roomStatusForPhase`, identity today) as
+the single source of truth. Semantics as implemented:
+
+* **Countdown (COURSE-03):** `requestStart` stamps `startedAt = now` and
+  `startAt = now + 3000 ms` (`COUNTDOWN_MS`) and stores the chosen text on
+  the race at that moment — the text is revealed from the very start of the
+  countdown (`textVisibleForPhase`). Any client joining mid-countdown derives
+  its remaining seconds from `countdownSecondsRemaining` (3 → 1, `0` past the
+  boundary); `advance` flips to `en_course` once `startAt` passes. The clock
+  is injected (`now`), so the whole machine is deterministic in tests.
+* **End conditions (COURSE-09):** in `en_course`, `advance` moves to
+  `resultats` when every racing participant (spectators excluded, bots
+  included) has a `finished`/`quit` result, or when
+  `config.timeLimitSeconds` (if set) has elapsed since `startAt` — the still
+  active participants are then recorded as `timeout` at that instant and
+  `finishedAt` is stamped. `finishParticipant` only records a result (it is
+  idempotent and cannot change the phase); the transition belongs to
+  `advance`, the single place where a clock decides.
+* **Relaunch / close (COURSE-11):** `relaunch` is legal only from
+  `resultats`, keeps the participant list and can replace the config
+  snapshot; `closeRace` is legal from `en_attente` or `resultats`.
+* **Config snapshot (CONF-12):** the engine reads `rooms.config` exactly
+  once, when a race starts (`RaceEngine.startRace` → `loadRoom` →
+  `pickText` + `createRace({ config })`). From DÉCOMPTE on, the running race
+  is immune to any later change, so the `updateRoomConfig` query refuses
+  writes while `rooms.status` is not `en_attente` (`RoomConfigLockedError`
+  → action code `configLocked` → localized denial in the lobby). The guard
+  is deliberately strict (`en_attente` only): the results screen
+  (COURSE-11, Phase 3) can widen it to `resultats` safely, because the next
+  `startRace` (relaunch) re-reads the stored config — this keeps the DB
+  config and the engine snapshot coherent at all times. Live updates to
+  everyone present flow through `configUpdated` (see the message-flow
+  section below).
+* **Annexe A formulas** (net/raw WPM, accuracy, progression) live in
+  `src/lib/race/stats.ts` so every phase reuses them verbatim (COURSE-04/10).
+
+The machine is pure data in / data out — the realtime wiring (start-command
+authorization against `rooms.hostUserId`, progress validation, broadcasts and
+persistence) lands in SP-2B.
 
 Only `EN_ATTENTE` and `RESULTATS` accept new members (SALLE-09). A disconnected
 player who returns within 30 s resumes in place (COURSE-08).
@@ -399,8 +451,10 @@ player who returns within 30 s resumes in place (COURSE-08).
     `src/realtime/protocol.ts` (Zod message schemas): the race engine will
     import the hub, never `ws` (AGENTS.md). Server actions notify the hub
     through the same in-process seam (`src/realtime/events.ts`).
-  * Reconnection for checkpoint 1 is a plain re-join by code/invitation
-    (COURSE-08's 30-second resume is Phase 2).
+  * Reconnection is a re-join by code/invitation token; mid-race (DÉCOMPTE/
+    EN_COURSE) the race hooks keep the membership slot for 30 s and
+    `rejoinRace`/`raceSnapshot` resume the race (COURSE-08, implemented in
+    Phase 2).
 
 ### ADR-011 — Bots *(proposed approach)*
 
@@ -456,8 +510,10 @@ connection per membership (a second connection replaces the first, which is
 closed with `error(already_in_room)` — the newest tab wins); a ws-level
 heartbeat (~30 s ping, dead socket evicted in ~30–60 s) whose eviction applies
 the normal departure path; graceful shutdown closes every socket and marks all
-memberships left. **Phase-1 reconnection is a plain re-join by code/token** —
-COURSE-08's 30-second mid-race resume is Phase 2. After a `roomClosed` message
+memberships left. **Reconnection** is a re-join by code/token; since Phase 2,
+a mid-race reconnect (DÉCOMPTE/EN_COURSE) keeps the membership slot for 30 s
+and resumes through `rejoinRace`/`raceSnapshot` (COURSE-08 — see the race
+message flow below). After a `roomClosed` message
 the client hook does not schedule a reconnect (`shouldReconnect` in
 `src/realtime/useRoomSocket.ts`): retrying would only flip the "room closed"
 screen into a "not found" error.
@@ -502,27 +558,101 @@ sequenceDiagram
     S-->>C: memberLeft (+ hostChanged / roomClosed)
 ```
 
-### Planned (Phase 2) — race messages, design only
+### Race messages (Phase 2) — implemented, `src/realtime/race-engine.ts`
 
-The flow below extends the implemented protocol once the race engine lands;
-nothing here is built yet:
+The flow below is built and live-smoke-verified. Every race message in both
+directions is Zod-validated (TECH-07) and the pure machine
+(`src/lib/race/state.ts`) stays authoritative for phases and guards.
 
 ```mermaid
 sequenceDiagram
     participant C as Client
-    participant S as Server (authoritative)
+    participant S as Server (authoritative, one process)
+    participant E as RaceEngine (in-memory, per room)
     participant DB as PostgreSQL
-    C->>S: host starts the race (server action)
-    S-->>C: countdown sync (3-2-1, text revealed)
-    C->>S: progress (validated char index)
-    S-->>C: ticks <=10 msg/s: positions, WPM, ranking
-    S-->>C: bonus events (BONUS-03)
-    S-->>C: results (RES-01/02)
-    S->>DB: persist result + WPM series (RES-05)
+    C->>S: startRace (host; server action or ws message)
+    S->>E: startRace (host key re-verified, SEC-01)
+    E->>DB: rooms.status = 'decompte'
+    E-->>C: countdownStarted (startAt, full text revealed, COURSE-03)
+    Note over E: clock ticks (~250 ms) advance the state machine
+    E-->>C: raceStarted (startAt, after the 3-2-1 countdown)
+    C->>S: raceProgress (cumulative counters, ~<=10 msg/s)
+    S->>E: validation: monotonic, <= totalLength, delta <= 100 (COURSE-06)
+    E-->>C: raceTick (<=~4/s: positions, net WPM, finished flags)
+    E-->>C: participantFinished {rank} / participantQuit
+    E-->>C: raceFinished (COURSE-10 ranking) + rooms.status='resultats'
+    Note over E: GAME-5: 60 s without progress → raceAborted, back to en_attente
+    C->>S: (mid-race drop) reconnect within 30 s: joinRoom + rejoinRace
+    S-->>C: roomSnapshot + raceSnapshot (phase, text, own counters)
 ```
 
-Rules the flow must respect: the server validates every progress message and
-rejects impossible jumps (COURSE-06); per-keystroke writes to the database are
-forbidden (PERF-02); the track interpolates client-side between ticks
-(COURSE-05); a reconnect within 30 s resumes the race where it left off
-(COURSE-08).
+Rules the flow enforces:
+
+* The server validates every progress message and rejects impossible jumps
+  (COURSE-06); per-keystroke database writes are forbidden — only phase
+  changes touch `rooms.status` (PERF-02); the track interpolates client-side
+  between ticks (COURSE-05, the visual track is SP-2D).
+* A reconnect within 30 s resumes the race where it left off (COURSE-08,
+  GAME-4): during DÉCOMPTE/EN_COURSE a dropped socket keeps its membership
+  (the hub asks the engine's race hooks before applying the normal departure)
+  and `rejoinRace` answers with the `raceSnapshot` resume payload. Past the
+  window the participant is recorded as `quit` (abandon).
+* COURSE-07/RACE-6: `quitRace` turns the participant into a spectator
+  instantly — they stay in the room.
+* COURSE-10 ranking: finishers by finish time, then timeouts by progression,
+  then quits by progression at the moment of quitting; computed server-side.
+* GAME-5 interpretation (documented in the engine): a 60-second global
+  inactivity (no accepted progress from any participant) aborts the race —
+  `raceAborted` is broadcast, the room returns to `en_attente` and **no
+  ranking is produced**.
+* The final results payload stays in memory for the room's lifetime
+  (`RaceEngine.takeResults`); persistence (RES-05, Phase 3) consumes it —
+  see the seam documented in `src/realtime/race-engine.ts`.
+
+### Client-side track pipeline: interpolation, ranking and overtakes (SP-2D)
+
+The track UI consumes the same aggregated `raceTick` stream and derives
+everything locally — the server remains authoritative for positions and
+final standings, the client only *presents* them:
+
+1. **Tick history** — `ProgressTrack` keeps the latest two ticks (the
+   previous one is adjusted during render, React's "adjust state when props
+   change" pattern, so no effect mirrors props into state). Each marker's
+   progress is `interpolatePosition(participant, prevTick, nextTick, nowMs,
+   totalLength)` from `src/lib/race/track.ts`: 0..1 progress clamped between
+   the two samples on the client clock, cubic **ease-out** by default
+   (smooths the ~250 ms server quantization without overshooting; `linear`
+   available). The component re-renders on a ~60 Hz interval
+   (`TRACK_CLOCK_INTERVAL_MS` = 16 ms) so the perceived rate stays ≥ ~4
+   updates/s between ticks (COURSE-05). An interval rather than
+   `requestAnimationFrame` keeps the interpolation deterministic under Jest
+   fake timers (the jsdom rAF shim recurses at 0 ms and would spin).
+
+2. **Live ranking** — `deriveRanking(participants, finishOrder)` sorts
+   finished participants first (by finish rank when known), then by position
+   desc, WPM desc, participantId; it feeds the top-3 panel (GAME-2) and the
+   marker badges.
+
+3. **Overtake detection** — `detectRankChanges(prevRanking, nextRanking,
+   localParticipantId)` compares two consecutive rankings and emits at most
+   one event per tick for the LOCAL participant only (`overtook`/`up` or
+   `overtaken`/`down` with the directly involved other participant and the
+   new rank). `OvertakeIndicator` shows a brief dwarf-styled strip
+   (auto-dismiss ~2.5 s, "latest wins" — no stacking) and announces it via
+   `aria-live="assertive"`; the track's `aria-live="polite"` region
+   announces the local rank on every tick (GAME-3).
+
+```mermaid
+sequenceDiagram
+    participant S as Server (RaceEngine, <=~4 ticks/s)
+    participant T as ProgressTrack (client)
+    participant O as OvertakeIndicator (client)
+    S-->>T: raceTick {tickAt, participants[]}
+    Note over T: keep prev+next tick, ~60 Hz clock pulses
+    T-->>T: interpolatePosition(...) → marker transform (COURSE-05)
+    Note over T,O: deriveRanking each tick
+    O-->>O: detectRankChanges(prev, next, local) → strip + assertive announce (GAME-3)
+```
+
+The track, top-3 and overtake strip render for participants **and**
+spectators alike; only the typing zone is role-gated (`RaceScreen.tsx`).

@@ -18,6 +18,8 @@ import SectionHeader from '../SectionHeader';
 import UserAvatar from '../UserAvatar';
 import GuestAvatar from './GuestAvatar';
 import InvitationsPanel from './InvitationsPanel';
+import RaceConfigEditor, { BOT_LEVEL_LABEL_KEYS } from './RaceConfigEditor';
+import RaceScreen from '../race/RaceScreen';
 
 export type LobbyViewer =
   | { kind: 'user'; publicId: string; username: string }
@@ -97,7 +99,8 @@ export default function RoomLobby({
   messages,
 }: RoomLobbyProps) {
   const router = useRouter();
-  const { status, snapshot, error, join, leave } = useRoomSocket();
+  const { status, snapshot, error, race, join, leave, startRace, quitRace, sendRaceProgress } =
+    useRoomSocket();
 
   const joinedRef = useRef(false);
   const [leftByUser, setLeftByUser] = useState(false);
@@ -107,6 +110,7 @@ export default function RoomLobby({
   const [confirmKickTarget, setConfirmKickTarget] = useState<string | null>(null);
   const [transferTarget, setTransferTarget] = useState('');
   const [busy, setBusy] = useState(false);
+  const [editingConfig, setEditingConfig] = useState(false);
 
   useEffect(() => {
     if (joinedRef.current) {
@@ -272,6 +276,23 @@ export default function RoomLobby({
   );
   const config = room.config;
 
+  // Race screen wiring (COURSE-02/03, GAME-1): the race UI renders for every
+  // room status (launch panel while waiting, countdown/race/results view
+  // otherwise) and the lobby content stays below it. One socket, one hook —
+  // the screen receives the state as props.
+  const viewerIdentityValue = viewer.kind === 'user' ? `user:${viewer.publicId}` : `guest:${viewer.guestToken}`;
+  const ownMember = snapshot.members.find((member) => memberIdentity(member) === viewerIdentityValue);
+  const viewerRole = ownMember?.role ?? 'spectator';
+  const participantCount = snapshot.members.filter((member) => member.role === 'participant').length;
+  const viewerParticipantId = viewer.kind === 'user' ? viewer.publicId : viewer.guestToken;
+  // participantId (public id) → profile picture for the track avatars; guests
+  // and bots have none and fall back to their generated markers.
+  const pfpUrls: Record<string, string | null> = Object.fromEntries(
+    snapshot.members
+      .filter((member): member is Extract<MemberInfo, { kind: 'user' }> => member.kind === 'user')
+      .map((member) => [member.publicId, member.pfpUrl]),
+  );
+
   const configRows: Array<{ label: string; value: string }> = [
     {
       label: messages['lobby.config.language'],
@@ -328,12 +349,31 @@ export default function RoomLobby({
       value:
         config.bots.length === 0
           ? '—'
-          : config.bots.map((entry) => `${String(entry.count)}× ${entry.level}`).join(' · '),
+          : config.bots
+              .map(
+                (entry) => `${String(entry.count)}× ${messages[BOT_LEVEL_LABEL_KEYS[entry.level]]}`,
+              )
+              .join(' · '),
     },
   ];
 
   return (
     <div className="flex flex-col gap-space-lg">
+      <RaceScreen
+        roomStatus={room.status}
+        race={race}
+        config={config}
+        viewerRole={viewerRole}
+        isHost={isHost}
+        participantCount={participantCount}
+        viewerParticipantId={viewerParticipantId}
+        pfpUrls={pfpUrls}
+        messages={messages}
+        onStartRace={startRace}
+        onQuitRace={quitRace}
+        onSendProgress={sendRaceProgress}
+      />
+
       {/* Room header: code, visibility, status, capacity. */}
       <section className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl">
         <SectionHeader
@@ -376,12 +416,49 @@ export default function RoomLobby({
 
       {/* Config summary (CONF-12): rendered from the snapshot, so configUpdated re-renders it. */}
       <section className="rounded bg-surface-container-lowest p-space-lg shadow-xl">
-        <SectionHeader title={messages['lobby.configTitle']} />
+        <SectionHeader
+          title={messages['lobby.configTitle']}
+          right={
+            isHost && !editingConfig ? (
+              <ButtonSecondary
+                type="button"
+                disabled={room.status !== 'en_attente'}
+                onClick={() => setEditingConfig(true)}
+                className="px-space-sm py-space-xs"
+              >
+                {messages['lobby.config.edit']}
+              </ButtonSecondary>
+            ) : undefined
+          }
+        />
+        {isHost && !editingConfig && room.status !== 'en_attente' && (
+          <p className="font-label-sm text-label-sm text-dwarf-parchmentMuted">
+            {messages['lobby.config.lockedRace']}
+          </p>
+        )}
         <div className="flex flex-col">
           {configRows.map((row) => (
             <ConfigRow key={row.label} label={row.label} value={row.value} />
           ))}
         </div>
+
+        {/* Host-only editor (CONF-01..10): the saved config is broadcast by
+            the server action and re-applied by the socket hook, so this
+            editor and the summary above re-render from the new snapshot. */}
+        {isHost && editingConfig && (
+          <div className="pt-space-md">
+            <RaceConfigEditor
+              config={config}
+              roomPublicId={room.publicId}
+              canEdit={room.status === 'en_attente'}
+              lockedReason={
+                room.status !== 'en_attente' ? messages['lobby.config.lockedRace'] : null
+              }
+              onClose={() => setEditingConfig(false)}
+              messages={messages}
+            />
+          </div>
+        )}
       </section>
 
       <div className="grid grid-cols-1 gap-space-lg lg:grid-cols-3">

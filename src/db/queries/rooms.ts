@@ -18,6 +18,7 @@ import {
   ROOM_CODE_LENGTH,
   type PresentMember,
 } from '../../lib/room-rules';
+import { roomStatusForPhase } from '../../lib/race/start-rules';
 import { parseRoomConfig, resolveRoomConfig } from '../../lib/room-config';
 
 /**
@@ -107,6 +108,19 @@ export class RoomMemberNotFoundError extends Error {
   constructor() {
     super('no such present member in this room');
     this.name = 'RoomMemberNotFoundError';
+  }
+}
+
+/**
+ * Raised when the host tries to change the race configuration outside
+ * EN_ATTENTE (CONF-12). The engine snapshots `rooms.config` when a race
+ * starts, so a mid-race write would drift from the live race: config edits
+ * are only accepted while the room waits.
+ */
+export class RoomConfigLockedError extends Error {
+  constructor(status: string) {
+    super(`race config is frozen while the room is not waiting (status: ${status})`);
+    this.name = 'RoomConfigLockedError';
   }
 }
 
@@ -1082,6 +1096,12 @@ export type UpdateRoomConfigParams = {
  * (SEC-01); the incoming value is parsed with the Zod schema from
  * `src/lib/room-config.ts`, which throws a `ZodError` on any invalid field —
  * callers map that to a typed validation result.
+ *
+ * CONF-12: the config is snapshotted by the race engine when a race starts,
+ * so writes are refused while the room is not in `en_attente`
+ * (`RoomConfigLockedError`) — a mid-race write could never affect the live
+ * race and would only desynchronize the stored config from it. The status is
+ * read on the locked room row, inside the same transaction as the update.
  */
 export async function updateRoomConfig(params: UpdateRoomConfigParams): Promise<void> {
   assertPositiveInteger(params.roomId, 'roomId');
@@ -1091,7 +1111,7 @@ export async function updateRoomConfig(params: UpdateRoomConfigParams): Promise<
 
   await db.transaction(async (tx) => {
     const [room] = await tx
-      .select({ id: rooms.id, hostUserId: rooms.hostUserId })
+      .select({ id: rooms.id, hostUserId: rooms.hostUserId, status: rooms.status })
       .from(rooms)
       .where(eq(rooms.id, params.roomId))
       .for('update');
@@ -1102,12 +1122,32 @@ export async function updateRoomConfig(params: UpdateRoomConfigParams): Promise<
     if (room.hostUserId !== params.hostUserId) {
       throw new NotRoomHostError();
     }
+    if (room.status !== 'en_attente') {
+      throw new RoomConfigLockedError(room.status);
+    }
 
     await tx
       .update(rooms)
       .set({ config, updatedAt: new Date() })
       .where(eq(rooms.id, params.roomId));
   });
+}
+
+/**
+ * Moves a room to a race phase (COURSE-01). The status goes through the
+ * shared room-status ↔ race-phase mapping (`roomStatusForPhase`), so an
+ * unchecked string can never reach the database. Called by the race engine
+ * on every phase change: `decompte` at start, `en_course` at the countdown
+ * end, `resultats` at the finish, `en_attente` on abort/relaunch.
+ */
+export async function setRoomStatus(roomId: number, status: string): Promise<void> {
+  assertPositiveInteger(roomId, 'roomId');
+  const phase = roomStatusForPhase(status);
+
+  await db
+    .update(rooms)
+    .set({ status: phase, updatedAt: new Date() })
+    .where(eq(rooms.id, roomId));
 }
 
 /**

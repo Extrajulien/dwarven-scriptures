@@ -86,6 +86,7 @@ describe('joinRoom by code (SALLE-02/03/05/09)', () => {
 
   test('public rooms join through the shared query', async () => {
     getRoomByCodeMock.mockResolvedValue(roomRow);
+    getActiveMemberIdMock.mockResolvedValue(null);
     joinRoomQueryMock.mockResolvedValue({ roomPublicId: roomRow.publicId, memberId: 1, role: 'participant', joinedAt: new Date() });
 
     await expect(
@@ -99,8 +100,21 @@ describe('joinRoom by code (SALLE-02/03/05/09)', () => {
     });
   });
 
+  test('an active member reconnecting a running race re-attaches, not admits (COURSE-08)', async () => {
+    getRoomByCodeMock.mockResolvedValue({ ...roomRow, status: 'en_course' });
+    getActiveMemberIdMock.mockResolvedValue(9);
+
+    await expect(
+      store.joinRoom({ identity, target: { code: 'ABCDEF' }, ip: '203.0.113.7' }),
+    ).resolves.toEqual({ ok: true, roomId: 42, rejoin: true });
+    // SALLE-09 would block a fresh join here: the membership is the credential.
+    expect(joinRoomQueryMock).not.toHaveBeenCalled();
+    expect(getActiveMemberIdMock).toHaveBeenCalledWith(42, { userId: 7, guestToken: null });
+  });
+
   test('an already-present member re-joins without a second membership', async () => {
     getRoomByCodeMock.mockResolvedValue(roomRow);
+    getActiveMemberIdMock.mockResolvedValue(null);
     joinRoomQueryMock.mockRejectedValue(new AlreadyInRoomError());
 
     await expect(
@@ -110,6 +124,7 @@ describe('joinRoom by code (SALLE-02/03/05/09)', () => {
 
   test('a full room maps to room_full', async () => {
     getRoomByCodeMock.mockResolvedValue(roomRow);
+    getActiveMemberIdMock.mockResolvedValue(null);
     joinRoomQueryMock.mockRejectedValue(new RoomFullError(10));
 
     await expect(

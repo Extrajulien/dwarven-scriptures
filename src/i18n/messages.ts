@@ -170,6 +170,29 @@ export interface Messages {
   'lobby.option.off': string;
   'lobby.bonuses.on': string;
   'lobby.bonuses.off': string;
+  'lobby.bot.noob': string;
+  'lobby.bot.debutant': string;
+  'lobby.bot.intermediaire': string;
+  'lobby.bot.expert': string;
+  'lobby.bot.impossible': string;
+  'lobby.config.edit': string;
+  'lobby.config.save': string;
+  'lobby.config.saving': string;
+  'lobby.config.saved': string;
+  'lobby.config.timeLimitHint': string;
+  'lobby.config.accentsHint': string;
+  'lobby.config.botsNote': string;
+  'lobby.config.addBot': string;
+  'lobby.config.removeBot': string;
+  'lobby.config.botLevel': string;
+  'lobby.config.botCount': string;
+  'lobby.config.lockedRace': string;
+  'lobby.config.lockedNotHost': string;
+  'lobby.config.error.wordCount': string;
+  'lobby.config.error.timeLimit': string;
+  'lobby.config.error.botCount': string;
+  'lobby.config.error.invalid': string;
+  'lobby.config.error.unexpected': string;
   'lobby.membersTitle': string;
   'lobby.role.host': string;
   'lobby.role.participant': string;
@@ -641,6 +664,41 @@ export interface Messages {
   'demo.legendRock': string;
   'demo.legendFloor': string;
   'demo.legendDwarf': string;
+  // ------------------------------------------------------------ race (Phase 2: launch, countdown, typing zone)
+  'race.waitingTitle': string;
+  'race.waitingHost': string;
+  'race.startButton': string;
+  'race.needParticipants': string;
+  'race.countdownGetReady': string;
+  'race.typingInputLabel': string;
+  'race.liveWpmLabel': string;
+  'race.liveAccuracyLabel': string;
+  'race.progressLabel': string;
+  'race.completeNotice': string;
+  'race.spectatorBadge': string;
+  'race.spectatorViewHint': string;
+  'race.quitButton': string;
+  'race.confirmQuitBody': string;
+  'race.resultsTitle': string;
+  'race.resultsProvisional': string;
+  'race.resultsYourRace': string;
+  'race.results.status.finished': string;
+  'race.results.status.timeout': string;
+  'race.results.status.quit': string;
+  // ------------------------------------------------------------ mobile race gate (DES-06)
+  'mobile.raceTitle': string;
+  'mobile.raceBody': string;
+  // ------------------------------------------------------------ race progress track (COURSE-05, GAME-2/3)
+  'track.title': string;
+  'track.liveHint': string;
+  'track.youTag': string;
+  'track.rankLabel': string;
+  'track.finishLabel': string;
+  'top3.title': string;
+  'overtake.overtookPrefix': string;
+  'overtake.overtakenBySuffix': string;
+  'overtake.ariaUp': string;
+  'overtake.ariaDown': string;
   // ------------------------------------------------------------ chrome accessibility
   'chrome.guildEmblemAlt': string;
   'chrome.siteLogoAlt': string;
@@ -751,6 +809,29 @@ export const MESSAGES: Record<Locale, Messages> = {
     'lobby.option.off': 'Désactivé',
     'lobby.bonuses.on': 'Activés',
     'lobby.bonuses.off': 'Désactivés',
+    'lobby.bot.noob': 'Noob',
+    'lobby.bot.debutant': 'Débutant',
+    'lobby.bot.intermediaire': 'Intermédiaire',
+    'lobby.bot.expert': 'Expert',
+    'lobby.bot.impossible': 'Impossible',
+    'lobby.config.edit': 'Modifier la configuration',
+    'lobby.config.save': 'Enregistrer la configuration',
+    'lobby.config.saving': 'Enregistrement en cours…',
+    'lobby.config.saved': 'Configuration enregistrée — toutes les personnes présentes la voient.',
+    'lobby.config.timeLimitHint': '30 s à 10 min ; vide = aucune limite',
+    'lobby.config.accentsHint': 'Les accents ne s’appliquent qu’au français.',
+    'lobby.config.botsNote': 'Les bots rejoignent les courses à partir de la phase 4.',
+    'lobby.config.addBot': 'Ajouter un bot',
+    'lobby.config.removeBot': 'Retirer ce bot',
+    'lobby.config.botLevel': 'Niveau',
+    'lobby.config.botCount': 'Nombre',
+    'lobby.config.lockedRace': 'La configuration est figée une fois la course lancée.',
+    'lobby.config.lockedNotHost': 'Seul l’hôte peut modifier la configuration.',
+    'lobby.config.error.wordCount': 'Entre 10 et 200 mots.',
+    'lobby.config.error.timeLimit': 'Entre 30 secondes et 10 minutes.',
+    'lobby.config.error.botCount': 'Entre 1 et 30 bots par niveau.',
+    'lobby.config.error.invalid': 'Configuration invalide — corrigez les champs signalés.',
+    'lobby.config.error.unexpected': 'Une erreur est survenue. Réessayez.',
     'lobby.membersTitle': 'MEMBRES PRÉSENTS',
     'lobby.role.host': 'Hôte',
     'lobby.role.participant': 'Participant',
@@ -1242,6 +1323,43 @@ export const MESSAGES: Record<Locale, Messages> = {
     'demo.legendRock': 'paroi rocheuse exposée',
     'demo.legendFloor': 'sol extrait (air)',
     'demo.legendDwarf': 'occupant nain',
+    // ------------------------------------------------------------ race (Phase 2 : lancement, décompte, zone de frappe)
+    'race.waitingTitle': 'LANCEMENT DE LA COURSE',
+    'race.waitingHost': 'L’hôte lancera la course.',
+    'race.startButton': 'Lancer la course',
+    'race.needParticipants': 'Il faut au moins 2 participants, dont au moins 1 humain.',
+    'race.countdownGetReady': 'Préparez-vous',
+    'race.typingInputLabel': 'Zone de frappe : tapez le texte affiché',
+    'race.liveWpmLabel': 'MPM',
+    'race.liveAccuracyLabel': 'Précision',
+    'race.progressLabel': 'Progression',
+    'race.completeNotice': 'Texte terminé — en attente des autres coureurs.',
+    'race.spectatorBadge': 'SPECTATEUR',
+    'race.spectatorViewHint': 'Vous suivez la course en spectateur.',
+    'race.quitButton': 'Abandonner la course',
+    'race.confirmQuitBody': 'Abandonner la course ? Vous deviendrez spectateur de la course en cours.',
+    'race.resultsTitle': 'RÉSULTATS (APERÇU)',
+    'race.resultsProvisional':
+      'Aperçu provisoire — l’écran de résultats complet arrive en phase 3.',
+    'race.resultsYourRace': 'VOTRE COURSE',
+    'race.results.status.finished': 'Terminé',
+    'race.results.status.timeout': 'Temps écoulé',
+    'race.results.status.quit': 'Abandon',
+    // ------------------------------------------------------------ portail mobile (DES-06)
+    'mobile.raceTitle': 'CLAVIER PHYSIQUE REQUIS',
+    'mobile.raceBody':
+      'La course se frappe au clavier physique. Rejoignez la salle depuis un ordinateur pour participer — d’ici, suivez la piste et le top 3 en direct.',
+    // ------------------------------------------------------------ piste de progression (COURSE-05, GAME-2/3)
+    'track.title': 'PISTE DE LA COURSE',
+    'track.liveHint': 'EN DIRECT',
+    'track.youTag': 'VOUS',
+    'track.rankLabel': 'Rang',
+    'track.finishLabel': 'Arrivée',
+    'top3.title': 'TÊTE DE COURSE',
+    'overtake.overtookPrefix': 'Vous doublez',
+    'overtake.overtakenBySuffix': 'vous double',
+    'overtake.ariaUp': 'Vous avez doublé',
+    'overtake.ariaDown': 'Vous avez été doublé par',
     // ------------------------------------------------------------ chrome accessibility
     'chrome.guildEmblemAlt': 'Emblème de la guilde Dwarf Fortress Delve',
     'chrome.siteLogoAlt': 'Logo de Dwarven Scriptures',
@@ -1350,6 +1468,29 @@ export const MESSAGES: Record<Locale, Messages> = {
     'lobby.option.off': 'Off',
     'lobby.bonuses.on': 'On',
     'lobby.bonuses.off': 'Off',
+    'lobby.bot.noob': 'Noob',
+    'lobby.bot.debutant': 'Beginner',
+    'lobby.bot.intermediaire': 'Intermediate',
+    'lobby.bot.expert': 'Expert',
+    'lobby.bot.impossible': 'Impossible',
+    'lobby.config.edit': 'Edit configuration',
+    'lobby.config.save': 'Save configuration',
+    'lobby.config.saving': 'Saving…',
+    'lobby.config.saved': 'Configuration saved — everyone in the room sees it.',
+    'lobby.config.timeLimitHint': '30 s to 10 min; empty = no limit',
+    'lobby.config.accentsHint': 'Accents apply to French text only.',
+    'lobby.config.botsNote': 'Bots join races from Phase 4.',
+    'lobby.config.addBot': 'Add a bot',
+    'lobby.config.removeBot': 'Remove this bot',
+    'lobby.config.botLevel': 'Level',
+    'lobby.config.botCount': 'Count',
+    'lobby.config.lockedRace': 'The configuration is frozen once the race has started.',
+    'lobby.config.lockedNotHost': 'Only the host can change the configuration.',
+    'lobby.config.error.wordCount': 'Between 10 and 200 words.',
+    'lobby.config.error.timeLimit': 'Between 30 seconds and 10 minutes.',
+    'lobby.config.error.botCount': 'Between 1 and 30 bots per level.',
+    'lobby.config.error.invalid': 'Invalid configuration — fix the flagged fields.',
+    'lobby.config.error.unexpected': 'Something went wrong. Try again.',
     'lobby.membersTitle': 'MEMBERS PRESENT',
     'lobby.role.host': 'Host',
     'lobby.role.participant': 'Participant',
@@ -1837,6 +1978,42 @@ export const MESSAGES: Record<Locale, Messages> = {
     'demo.legendRock': 'exposed rock wall',
     'demo.legendFloor': 'mined floor (air)',
     'demo.legendDwarf': 'dwarf occupant',
+    // ------------------------------------------------------------ race (Phase 2: launch, countdown, typing zone)
+    'race.waitingTitle': 'RACE LAUNCH',
+    'race.waitingHost': 'The host will start the race.',
+    'race.startButton': 'Start the race',
+    'race.needParticipants': 'At least 2 participants are needed, including at least 1 human.',
+    'race.countdownGetReady': 'Get ready',
+    'race.typingInputLabel': 'Typing area: type the text shown',
+    'race.liveWpmLabel': 'WPM',
+    'race.liveAccuracyLabel': 'Accuracy',
+    'race.progressLabel': 'Progress',
+    'race.completeNotice': 'Text complete — waiting for the other racers.',
+    'race.spectatorBadge': 'SPECTATOR',
+    'race.spectatorViewHint': 'You are watching this race as a spectator.',
+    'race.quitButton': 'Abandon the race',
+    'race.confirmQuitBody': 'Abandon the race? You will become a spectator of the current race.',
+    'race.resultsTitle': 'RESULTS (PREVIEW)',
+    'race.resultsProvisional': 'Provisional preview — the full results screen arrives in phase 3.',
+    'race.resultsYourRace': 'YOUR RACE',
+    'race.results.status.finished': 'Finished',
+    'race.results.status.timeout': 'Timed out',
+    'race.results.status.quit': 'Quit',
+    // ------------------------------------------------------------ mobile race gate (DES-06)
+    'mobile.raceTitle': 'PHYSICAL KEYBOARD REQUIRED',
+    'mobile.raceBody':
+      'This race is typed on a physical keyboard. Join the room from a computer to take part — from here, follow the track and the top 3 live.',
+    // ------------------------------------------------------------ race progress track (COURSE-05, GAME-2/3)
+    'track.title': 'RACE TRACK',
+    'track.liveHint': 'LIVE',
+    'track.youTag': 'YOU',
+    'track.rankLabel': 'Rank',
+    'track.finishLabel': 'Finished',
+    'top3.title': 'LEADERS',
+    'overtake.overtookPrefix': 'You overtake',
+    'overtake.overtakenBySuffix': 'overtakes you',
+    'overtake.ariaUp': 'You overtook',
+    'overtake.ariaDown': 'You were overtaken by',
     // ------------------------------------------------------------ chrome accessibility
     'chrome.guildEmblemAlt': 'Dwarf Fortress Delve Guild Emblem',
     'chrome.siteLogoAlt': 'Dwarven Scriptures logo',
