@@ -135,6 +135,7 @@ import {
   markMemberLeft,
   NotHostCandidateError,
   NotRoomHostError,
+  RoomConfigLockedError,
   RoomFullError,
   RoomMemberKickedError,
   RoomMemberNotFoundError,
@@ -808,7 +809,7 @@ describe('closeRoom (SALLE-04, COURSE-01)', () => {
 
 describe('updateRoomConfig (CONF-01..12)', () => {
   test('stores the parsed config for the host', async () => {
-    selectQueue = [[{ id: 42, hostUserId: 7 }]];
+    selectQueue = [[{ id: 42, hostUserId: 7, status: 'en_attente' }]];
 
     await updateRoomConfig({ roomId: 42, hostUserId: 7, config: defaultRoomConfig });
 
@@ -828,12 +829,24 @@ describe('updateRoomConfig (CONF-01..12)', () => {
   });
 
   test('refuses when the caller is not the host (SEC-01)', async () => {
-    selectQueue = [[{ id: 42, hostUserId: 8 }]];
+    selectQueue = [[{ id: 42, hostUserId: 8, status: 'en_attente' }]];
 
     await expect(
       updateRoomConfig({ roomId: 42, hostUserId: 7, config: defaultRoomConfig }),
     ).rejects.toThrow(NotRoomHostError);
   });
+
+  test.each(['decompte', 'en_course', 'resultats', 'fermee'])(
+    'refuses while the room is not waiting — status %s (CONF-12 snapshot)',
+    async (status) => {
+      selectQueue = [[{ id: 42, hostUserId: 7, status }]];
+
+      await expect(
+        updateRoomConfig({ roomId: 42, hostUserId: 7, config: defaultRoomConfig }),
+      ).rejects.toThrow(RoomConfigLockedError);
+      expect(calls.filter((call) => call.operation === 'update')).toHaveLength(0);
+    },
+  );
 });
 
 describe('setRoomStatus (COURSE-01 engine seam)', () => {

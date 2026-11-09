@@ -31,6 +31,8 @@ const JOIN_ERROR_KEYS = {
   targetNotFound: 'joinCode.error.unexpected',
   notHostCandidate: 'joinCode.error.unexpected',
   alreadyInRoom: 'joinCode.error.unexpected',
+  // Never returned by this form (host config editor only, CONF-12).
+  configLocked: 'joinCode.error.unexpected',
 } as const satisfies Record<RoomActionError, keyof Messages>;
 
 const INPUT_CLASSES =

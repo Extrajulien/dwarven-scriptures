@@ -23,6 +23,7 @@ const GATE_ERROR_KEYS = {
   targetNotFound: 'joinCode.error.unexpected',
   notHostCandidate: 'joinCode.error.unexpected',
   alreadyInRoom: 'joinCode.error.unexpected',
+  configLocked: 'joinCode.error.unexpected',
 } as const;
 
 /**

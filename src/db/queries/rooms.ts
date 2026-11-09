@@ -111,6 +111,19 @@ export class RoomMemberNotFoundError extends Error {
   }
 }
 
+/**
+ * Raised when the host tries to change the race configuration outside
+ * EN_ATTENTE (CONF-12). The engine snapshots `rooms.config` when a race
+ * starts, so a mid-race write would drift from the live race: config edits
+ * are only accepted while the room waits.
+ */
+export class RoomConfigLockedError extends Error {
+  constructor(status: string) {
+    super(`race config is frozen while the room is not waiting (status: ${status})`);
+    this.name = 'RoomConfigLockedError';
+  }
+}
+
 const ROOM_VISIBILITIES = ['public', 'code', 'private'] as const;
 export type RoomVisibility = (typeof ROOM_VISIBILITIES)[number];
 
@@ -1083,6 +1096,12 @@ export type UpdateRoomConfigParams = {
  * (SEC-01); the incoming value is parsed with the Zod schema from
  * `src/lib/room-config.ts`, which throws a `ZodError` on any invalid field —
  * callers map that to a typed validation result.
+ *
+ * CONF-12: the config is snapshotted by the race engine when a race starts,
+ * so writes are refused while the room is not in `en_attente`
+ * (`RoomConfigLockedError`) — a mid-race write could never affect the live
+ * race and would only desynchronize the stored config from it. The status is
+ * read on the locked room row, inside the same transaction as the update.
  */
 export async function updateRoomConfig(params: UpdateRoomConfigParams): Promise<void> {
   assertPositiveInteger(params.roomId, 'roomId');
@@ -1092,7 +1111,7 @@ export async function updateRoomConfig(params: UpdateRoomConfigParams): Promise<
 
   await db.transaction(async (tx) => {
     const [room] = await tx
-      .select({ id: rooms.id, hostUserId: rooms.hostUserId })
+      .select({ id: rooms.id, hostUserId: rooms.hostUserId, status: rooms.status })
       .from(rooms)
       .where(eq(rooms.id, params.roomId))
       .for('update');
@@ -1102,6 +1121,9 @@ export async function updateRoomConfig(params: UpdateRoomConfigParams): Promise<
     }
     if (room.hostUserId !== params.hostUserId) {
       throw new NotRoomHostError();
+    }
+    if (room.status !== 'en_attente') {
+      throw new RoomConfigLockedError(room.status);
     }
 
     await tx

@@ -5,9 +5,11 @@ import {
   kickMember,
   leaveRoom,
   transferHost,
+  updateRoomConfig,
 } from '../../app/rooms/actions';
 import { MESSAGES } from '../../i18n/messages';
 import { defaultRoomConfig } from '../../lib/room-config';
+import type { RoomConfig } from '../../db/schema';
 import type { RaceSocketState, RaceView, RoomSnapshot } from '../../realtime/client-types';
 import type { MemberInfo, RoomStatus } from '../../realtime/protocol';
 import RoomLobby, { type LobbyViewer } from './RoomLobby';
@@ -47,6 +49,7 @@ jest.mock('../../app/rooms/actions', () => ({
   leaveRoom: jest.fn(),
   transferHost: jest.fn(),
   generateInvitationLinks: jest.fn(),
+  updateRoomConfig: jest.fn(),
 }));
 
 jest.mock('next/navigation', () => ({
@@ -57,10 +60,12 @@ const mockedCloseRoom = jest.mocked(closeRoom);
 const mockedKickMember = jest.mocked(kickMember);
 const mockedLeaveRoom = jest.mocked(leaveRoom);
 const mockedTransferHost = jest.mocked(transferHost);
+const mockedUpdateRoomConfig = jest.mocked(updateRoomConfig);
 
 function makeSnapshot(
   status: RoomStatus = 'en_attente',
   members: MemberInfo[] = defaultMembers(),
+  config: RoomConfig = defaultRoomConfig,
 ): RoomSnapshot {
   return {
     room: {
@@ -69,7 +74,7 @@ function makeSnapshot(
       visibility: 'public',
       status,
       capacity: 6,
-      config: defaultRoomConfig,
+      config,
       host: { publicId: ADA_ID, username: 'ada' },
       createdAt: '2026-11-07T20:00:00.000Z',
     },
@@ -138,8 +143,9 @@ function renderOpenLobby(
   invitations: null = null,
   status: RoomStatus = 'en_attente',
   race: RaceView | null = null,
+  config: RoomConfig = defaultRoomConfig,
 ) {
-  socketState = { status: 'open', snapshot: makeSnapshot(status), error: null, race };
+  socketState = { status: 'open', snapshot: makeSnapshot(status, defaultMembers(), config), error: null, race };
   return render(
     <RoomLobby
       roomPublicId={ROOM_ID}
@@ -416,5 +422,130 @@ describe('race screen integration (COURSE-02/03, GAME-1)', () => {
     );
     expect(screen.getByTestId('spectator-badge')).toBeInTheDocument();
     expect(screen.queryByTestId('typing-zone')).not.toBeInTheDocument();
+  });
+});
+
+describe('config editing and live sync (CONF-01..12)', () => {
+  type LobbyRerender = ReturnType<typeof render>['rerender'];
+
+  function rerenderWithSnapshot(
+    rerender: LobbyRerender,
+    viewer: LobbyViewer,
+    status: RoomStatus,
+    config: RoomConfig,
+    race: RaceView | null = null,
+  ) {
+    socketState = {
+      status: 'open',
+      snapshot: makeSnapshot(status, defaultMembers(), config),
+      error: null,
+      race,
+    };
+    rerender(
+      <RoomLobby
+        roomPublicId={ROOM_ID}
+        roomCode="DWRF42"
+        invitationToken={null}
+        viewer={viewer}
+        initialInvitations={null}
+        messages={messages}
+      />,
+    );
+  }
+
+  test('the host opens the editor from the edit toggle and sees the current values', () => {
+    renderOpenLobby(hostViewer);
+
+    fireEvent.click(screen.getByRole('button', { name: messages['lobby.config.edit'] }));
+
+    expect(screen.getByLabelText(messages['lobby.config.wordCount'])).toHaveValue(60);
+    expect(screen.getByLabelText(messages['lobby.config.timeLimit'])).toHaveValue(60);
+  });
+
+  test('the host save is wired to the updateRoomConfig action with the room id', async () => {
+    mockedUpdateRoomConfig.mockResolvedValue({ ok: true });
+    renderOpenLobby(hostViewer);
+
+    fireEvent.click(screen.getByRole('button', { name: messages['lobby.config.edit'] }));
+    fireEvent.change(screen.getByLabelText(messages['lobby.config.wordCount']), {
+      target: { value: '80' },
+    });
+    fireEvent.submit(document.querySelector('form[data-purpose="race-config-form"]')!);
+
+    await waitFor(() => expect(mockedUpdateRoomConfig).toHaveBeenCalledTimes(1));
+    expect(mockedUpdateRoomConfig).toHaveBeenCalledWith({
+      roomPublicId: ROOM_ID,
+      config: expect.objectContaining({ wordCount: 80 }),
+    });
+  });
+
+  test('non-hosts never see the edit toggle', () => {
+    renderOpenLobby(memberViewer);
+
+    expect(
+      screen.queryByRole('button', { name: messages['lobby.config.edit'] }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('a mid-race room disables the edit toggle and shows the localized reason', () => {
+    renderOpenLobby(hostViewer, null, 'en_course', makeRace({ phase: 'en_course' }));
+
+    expect(screen.getByRole('button', { name: messages['lobby.config.edit'] })).toBeDisabled();
+    expect(screen.getByText(messages['lobby.config.lockedRace'])).toBeInTheDocument();
+  });
+
+  test('the summary and the open editor re-render from a configUpdated snapshot (CONF-12)', () => {
+    const configA: RoomConfig = { ...defaultRoomConfig, wordCount: 120, timeLimitSeconds: 300 };
+    const configB: RoomConfig = { ...defaultRoomConfig, wordCount: 42, timeLimitSeconds: null };
+
+    const { rerender } = renderOpenLobby(hostViewer, null, 'en_attente', null, configA);
+    expect(screen.getByText('120')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: messages['lobby.config.edit'] }));
+    expect(screen.getByLabelText(messages['lobby.config.wordCount'])).toHaveValue(120);
+
+    // The socket hook re-applies the configUpdated message into the snapshot;
+    // re-rendering with the new snapshot simulates that state update.
+    rerenderWithSnapshot(rerender, hostViewer, 'en_attente', configB);
+
+    expect(screen.getByText('42')).toBeInTheDocument();
+    expect(screen.getByText(messages['lobby.config.noTimeLimit'])).toBeInTheDocument();
+    expect(screen.getByLabelText(messages['lobby.config.wordCount'])).toHaveValue(42);
+    expect(screen.getByLabelText(messages['lobby.config.timeLimit'])).toHaveAttribute('value', '');
+  });
+
+  test('non-hosts receive the configUpdated snapshot too', () => {
+    const configA: RoomConfig = { ...defaultRoomConfig, wordCount: 90 };
+    const configB: RoomConfig = { ...defaultRoomConfig, wordCount: 130 };
+
+    const { rerender } = renderOpenLobby(memberViewer, null, 'en_attente', null, configA);
+    expect(screen.getByText('90')).toBeInTheDocument();
+
+    rerenderWithSnapshot(rerender, memberViewer, 'en_attente', configB);
+
+    expect(screen.getByText('130')).toBeInTheDocument();
+  });
+
+  test('an open editor is disabled with the localized reason when the race starts', () => {
+    const { rerender } = renderOpenLobby(hostViewer, null, 'en_attente');
+    fireEvent.click(screen.getByRole('button', { name: messages['lobby.config.edit'] }));
+    expect(screen.getByLabelText(messages['lobby.config.wordCount'])).toBeEnabled();
+
+    rerenderWithSnapshot(
+      rerender,
+      hostViewer,
+      'decompte',
+      defaultRoomConfig,
+      makeRace({
+        phase: 'decompte',
+        startAt: new Date(Date.now() + 3_000).toISOString(),
+        text: 'bonjour les nains',
+        totalLength: 17,
+        ownProgress: { validatedChars: 0, correctKeystrokes: 0, totalKeystrokes: 0 },
+      }),
+    );
+
+    expect(screen.getByLabelText(messages['lobby.config.wordCount'])).toBeDisabled();
+    expect(screen.getByText(messages['lobby.config.lockedRace'])).toBeInTheDocument();
   });
 });

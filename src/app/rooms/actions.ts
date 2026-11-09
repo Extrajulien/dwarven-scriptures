@@ -22,6 +22,7 @@ import {
   RoomFullError,
   RoomMemberKickedError,
   RoomMemberNotFoundError,
+  RoomConfigLockedError,
   RoomNotFoundError,
   RoomNotJoinableError,
   transferHost as transferHostQuery,
@@ -101,7 +102,8 @@ export type RoomActionError =
   | 'kicked'
   | 'alreadyInRoom'
   | 'targetNotFound'
-  | 'notHostCandidate';
+  | 'notHostCandidate'
+  | 'configLocked';
 
 /**
  * Error codes of the `startRace` action (COURSE-02, SEC-01). Kept separate
@@ -399,6 +401,14 @@ export async function updateRoomConfig(
   } catch (error) {
     if (isZodValidationError(error)) {
       return { ok: false, error: 'invalidConfig' };
+    }
+    if (error instanceof RoomConfigLockedError) {
+      // CONF-12: the config is snapshotted at race start — edits are only
+      // accepted in EN_ATTENTE; mid-race attempts map to a typed denial.
+      return { ok: false, error: 'configLocked' };
+    }
+    if (error instanceof NotRoomHostError) {
+      return { ok: false, error: 'notHost' };
     }
     console.error('updateRoomConfig: unexpected failure', error);
     return { ok: false, error: 'unexpected' };

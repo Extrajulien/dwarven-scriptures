@@ -24,6 +24,7 @@ import {
   listPublicRooms,
   markMemberLeft,
   NotHostCandidateError,
+  RoomConfigLockedError,
   RoomFullError,
   RoomMemberKickedError,
   RoomNotFoundError,
@@ -483,6 +484,16 @@ describe('host-only actions (SEC-01)', () => {
       updateRoomConfig({ roomPublicId: ROOM_PUBLIC_ID, config: defaultRoomConfig }),
     ).resolves.toEqual({ ok: false, error: 'notHost' });
     expect(updateRoomConfigQueryMock).not.toHaveBeenCalled();
+  });
+
+  test('updateRoomConfig maps a frozen config to the typed configLocked denial (CONF-12)', async () => {
+    userActor();
+    getRoomInternalByPublicIdMock.mockResolvedValue(roomRow);
+    updateRoomConfigQueryMock.mockRejectedValue(new RoomConfigLockedError('en_course'));
+
+    await expect(
+      updateRoomConfig({ roomPublicId: ROOM_PUBLIC_ID, config: defaultRoomConfig }),
+    ).resolves.toEqual({ ok: false, error: 'configLocked' });
   });
 
   test('closeRoom closes only for the host', async () => {

@@ -18,6 +18,7 @@ import SectionHeader from '../SectionHeader';
 import UserAvatar from '../UserAvatar';
 import GuestAvatar from './GuestAvatar';
 import InvitationsPanel from './InvitationsPanel';
+import RaceConfigEditor, { BOT_LEVEL_LABEL_KEYS } from './RaceConfigEditor';
 import RaceScreen from '../race/RaceScreen';
 
 export type LobbyViewer =
@@ -109,6 +110,7 @@ export default function RoomLobby({
   const [confirmKickTarget, setConfirmKickTarget] = useState<string | null>(null);
   const [transferTarget, setTransferTarget] = useState('');
   const [busy, setBusy] = useState(false);
+  const [editingConfig, setEditingConfig] = useState(false);
 
   useEffect(() => {
     if (joinedRef.current) {
@@ -347,7 +349,11 @@ export default function RoomLobby({
       value:
         config.bots.length === 0
           ? '—'
-          : config.bots.map((entry) => `${String(entry.count)}× ${entry.level}`).join(' · '),
+          : config.bots
+              .map(
+                (entry) => `${String(entry.count)}× ${messages[BOT_LEVEL_LABEL_KEYS[entry.level]]}`,
+              )
+              .join(' · '),
     },
   ];
 
@@ -410,12 +416,49 @@ export default function RoomLobby({
 
       {/* Config summary (CONF-12): rendered from the snapshot, so configUpdated re-renders it. */}
       <section className="rounded bg-surface-container-lowest p-space-lg shadow-xl">
-        <SectionHeader title={messages['lobby.configTitle']} />
+        <SectionHeader
+          title={messages['lobby.configTitle']}
+          right={
+            isHost && !editingConfig ? (
+              <ButtonSecondary
+                type="button"
+                disabled={room.status !== 'en_attente'}
+                onClick={() => setEditingConfig(true)}
+                className="px-space-sm py-space-xs"
+              >
+                {messages['lobby.config.edit']}
+              </ButtonSecondary>
+            ) : undefined
+          }
+        />
+        {isHost && !editingConfig && room.status !== 'en_attente' && (
+          <p className="font-label-sm text-label-sm text-dwarf-parchmentMuted">
+            {messages['lobby.config.lockedRace']}
+          </p>
+        )}
         <div className="flex flex-col">
           {configRows.map((row) => (
             <ConfigRow key={row.label} label={row.label} value={row.value} />
           ))}
         </div>
+
+        {/* Host-only editor (CONF-01..10): the saved config is broadcast by
+            the server action and re-applied by the socket hook, so this
+            editor and the summary above re-render from the new snapshot. */}
+        {isHost && editingConfig && (
+          <div className="pt-space-md">
+            <RaceConfigEditor
+              config={config}
+              roomPublicId={room.publicId}
+              canEdit={room.status === 'en_attente'}
+              lockedReason={
+                room.status !== 'en_attente' ? messages['lobby.config.lockedRace'] : null
+              }
+              onClose={() => setEditingConfig(false)}
+              messages={messages}
+            />
+          </div>
+        )}
       </section>
 
       <div className="grid grid-cols-1 gap-space-lg lg:grid-cols-3">
