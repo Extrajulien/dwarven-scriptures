@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * PERF-01 / Phase 5 delivery: captures the app screenshots committed under
  * `doc/screenshots/` — home (light + dark), the room lobby, the race in
