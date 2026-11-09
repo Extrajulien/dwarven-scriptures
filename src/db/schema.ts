@@ -382,6 +382,131 @@ export const invitationLinks = pgTable(
   ],
 );
 
+/**
+ * One finished race (RES-05, HIST-01/02). A race is persisted once, at the
+ * `en_course → resultats` transition, and outlives its room: `roomId` is
+ * nullable with `ON DELETE SET NULL` so closing a room never erases history.
+ * `roomPublicId` is denormalized from `rooms.publicId` so replay routing and
+ * history links survive the room's deletion.
+ *
+ * `config` is the Zod-validated `RoomConfig` snapshot taken at race start
+ * (CONF-12) — later edits of the room config never rewrite a stored race.
+ * Only finished races are written today (aborted races are not ranked —
+ * GAME-5 — and produce no history); `status` keeps `aborted` as a legal
+ * value for the future, guarded by the CHECK below.
+ */
+export const races = pgTable(
+  'races',
+  {
+    /** Internal primary key. Foreign keys reference this; never expose it. */
+    id: bigserial({ mode: 'number' }).primaryKey(),
+    /** External identifier used by the replay route `/races/[publicId]`. */
+    publicId: uuid().defaultRandom().notNull().unique(),
+    /**
+     * The room this race ran in; `SET NULL` because the room may close while
+     * the race history must survive (RES-05).
+     */
+    roomId: bigint({ mode: 'number' }).references(() => rooms.id, {
+      onDelete: 'set null',
+    }),
+    /** Denormalized room public id (uuid string) for replay routing. */
+    roomPublicId: varchar({ length: 36 }).notNull(),
+    /** The full text typed in this race (history replay renders it). */
+    textBody: text().notNull(),
+    /** ISO 639-1 code of the text (`fr` or `en`). */
+    textLanguage: varchar({ length: 2 }).notNull(),
+    /** Race config snapshot taken at start (CONF-12). */
+    config: jsonb().$type<RoomConfig>().notNull(),
+    /** `finished` today; `aborted` reserved for a future change of policy. */
+    status: varchar({ length: 16 }).notNull(),
+    /** Typing-start → `resultats` duration in milliseconds (Annexe A base). */
+    durationMs: integer().notNull(),
+    /** Typing start (countdown end). */
+    startedAt: timestamp({ mode: 'date', withTimezone: true }).notNull(),
+    /** When the race reached `resultats`. */
+    finishedAt: timestamp({ mode: 'date', withTimezone: true }).notNull(),
+  },
+  (table) => [
+    check('races_language_valid', sql`${table.textLanguage} in ('fr', 'en')`),
+    check('races_status_valid', sql`${table.status} in ('finished', 'aborted')`),
+    check('races_duration_positive', sql`${table.durationMs} > 0`),
+    check('races_room_public_id_not_empty', sql`${table.roomPublicId} <> ''`),
+    // Replay routing and late-joiner lookups by the (denormalized) room id.
+    index('races_room_public_id_idx').on(table.roomPublicId),
+  ],
+);
+
+/**
+ * One ranked result line of a persisted race (RES-05). Identity snapshots
+ * match the engine's participant kinds: a connected user (`userId`), a guest
+ * (`guestToken`), or a bot (Phase 4 — no identity). The CHECK ties the
+ * identity columns to `kind`, so a user row can never carry a guest token
+ * and vice versa. `displayName` is the snapshot at finish; `wpmSeries` is
+ * the JSON array of `{elapsedMs, wpm}` samples the results chart replays.
+ */
+export const raceParticipants = pgTable(
+  'race_participants',
+  {
+    /** Internal primary key. Foreign keys reference this; never expose it. */
+    id: bigserial({ mode: 'number' }).primaryKey(),
+    raceId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => races.id, { onDelete: 'cascade' }),
+    /** `user` | `guest` | `bot` (bots arrive in Phase 4). */
+    kind: varchar({ length: 16 }).notNull(),
+    /** Connected user; `SET NULL` so history survives an account deletion. */
+    userId: bigint({ mode: 'number' }).references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    /** Guest cookie id (uuid) for guest participants; `null` otherwise. */
+    guestToken: varchar({ length: 36 }),
+    /** Display-name snapshot at finish (usernames can change later). */
+    displayName: varchar({ length: 64 }).notNull(),
+    /** Net WPM (Annexe A). */
+    wpm: numeric({ precision: 8, scale: 2 }).notNull(),
+    /** Raw WPM (Annexe A). */
+    rawWpm: numeric({ precision: 8, scale: 2 }).notNull(),
+    /** Correct ÷ total keystrokes × 100. */
+    accuracy: numeric({ precision: 5, scale: 2 }).notNull(),
+    /** totalKeystrokes − correctKeystrokes. */
+    errors: integer().notNull(),
+    /** `finished` | `timeout` | `quit` (COURSE-10). */
+    status: varchar({ length: 16 }).notNull(),
+    /** Milliseconds after typing start at which the status was recorded. */
+    finishedAtMs: integer().notNull(),
+    /** Final rank (COURSE-10), 1-based. */
+    rank: integer().notNull(),
+    /** Bonus count snapshot; always 0 until Phase 4 (BONUS-01..04). */
+    bonusesReceived: integer().default(0).notNull(),
+    /** WPM-over-time series (RES-03/05), array of `{elapsedMs, wpm}`. */
+    wpmSeries: jsonb().$type<Array<{ elapsedMs: number; wpm: number }>>().notNull(),
+  },
+  (table) => [
+    check('race_participants_kind_valid', sql`${table.kind} in ('user', 'guest', 'bot')`),
+    check(
+      'race_participants_status_valid',
+      sql`${table.status} in ('finished', 'timeout', 'quit')`,
+    ),
+    check('race_participants_errors_non_negative', sql`${table.errors} >= 0`),
+    check('race_participants_rank_positive', sql`${table.rank} >= 1`),
+    check('race_participants_bonuses_non_negative', sql`${table.bonusesReceived} >= 0`),
+    check('race_participants_finished_at_ms_non_negative', sql`${table.finishedAtMs} >= 0`),
+    // Exactly one identity, matching the kind: a user carries `userId`, a
+    // guest carries `guestToken`, a bot carries neither (AUTH-03).
+    check(
+      'race_participants_identity_matches_kind',
+      sql`(${table.kind} = 'user' and ${table.userId} is not null and ${table.guestToken} is null)
+          or (${table.kind} = 'guest' and ${table.guestToken} is not null and ${table.userId} is null)
+          or (${table.kind} = 'bot' and ${table.userId} is null and ${table.guestToken} is null)`,
+    ),
+    index('race_participants_race_id_idx').on(table.raceId),
+    // History listings (HIST-01) filter by the user's own rows.
+    index('race_participants_user_id_idx')
+      .on(table.userId)
+      .where(sql`${table.userId} is not null`),
+  ],
+);
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   stats: one(userStats, {
     fields: [users.id],
@@ -422,6 +547,7 @@ export const roomsRelations = relations(rooms, ({ one, many }) => ({
   }),
   members: many(roomMembers),
   invitationLinks: many(invitationLinks),
+  races: many(races),
 }));
 
 export const roomMembersRelations = relations(roomMembers, ({ one, many }) => ({
@@ -447,6 +573,25 @@ export const invitationLinksRelations = relations(invitationLinks, ({ one }) => 
   }),
 }));
 
+export const racesRelations = relations(races, ({ one, many }) => ({
+  room: one(rooms, {
+    fields: [races.roomId],
+    references: [rooms.id],
+  }),
+  participants: many(raceParticipants),
+}));
+
+export const raceParticipantsRelations = relations(raceParticipants, ({ one }) => ({
+  race: one(races, {
+    fields: [raceParticipants.raceId],
+    references: [races.id],
+  }),
+  user: one(users, {
+    fields: [raceParticipants.userId],
+    references: [users.id],
+  }),
+}));
+
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
 export type UserStat = InferSelectModel<typeof userStats>;
@@ -465,6 +610,10 @@ export type RoomMember = InferSelectModel<typeof roomMembers>;
 export type NewRoomMember = InferInsertModel<typeof roomMembers>;
 export type InvitationLink = InferSelectModel<typeof invitationLinks>;
 export type NewInvitationLink = InferInsertModel<typeof invitationLinks>;
+export type Race = InferSelectModel<typeof races>;
+export type NewRace = InferInsertModel<typeof races>;
+export type RaceParticipant = InferSelectModel<typeof raceParticipants>;
+export type NewRaceParticipant = InferInsertModel<typeof raceParticipants>;
 
 /**
  * Public projection of a user: the internal `id` is dropped so it cannot leak
