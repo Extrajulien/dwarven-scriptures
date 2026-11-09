@@ -27,8 +27,12 @@ random-text generator, the coherent-text selection ranking and the race
 start rules. The realtime race wiring (start command, progress stream,
 results broadcast) is implemented, and **results persistence + history +
 replay landed in SP-3B** (RES-05, HIST-01/02 — see
-[Persistence and replay](#persistence-and-replay-res-05-hist-0102)); bots and
-bonuses are still not built.
+[Persistence and replay](#persistence-and-replay-res-05-hist-0102)); **bots
+landed in Phase 4** (ADR-011) and **comeback bonuses are applied server-side
+in Phase 4** (BONUS-01..04 — see [Comeback bonuses](#comeback-bonuses-bonus-0104)):
+the pure rules, the engine integration, the protocol messages and the client
+state are done; the **visual** bonus announcements (track banners, the 2 s
+fog, the text adjustment rendering) are SP-4C.
 
 ## Folder layout
 
@@ -167,7 +171,7 @@ erDiagram
         varchar status "finished | timeout | quit (CHECK)"
         integer finishedAtMs
         integer rank ">= 1 (CHECK)"
-        integer bonusesReceived "default 0"
+        integer bonusesReceived "default 0, comeback bonuses received (BONUS-01)"
         jsonb wpmSeries "array of {elapsedMs, wpm}"
     }
     users ||--|| user_stats : "1:1"
@@ -526,8 +530,11 @@ player who returns within 30 s resumes in place (COURSE-08).
     `src/lib/bots/schedule.ts`).
   * **BOT-04, bonus/malus half:** bots are identified in the UI (track rune,
     results rune + tag, localized names) and are subject to bonuses exactly
-    like humans — i.e. BONUS-01..04 do not exist yet for anyone; when they
-    land, bots keep riding the shared race model.
+    like humans — **implemented since Phase 4**: `addWords` grows a bot's
+    text and extends its schedule, `removeWords` shrinks it and truncates the
+    schedule, through the shared race model (no bot-specific state-machine
+    paths); the only exception is `fog` (purely visual) — it is never applied
+    to a bot and the event is skipped (see [Comeback bonuses](#comeback-bonuses-bonus-0104)).
 * **Consequences:** the whole bot engine is unit-testable from its seed
   (BOT-05). The five level ranges (BOT-01) map to schedule parameters as
   follows (`BOT_LEVEL_PARAMS` in `src/lib/bots/schedule.ts`); the typing-WPM
@@ -654,13 +661,15 @@ sequenceDiagram
     Note over E: clock ticks (~250 ms) advance the state machine
     E-->>C: raceStarted (startAt, after the 3-2-1 countdown)
     C->>S: raceProgress (cumulative counters, ~<=10 msg/s)
-    S->>E: validation: monotonic, <= totalLength, delta <= 100 (COURSE-06)
-    E-->>C: raceTick (<=~4/s: positions, net WPM, finished flags)
+    S->>E: validation: monotonic, <= effective length, delta <= 100 (COURSE-06)
+    E-->>C: raceTick (<=~4/s: positions, net WPM, per-participant totalLength)
+    Note over E: BONUS-01..04: leader crosses 25/50/75 % → one seeded effect
+    E-->>C: bonusApplied (target, type, payload {words|wordCount|durationMs, totalLength})
     E-->>C: participantFinished {rank} / participantQuit
-    E-->>C: raceFinished (COURSE-10 ranking) + rooms.status='resultats'
+    E-->>C: raceFinished (COURSE-10 ranking, bonusesReceived) + rooms.status='resultats'
     Note over E: GAME-5: 60 s without progress → raceAborted, back to en_attente
     C->>S: (mid-race drop) reconnect within 30 s: joinRoom + rejoinRace
-    S-->>C: roomSnapshot + raceSnapshot (phase, text, own counters)
+    S-->>C: roomSnapshot + raceSnapshot (phase, text, own counters, effective length)
 ```
 
 Rules the flow enforces:
@@ -797,6 +806,60 @@ Client-side rendering rules:
   below); the "results unavailable" state only remains for the degenerate
   case where the engine has no payload in memory (e.g. a server restart —
   the persisted `/races/[publicId]` page stays available, HIST-02).
+
+## Comeback bonuses (BONUS-01..04)
+
+Implemented server-side in Phase 4 (SP-4B): pure rules (`src/lib/race/bonuses.ts`),
+engine application (`src/realtime/race-engine.ts`), protocol (`bonusApplied`,
+per-participant `totalLength`, `bonusesReceived`) and client state
+(`src/realtime/useRoomSocket.ts`). The visual announcements (track banner, the
+2 s fog blur, the per-target text adjustment rendering) are SP-4C.
+
+**Exact rules** (the « Choix à documenter » bullet of BONUS-01):
+
+* **Checkpoints:** exactly **3 events per race**, fired when the **leader's**
+  progression — `validatedChars ÷ the leader's own effective length` (Annexe
+  A, bonus-adjusted) — crosses **25 %, 50 % and 75 %**. Each threshold fires at
+  most once; several thresholds crossed between two ticks fire in ascending
+  order; a progression drop (the leader's text grew) crosses nothing.
+* **Leader:** the non-finished participant with the highest progression, bots
+  included (a finished participant's result is recorded — growing their text
+  would un-finish them). Ties: most validated characters, then `memberId`
+  ascending (deterministic).
+* **Hinder target:** the leader at that instant. **Help target:** the
+  most-behind eligible participant — eligible = non-finished and (≥ 25
+  percentage points behind the leader **or** last position by progression,
+  strictly behind the leader); ties: fewest validated characters, then
+  `memberId`. No eligible participant → the help is skipped.
+* **Types:** one seeded effect per checkpoint (mulberry32 draw over
+  `raceSeed + 0x10000` — the draw always happens, even when the effect is then
+  skipped, so the stream replays at a fixed seed):
+
+  | Type | Effect | Target | Text change |
+  | ---- | ------ | ------ | ----------- |
+  | `addWords` | +3 dictionary words appended after the target's current text | leader | + (words synthesized from the same language × complexity dictionary, seed `raceSeed + 0x20000 + eventOrdinal`; plain words, no capitals/punctuation — documented trade-off: coherent passages receive plain dictionary words) |
+  | `removeWords` | −3 words removed from the END of the target's remaining text | most-behind eligible | − (never before the caret; clamped to ≥ 1 character remaining; fewer removable words → fewer removed, nothing removable → skipped) |
+  | `fog` | 2 s blur (payload `durationMs`), no text change | leader only | none — **never applied to a bot** (no visual to blur; the event is skipped — the simplest honest rule) |
+
+* **Cap:** at most **3 bonuses received per participant per race** (defensive —
+  three events per race make it unreachable today).
+* **Application (BONUS-04):** every participant carries an **effective text**
+  (`runtime.text`, starts as the race text). Progress validation, the finish
+  condition (`validatedChars == effective length`), `raceTick.totalLength`,
+  `raceSnapshot.totalLength` and the progression ratio all use it — never the
+  shared base length. Bots adapt through the same fields (ADR-011): a shrunk
+  text truncates the bot's schedule (`truncateBotSchedule`), a grown text
+  extends it deterministically (`extendBotSchedule`, suffix typed at the
+  level's cadence from a fresh seeded draw).
+* **Wire contract:** `bonusApplied {roomPublicId, targetParticipantId,
+  bonusType, payload {words | wordCount | durationMs, totalLength, at}}`
+  (Zod v4, TECH-07) is broadcast to the whole room; the client reducer updates
+  the targeted tick participant's `totalLength` and appends the event to
+  `race.bonusLog` (SP-4C renders it). `raceFinished.results[].bonusesReceived`
+  and the persisted `race_participants.bonusesReceived` carry the counts.
+* **Determinism:** the whole bonus stream replays from the race seed — two
+  engines with the same seed and clock produce identical events and payloads
+  (tested in `race-engine.test.ts`).
 
 ## Persistence and replay (RES-05, HIST-01/02)
 
