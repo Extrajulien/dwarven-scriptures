@@ -396,14 +396,27 @@ worked at checkpoint 1 (2026-11-08):
    not (AGENTS.md).
 5. **Migrate + seed** — the production `DATABASE_URL` uses the private-network
    hostname, which is only reachable from inside Railway. From a local
-   machine: temporarily create a TCP proxy on the `Postgres` service (GraphQL
-   `tcpProxyCreate`, application port 5432), redeploy Postgres once to
-   activate it, run `npm run db:migrate` then `npm run db:seed` with a
-   `DATABASE_URL` built from `postgres://postgres:<password>@<proxy-domain>:
-   <proxy-port>/railway`, then delete the proxy (`tcpProxyDelete`) and
-   redeploy Postgres again so the public port closes. Alternative:
-   `railway run npm run db:migrate` once the CLI's SSH tunnel is set up
-   (`railway ssh keys add`). Migrations and the seed are idempotent.
+   machine: temporarily create a TCP proxy on the `Postgres` service
+   (`railway tcp-proxy create --port 5432 --service Postgres`), redeploy
+   Postgres once to activate it, run `npm run db:migrate` then `npm run
+   db:seed` with a `DATABASE_URL` built from `postgres://postgres:<password>@
+   <proxy-domain>:<proxy-port>/railway`, then delete the proxy (`railway
+   tcp-proxy delete`) and redeploy Postgres again so the public port closes.
+   **Final-remise fallback (used 2026-11-09):** the public proxy port was
+   unreachable from the development machine (TCP connect ETIMEDOUT to the
+   proxy IP; likely egress filtering), so the migrations were applied over an
+   **SSH port-forward instead**: `railway ssh keys add`, generate the config
+   with `railway ssh config -s dwarven-scriptures --path <file>`, then
+   `ssh -F <file> -N -L 15432:postgres.railway.internal:5432
+   railway-dwarven-scriptures` in one process and run `npm run db:migrate` /
+   `db:seed` locally with `postgres://postgres:<password>@[::1]:15432/railway`
+   (the tunnel binds `::1`). Note `railway run` does **not** tunnel the
+   private network in the current CLI (it passed
+   `postgres.railway.internal` through → ENOTFOUND), and running
+   `npm run db:migrate` **inside** the app container via `railway ssh` only
+   applies the migration files shipped with the deployed image — always run
+   migrations from the local repo to get the latest `drizzle/` files.
+   Migrations and the seed are idempotent.
 6. **Never commit the deployed credentials** — including the SESSION_SECRET
    and any proxy URL.
 
