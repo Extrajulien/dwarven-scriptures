@@ -225,6 +225,18 @@ the single source of truth. Semantics as implemented:
 * **Relaunch / close (COURSE-11):** `relaunch` is legal only from
   `resultats`, keeps the participant list and can replace the config
   snapshot; `closeRace` is legal from `en_attente` or `resultats`.
+* **Config snapshot (CONF-12):** the engine reads `rooms.config` exactly
+  once, when a race starts (`RaceEngine.startRace` → `loadRoom` →
+  `pickText` + `createRace({ config })`). From DÉCOMPTE on, the running race
+  is immune to any later change, so the `updateRoomConfig` query refuses
+  writes while `rooms.status` is not `en_attente` (`RoomConfigLockedError`
+  → action code `configLocked` → localized denial in the lobby). The guard
+  is deliberately strict (`en_attente` only): the results screen
+  (COURSE-11, Phase 3) can widen it to `resultats` safely, because the next
+  `startRace` (relaunch) re-reads the stored config — this keeps the DB
+  config and the engine snapshot coherent at all times. Live updates to
+  everyone present flow through `configUpdated` (see the message-flow
+  section below).
 * **Annexe A formulas** (net/raw WPM, accuracy, progression) live in
   `src/lib/race/stats.ts` so every phase reuses them verbatim (COURSE-04/10).
 
