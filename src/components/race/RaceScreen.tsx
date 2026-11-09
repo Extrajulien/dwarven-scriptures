@@ -198,6 +198,10 @@ export type RaceScreenProps = {
   onStartRace: () => void;
   onQuitRace: () => void;
   onSendProgress: (progress: RaceProgress) => void;
+  /** COURSE-11: the host closes the room from the results screen. */
+  onCloseRoom: () => void;
+  /** COURSE-11: non-hosts leave the room from the results screen. */
+  onLeaveRoom: () => void;
 };
 
 export default function RaceScreen({
@@ -215,6 +219,8 @@ export default function RaceScreen({
   onStartRace,
   onQuitRace,
   onSendProgress,
+  onCloseRoom,
+  onLeaveRoom,
 }: RaceScreenProps) {
   const [nowMs, setNowMs] = useState(() => Date.now());
   // RES-03: the LOCAL session's per-key error counts, fed by the typing zone
@@ -257,6 +263,11 @@ export default function RaceScreen({
         bestWpm={bestWpm}
         messages={messages}
         locale={locale}
+        isHost={isHost}
+        participantCount={participantCount}
+        onRelaunch={onStartRace}
+        onCloseRoom={onCloseRoom}
+        onLeaveRoom={onLeaveRoom}
       />
     );
   }

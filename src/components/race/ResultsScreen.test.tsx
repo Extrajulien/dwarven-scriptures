@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MESSAGES } from '../../i18n/messages';
 import type { RaceResultEntry } from '../../realtime/protocol';
 import type { RaceResultsView } from '../../realtime/client-types';
@@ -50,6 +50,11 @@ function renderResults(
     bestWpm?: number | null;
     lang?: 'fr' | 'en';
     pfpUrls?: Record<string, string | null>;
+    isHost?: boolean;
+    participantCount?: number;
+    onRelaunch?: () => void;
+    onCloseRoom?: () => void;
+    onLeaveRoom?: () => void;
   } = {},
 ) {
   return render(
@@ -61,6 +66,11 @@ function renderResults(
       messages={overrides.lang === 'en' ? en : fr}
       locale={overrides.lang === 'en' ? 'en' : 'fr'}
       pfpUrls={overrides.pfpUrls ?? {}}
+      isHost={overrides.isHost ?? false}
+      participantCount={overrides.participantCount ?? 2}
+      onRelaunch={overrides.onRelaunch ?? jest.fn()}
+      onCloseRoom={overrides.onCloseRoom ?? jest.fn()}
+      onLeaveRoom={overrides.onLeaveRoom ?? jest.fn()}
     />,
   );
 }
@@ -340,5 +350,49 @@ describe('personal record indicator (RES-04)', () => {
     expect(badge).toHaveTextContent(fr['results.record.beaten']);
     expect(badge).toHaveTextContent('40');
     expect(badge).not.toHaveTextContent('90');
+  });
+});
+
+describe('results controls (COURSE-11)', () => {
+  const withResults = () =>
+    makeResults([
+      entry({ rank: 1, participantId: BOB, displayName: 'bob', wpm: 50 }),
+      entry({ rank: 2, participantId: ADA, displayName: 'ada', wpm: 42 }),
+    ]);
+
+  test('the host sees relaunch and close; relaunch is gated by the participant count', () => {
+    const onRelaunch = jest.fn();
+    const onCloseRoom = jest.fn();
+    const renderHost = renderResults(withResults(), {
+      isHost: true,
+      participantCount: 2,
+      onRelaunch,
+      onCloseRoom,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: fr['results.relaunch'] }));
+    expect(onRelaunch).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: fr['results.closeRoom'] }));
+    expect(onCloseRoom).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: fr['lobby.confirm'] }));
+    expect(onCloseRoom).toHaveBeenCalledTimes(1);
+    renderHost.unmount();
+
+    renderResults(withResults(), { isHost: true, participantCount: 1 });
+    expect(screen.getByRole('button', { name: fr['results.relaunch'] })).toBeDisabled();
+  });
+
+  test('non-hosts see stay and leave; leave needs the confirm', () => {
+    const onLeaveRoom = jest.fn();
+    renderResults(withResults(), { onLeaveRoom });
+
+    expect(screen.getByRole('button', { name: fr['results.stay'] })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: fr['results.relaunch'] })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: fr['results.leave'] }));
+    expect(onLeaveRoom).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: fr['lobby.confirm'] }));
+    expect(onLeaveRoom).toHaveBeenCalledTimes(1);
   });
 });

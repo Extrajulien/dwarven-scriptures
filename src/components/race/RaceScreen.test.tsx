@@ -60,6 +60,8 @@ function makeResult(overrides: Partial<RaceResultEntry> = {}): RaceResultEntry {
 const onStartRace = jest.fn();
 const onQuitRace = jest.fn();
 const onSendProgress = jest.fn();
+const onCloseRoom = jest.fn();
+const onLeaveRoom = jest.fn();
 
 function renderScreen(overrides: Partial<RaceScreenProps> = {}) {
   const props: RaceScreenProps = {
@@ -76,6 +78,8 @@ function renderScreen(overrides: Partial<RaceScreenProps> = {}) {
     onStartRace,
     onQuitRace,
     onSendProgress,
+    onCloseRoom,
+    onLeaveRoom,
     ...overrides,
   };
   return render(<RaceScreen {...props} />);
@@ -360,6 +364,70 @@ describe('results screen (resultats, RES-01..04)', () => {
       race: makeRace({ phase: 'resultats', finished }),
     });
     expect(screen.queryByTestId('results-record')).not.toBeInTheDocument();
+  });
+});
+
+describe('results controls (COURSE-11)', () => {
+  const finishedRace = (overrides: Partial<RaceView> = {}) =>
+    makeRace({
+      phase: 'resultats',
+      finished: {
+        durationMs: 45_000,
+        results: [
+          makeResult({ rank: 1, displayName: 'rival', wpm: 50 }),
+          makeResult({ rank: 2, participantId: ADA, displayName: 'ada', wpm: 42 }),
+        ],
+      },
+      ...overrides,
+    });
+
+  test('the host can relaunch the race and close the room', () => {
+    renderScreen({
+      roomStatus: 'resultats',
+      race: finishedRace(),
+      isHost: true,
+      participantCount: 2,
+    });
+
+    const relaunch = screen.getByRole('button', { name: messages['results.relaunch'] });
+    expect(relaunch).toBeEnabled();
+    fireEvent.click(relaunch);
+    expect(onStartRace).toHaveBeenCalledTimes(1);
+
+    // Closing needs the two-step confirm, like the lobby control.
+    fireEvent.click(screen.getByRole('button', { name: messages['results.closeRoom'] }));
+    expect(onCloseRoom).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: messages['lobby.confirm'] }));
+    expect(onCloseRoom).toHaveBeenCalledTimes(1);
+  });
+
+  test('the relaunch button is disabled under 2 participants (COURSE-02)', () => {
+    renderScreen({
+      roomStatus: 'resultats',
+      race: finishedRace(),
+      isHost: true,
+      participantCount: 1,
+    });
+    expect(screen.getByRole('button', { name: messages['results.relaunch'] })).toBeDisabled();
+    expect(screen.getByTestId('results-need-participants')).toHaveTextContent(
+      messages['race.needParticipants'],
+    );
+  });
+
+  test('non-hosts can stay or leave the room', () => {
+    renderScreen({
+      roomStatus: 'resultats',
+      race: finishedRace(),
+      isHost: false,
+    });
+
+    expect(screen.getByRole('button', { name: messages['results.stay'] })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages['results.relaunch'] })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: messages['results.leave'] }));
+    expect(onLeaveRoom).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: messages['lobby.confirm'] }));
+    expect(onLeaveRoom).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -669,6 +669,40 @@ describe('finish and ranking (COURSE-09/10)', () => {
     const countdowns = deps.messagesOf(ROOM_ID, 'countdownStarted');
     expect(countdowns).toHaveLength(2);
   });
+
+  test('a relaunch from resultats re-collects the CURRENT participants (COURSE-11)', async () => {
+    const { engine, deps } = makeEngine();
+    await startAndCountdown(engine, deps);
+    const totalLength = DEFAULT_BODY.length;
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(totalLength))).toEqual({ ok: true });
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({ ok: true });
+    expect(engine.quitRace(ROOM_ID, `guest:${GUEST_TOKEN}`)).toEqual({ ok: true });
+    expect(engine.getPhase(ROOM_ID)).toBe('resultats');
+
+    // The guest left the room between the two races: the fresh start must
+    // read the members again (not reuse the stale participant set).
+    const currentRoom = deps.room;
+    expect(currentRoom).not.toBeNull();
+    if (currentRoom) {
+      deps.room = {
+        ...currentRoom,
+        members: currentRoom.members.filter((entry) => entry.memberId !== 3),
+      };
+    }
+    expect(await engine.startRace(ROOM_ID, 'user:7')).toEqual({ ok: true });
+    expect(engine.getPhase(ROOM_ID)).toBe('decompte');
+
+    deps.clock.advance(3_000);
+    engine.tick();
+    deps.clock.advance(RACE_TICK_BROADCAST_INTERVAL_MS);
+    engine.tick();
+    const ticks = deps.messagesOf(ROOM_ID, 'raceTick');
+    const tick = ticks[ticks.length - 1];
+    expect(tick?.participants.map((p) => p.participantId)).toEqual([
+      ADA_PUBLIC_ID,
+      BOB_PUBLIC_ID,
+    ]);
+  });
 });
 
 describe('WPM time series sampling (RES-03/05 groundwork)', () => {

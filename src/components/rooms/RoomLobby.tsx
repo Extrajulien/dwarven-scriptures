@@ -380,6 +380,8 @@ export default function RoomLobby({
         onStartRace={startRace}
         onQuitRace={quitRace}
         onSendProgress={sendRaceProgress}
+        onCloseRoom={() => void handleCloseRoom()}
+        onLeaveRoom={() => void handleLeave()}
       />
 
       {/* Room header: code, visibility, status, capacity. */}
