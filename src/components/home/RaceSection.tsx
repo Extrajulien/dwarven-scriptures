@@ -61,12 +61,12 @@ export default function RaceSection({
           aria-labelledby="quick-play-title"
         >
           <div className="flex flex-col gap-space-xs">
-            <h3
+            <h2
               id="quick-play-title"
               className="font-headline-sm text-headline-sm uppercase tracking-wide text-dwarf-gold"
             >
               {messages['raceSection.quickPlayLabel']}
-            </h3>
+            </h2>
             <p className="font-label-sm text-label-sm text-dwarf-parchmentMuted">
               {messages['raceSection.quickPlayHint']}
             </p>
@@ -96,12 +96,12 @@ export default function RaceSection({
             className="flex flex-col gap-space-md rounded bg-dwarf-slate p-space-lg shadow-stone-inner"
             aria-labelledby="create-room-guest-title"
           >
-            <h3
+            <h2
               id="create-room-guest-title"
               className="font-headline-sm text-headline-sm uppercase tracking-wide text-outline"
             >
               {messages['raceSection.createTitle']}
-            </h3>
+            </h2>
             <p className="font-body-sm text-body-sm text-dwarf-parchmentMuted">
               {messages['raceSection.guestEmpty']}
             </p>

@@ -77,6 +77,7 @@ export default async function RaceReplayPage({
           <section className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl">
             <SectionHeader
               title={messages['results.title']}
+              level={1}
               right={
                 <ButtonSecondary href={session ? '/account' : '/'} className="shrink-0">
                   {session ? messages['raceReplay.back'] : messages['lobby.backHome']}

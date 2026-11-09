@@ -221,7 +221,7 @@ export default function RegisterForm({ messages }: { messages: Messages }) {
             type="button"
             aria-label={messages['auth.register.togglePassword']}
             onClick={() => setShowPassword((visible) => !visible)}
-            className={`absolute inset-y-0 right-0 flex items-center pr-3 transition-colors focus:outline-none ${
+            className={`absolute inset-y-0 right-0 flex items-center pr-3 transition-colors focus:outline-none focus:ring-1 focus:ring-dwarf-gold ${
               showPassword ? 'text-dwarf-gold' : 'text-dwarf-parchmentMuted hover:text-dwarf-gold'
             }`}
           >
@@ -272,7 +272,7 @@ export default function RegisterForm({ messages }: { messages: Messages }) {
             type="button"
             aria-label={messages['auth.register.toggleConfirmPassword']}
             onClick={() => setShowPassword((visible) => !visible)}
-            className={`absolute inset-y-0 right-0 flex items-center pr-3 transition-colors focus:outline-none ${
+            className={`absolute inset-y-0 right-0 flex items-center pr-3 transition-colors focus:outline-none focus:ring-1 focus:ring-dwarf-gold ${
               showPassword ? 'text-dwarf-gold' : 'text-dwarf-parchmentMuted hover:text-dwarf-gold'
             }`}
           >

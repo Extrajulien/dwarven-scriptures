@@ -20,6 +20,15 @@
 export const ROOM_CODE_JOIN_MAX_ATTEMPTS = 10;
 export const ROOM_CODE_JOIN_WINDOW_MS = 60_000;
 
+/**
+ * Avatar uploads are throttled per authenticated user (AUTH-04): at most 5
+ * uploads per minute per user. The key is the session `publicId`, never an
+ * IP, so the cap follows the account; each upload writes up to 2 MB into
+ * PostgreSQL, so the limit also keeps storage writes bounded (SEC-01).
+ */
+export const AVATAR_UPLOAD_MAX_ATTEMPTS = 5;
+export const AVATAR_UPLOAD_WINDOW_MS = 60_000;
+
 /** Raised when an attempt would exceed the window's cap. */
 export class RateLimitExceededError extends Error {
   constructor(
@@ -127,4 +136,15 @@ export class SlidingWindowRateLimiter {
 export const roomCodeJoinLimiter = new SlidingWindowRateLimiter({
   maxAttempts: ROOM_CODE_JOIN_MAX_ATTEMPTS,
   windowMs: ROOM_CODE_JOIN_WINDOW_MS,
+});
+
+/**
+ * Shared limiter for avatar uploads, keyed by the authenticated user's
+ * `publicId` (AUTH-04: 5 per 60 s per user). Same single-instance assumption
+ * as the room-code limiter above; `src/app/account/actions.ts` maps a
+ * `RateLimitExceededError` to the typed `rateLimited` result.
+ */
+export const avatarUploadLimiter = new SlidingWindowRateLimiter({
+  maxAttempts: AVATAR_UPLOAD_MAX_ATTEMPTS,
+  windowMs: AVATAR_UPLOAD_WINDOW_MS,
 });

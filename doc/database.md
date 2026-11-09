@@ -42,21 +42,23 @@ are declared there rather than in a separate file.
 
 ## Schema
 
-Eleven tables, all keyed so that no internal id ever reaches a client: the
+Twelve tables, all keyed so that no internal id ever reaches a client: the
 `users.id` `bigserial` is used only for foreign keys, while `publicId` (uuid)
 and `username` are the public identifiers. `username` holds the trimmed
 **display name** (it may contain spaces, is unique and ≤ 32 chars) rather than a
 URL slug — see [`doc/auth.md`](auth.md) for how registration and OAuth populate
-it. `user_stats`, `user_resources` and `oauth_accounts` reference `users(id)`
-with `ON DELETE CASCADE`. `texts` and `word_dictionaries` hold the typing
-content itself (reference data): they also have internal `id`s, but clients
-will only ever receive a passage's `title`/`body`, never a row id.
+it. `user_stats`, `user_resources`, `user_avatars` and `oauth_accounts`
+reference `users(id)` with `ON DELETE CASCADE`. `texts` and `word_dictionaries`
+hold the typing content itself (reference data): they also have internal
+`id`s, but clients will only ever receive a passage's `title`/`body`, never a
+row id.
 
 | Table             | Key            | Notes                                                   |
 | ----------------- | -------------- | ------------------------------------------------------- |
 | `users`           | `id` bigserial | unique `publicId` (uuid, `gen_random_uuid()`), unique `username` (display name ≤ 32 chars), `passwordHash` (**nullable** for OAuth accounts), `pfpUrl`, `createdAt` |
 | `user_stats`      | `userId` → `users.id` | `racesCompleted`, `totalWords`, `totalTimeMs`, `bestWpm`, `wins`, `correctKeystrokes`, `totalKeystrokes`, `updatedAt` |
 | `user_resources`  | `userId` → `users.id` | `coins`, `gems`, `updatedAt`                    |
+| `user_avatars`    | `userId` → `users.id` | uploaded profile picture: `contentType` (`image/jpeg`/`image/png`/`image/webp` CHECK), `bytes` bytea, `updatedAt` — see [Avatar uploads](#avatar-uploads-auth-04) below |
 | `oauth_accounts`  | `userId` → `users.id` | unique `(provider, providerAccountId)`, `provider`, `providerAccountId`, `createdAt` |
 | `texts`           | `id` bigserial | coherent-mode corpus: `language` (`fr`/`en` CHECK), `title`, `body`, `wordCount` (`> 0` CHECK), `complexity` (`facile`/`moyen`/`difficile` CHECK), metrics `avgWordLength`, `longWordRatio`, `specialCharRatio` (`>= 0` CHECKs), config flags `hasPunctuation`, `hasNumbers`, `hasCapitals`, `hasAccents`, `createdAt`; index on `(language, complexity)` |
 | `word_dictionaries` | `id` bigserial | random-mode word pools: unique `(language, complexity)`, `words` jsonb (string array, `jsonb_array_length >= 100` CHECK), `createdAt` |
@@ -79,6 +81,19 @@ read time as `correctKeystrokes / totalKeystrokes * 100` (rounded to 2
 decimals, `0` when nothing was typed yet — see `src/db/queries/users.ts`). A
 stored percentage could drift away from the counters that justify it; the
 formula can never contradict them.
+
+### Avatar uploads (AUTH-04)
+
+Uploaded profile pictures are stored **in PostgreSQL**, not on disk: the
+Railway filesystem is ephemeral, and PostgreSQL is already the one durable
+service the app owns, so no external object store is needed (TECH-08 — free
+tiers only). `user_avatars` keeps one row per user (re-uploads replace the
+bytes in place via `ON CONFLICT (userId) DO UPDATE`); `users.pfpUrl` only ever
+holds the serving route `GET /api/avatar/[publicId]?v=<upload epoch ms>`, so
+the write of the bytes and the URL pointer commit in a single transaction
+(`storeUserAvatar`, `src/db/queries/avatars.ts`). The file type was already
+decided by magic bytes before the write (SEC-02); the `contentType` CHECK is
+the database-side backstop. Migration: `0006_gigantic_queen_noir.sql`.
 
 ### Complexity (CONF-05)
 
@@ -381,14 +396,27 @@ worked at checkpoint 1 (2026-11-08):
    not (AGENTS.md).
 5. **Migrate + seed** — the production `DATABASE_URL` uses the private-network
    hostname, which is only reachable from inside Railway. From a local
-   machine: temporarily create a TCP proxy on the `Postgres` service (GraphQL
-   `tcpProxyCreate`, application port 5432), redeploy Postgres once to
-   activate it, run `npm run db:migrate` then `npm run db:seed` with a
-   `DATABASE_URL` built from `postgres://postgres:<password>@<proxy-domain>:
-   <proxy-port>/railway`, then delete the proxy (`tcpProxyDelete`) and
-   redeploy Postgres again so the public port closes. Alternative:
-   `railway run npm run db:migrate` once the CLI's SSH tunnel is set up
-   (`railway ssh keys add`). Migrations and the seed are idempotent.
+   machine: temporarily create a TCP proxy on the `Postgres` service
+   (`railway tcp-proxy create --port 5432 --service Postgres`), redeploy
+   Postgres once to activate it, run `npm run db:migrate` then `npm run
+   db:seed` with a `DATABASE_URL` built from `postgres://postgres:<password>@
+   <proxy-domain>:<proxy-port>/railway`, then delete the proxy (`railway
+   tcp-proxy delete`) and redeploy Postgres again so the public port closes.
+   **Final-remise fallback (used 2026-11-09):** the public proxy port was
+   unreachable from the development machine (TCP connect ETIMEDOUT to the
+   proxy IP; likely egress filtering), so the migrations were applied over an
+   **SSH port-forward instead**: `railway ssh keys add`, generate the config
+   with `railway ssh config -s dwarven-scriptures --path <file>`, then
+   `ssh -F <file> -N -L 15432:postgres.railway.internal:5432
+   railway-dwarven-scriptures` in one process and run `npm run db:migrate` /
+   `db:seed` locally with `postgres://postgres:<password>@[::1]:15432/railway`
+   (the tunnel binds `::1`). Note `railway run` does **not** tunnel the
+   private network in the current CLI (it passed
+   `postgres.railway.internal` through → ENOTFOUND), and running
+   `npm run db:migrate` **inside** the app container via `railway ssh` only
+   applies the migration files shipped with the deployed image — always run
+   migrations from the local repo to get the latest `drizzle/` files.
+   Migrations and the seed are idempotent.
 6. **Never commit the deployed credentials** — including the SESSION_SECRET
    and any proxy URL.
 

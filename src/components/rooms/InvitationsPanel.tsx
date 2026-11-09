@@ -85,12 +85,12 @@ export default function InvitationsPanel({
       aria-labelledby="invitations-panel-title"
     >
       <div className="flex flex-col gap-space-xs">
-        <h4
+        <h3
           id="invitations-panel-title"
           className="font-headline-sm text-headline-sm uppercase tracking-wide text-primary"
         >
           {messages['lobby.invitationsTitle']}
-        </h4>
+        </h3>
         <p className="font-label-sm text-label-sm text-dwarf-parchmentMuted">
           {messages['lobby.invitationsHint']}
         </p>
@@ -109,7 +109,7 @@ export default function InvitationsPanel({
             max={100}
             value={count}
             onChange={(event) => setCount(Number(event.target.value))}
-            className="w-24 rounded border border-dwarf-border bg-dwarf-bg px-2 py-1.5 font-mono text-sm text-dwarf-parchment shadow-stone-inner focus:border-dwarf-gold focus:outline-none"
+            className="w-24 rounded border border-dwarf-border bg-dwarf-bg px-2 py-1.5 font-mono text-sm text-dwarf-parchment shadow-stone-inner focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
           />
         </label>
         <ButtonSecondary type="button" onClick={handleGenerate} disabled={generating}>

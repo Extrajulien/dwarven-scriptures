@@ -10,7 +10,7 @@ export default function PerkCard({
   messages: Messages;
 }) {
   const cardClass = perk.locked
-    ? 'bg-surface-container-low p-space-sm rounded flex flex-col gap-1 opacity-60'
+    ? 'bg-surface-container-low p-space-sm rounded flex flex-col gap-1'
     : `bg-surface-container p-space-sm rounded flex flex-col gap-1 border-l-4 ${perk.borderClass} shadow-sm`;
 
   return (
@@ -30,7 +30,7 @@ export default function PerkCard({
 
       <p
         className={`font-body-sm text-body-sm ${
-          perk.locked ? 'text-outline' : 'text-on-surface-variant'
+          perk.locked ? 'text-dwarf-parchment-muted' : 'text-on-surface-variant'
         }`}
       >
         {messages[perk.descriptionKey]}

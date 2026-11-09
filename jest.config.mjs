@@ -14,6 +14,9 @@ const config = {
   coverageProvider: 'v8',
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.mjs'],
+  // Playwright owns e2e/*.spec.ts (TEST-02): Jest must not collect them —
+  // they import @playwright/test and run against the live dev server.
+  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/e2e/'],
 };
 
 export default createJestConfig(config);

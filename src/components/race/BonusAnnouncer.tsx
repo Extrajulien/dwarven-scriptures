@@ -115,7 +115,7 @@ export default function BonusAnnouncer({
           data-bonus-type={bannerEvent?.bonusType ?? ''}
           role="status"
           aria-live="polite"
-          className="flex items-center justify-center gap-space-sm rounded border border-dwarf-gold/70 bg-dwarf-basalt px-space-md py-space-sm shadow-stone-inner"
+          className="flex items-center justify-center gap-space-sm rounded border border-dwarf-gold bg-dwarf-basalt px-space-md py-space-sm shadow-stone-inner"
         >
           <span
             aria-hidden="true"

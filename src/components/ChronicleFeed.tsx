@@ -40,6 +40,7 @@ export default function ChronicleFeed({ messages }: { messages: Messages }) {
         <input
           className="bg-transparent text-on-surface placeholder:text-outline border-none outline-none w-full font-body-sm text-body-sm"
           placeholder={messages['home.chronicles.placeholder']}
+          aria-label={messages['home.chronicles.inputLabel']}
           type="text"
         />
         <button

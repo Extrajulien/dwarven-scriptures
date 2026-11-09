@@ -474,7 +474,9 @@ export const PERKS: Perk[] = [
     nameKey: 'home.perks.quill.name',
     nameClass: 'text-secondary',
     statusKey: 'home.perks.quill.status',
-    statusClass: 'bg-secondary-container text-on-secondary-container animate-pulse',
+    // No `animate-pulse`: the opacity fade periodically drops the status text
+    // below WCAG AA while it runs (flagged by the Lighthouse contrast audit).
+    statusClass: 'bg-secondary-container text-on-secondary-container',
     borderClass: 'border-l-secondary',
     descriptionKey: 'home.perks.quill.description',
     progress: { percent: 82, fillClass: 'bg-secondary' },
@@ -486,9 +488,9 @@ export const PERKS: Perk[] = [
   {
     id: 'forgotten-beast',
     nameKey: 'home.perks.beast.name',
-    nameClass: 'text-outline',
+    nameClass: 'text-on-surface-variant',
     statusKey: 'home.perks.beast.status',
-    statusClass: 'bg-surface-container-high text-outline',
+    statusClass: 'bg-surface-container-high text-on-surface-variant',
     borderClass: null,
     descriptionKey: 'home.perks.beast.description',
     locked: true,

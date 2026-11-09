@@ -25,7 +25,9 @@ const TONE_CLASSES: Record<Tone, string> = {
   plain: 'border border-outline-variant bg-surface-container-high text-on-surface-variant',
   few: 'border border-primary/60 bg-primary/20 text-primary',
   many: 'border border-error/70 bg-error/20 text-error',
-  top: 'border border-error bg-error/60 text-on-surface',
+  // Solid error fill: the previous /60 tint put `on-surface` text below WCAG
+  // AA in BOTH themes (A11Y-01 — computed in src/theme/contrast.test.ts).
+  top: 'border border-error bg-error text-on-error',
 };
 
 const TONE_LABEL_CLASSES: Record<Tone, string> = {

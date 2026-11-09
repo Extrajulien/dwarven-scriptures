@@ -409,6 +409,7 @@ export interface Messages {
   'home.chronicles.title': string;
   'home.chronicles.subtitle': string;
   'home.chronicles.placeholder': string;
+  'home.chronicles.inputLabel': string;
   'home.chronicles.post': string;
   'home.chronicles.apex.time': string;
   'home.chronicles.apex.s1': string;
@@ -615,6 +616,18 @@ export interface Messages {
   'account.modal.error.usernameTooLong': string;
   'account.modal.error.usernameTaken': string;
   'account.modal.error.invalidUrl': string;
+  // ------------------------------------------------------------ avatar upload (AUTH-04)
+  'upload.chooseFile': string;
+  'upload.hint': string;
+  'upload.upload': string;
+  'upload.uploading': string;
+  'upload.error.fileTooLarge': string;
+  'upload.error.unsupportedType': string;
+  'upload.error.emptyFile': string;
+  'upload.error.missingFile': string;
+  'upload.error.rateLimited': string;
+  'upload.error.unexpected': string;
+  'upload.error.unauthenticated': string;
   // ------------------------------------------------------------ dev-only sprite demos
   'demo.preloading': string;
   'demo.showcaseTitle': string;
@@ -1082,6 +1095,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'home.chronicles.title': '[ CHRONIQUES_DE_LA_GUILDE ]',
     'home.chronicles.subtitle': 'FIL DES EXPÉDITIONS EN DIRECT // PROTOCOLE ASCII',
     'home.chronicles.placeholder': 'Gravez une entrée dans la pierre de la forteresse…',
+    'home.chronicles.inputLabel': 'Entrée de la chronique de guilde',
     'home.chronicles.post': '[PUBLIER]',
     'home.chronicles.apex.time': 'IL Y A 02 MIN',
     'home.chronicles.apex.s1': '⚡ Nouveau record de vitesse maximale dans la chambre N° 8849 : ',
@@ -1296,6 +1310,17 @@ export const MESSAGES: Record<Locale, Messages> = {
     'account.modal.error.usernameTooLong': 'Le nom doit compter au plus 32 caractères.',
     'account.modal.error.usernameTaken': 'Ce nom est déjà pris.',
     'account.modal.error.invalidUrl': 'Saisissez une URL d’image http(s) valide.',
+    'upload.chooseFile': '[ CHOISIR UN FICHIER ]',
+    'upload.hint': 'JPEG, PNG ou WebP — 2 Mo maximum. Le type réel est vérifié côté serveur.',
+    'upload.upload': '[ TÉLÉVERSER L’EMBLÈME ]',
+    'upload.uploading': '[ GRAVURE EN COURS… ]',
+    'upload.error.fileTooLarge': 'Le fichier dépasse 2 Mo.',
+    'upload.error.unsupportedType': 'Format non accepté : JPEG, PNG ou WebP uniquement.',
+    'upload.error.emptyFile': 'Le fichier est vide.',
+    'upload.error.missingFile': 'Choisissez d’abord un fichier.',
+    'upload.error.rateLimited': 'Trop de téléversements. Réessayez dans une minute.',
+    'upload.error.unexpected': 'Échec du téléversement. Réessayez.',
+    'upload.error.unauthenticated': 'Session expirée : reconnectez-vous.',
     // ------------------------------------------------------------ dev-only sprite demos
     'demo.preloading': 'Préchargement des feuilles de sprites…',
     'demo.showcaseTitle': 'Vitrine du registre de sprites',
@@ -1764,6 +1789,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'home.chronicles.title': '[ GUILD_CHRONICLES ]',
     'home.chronicles.subtitle': 'LIVE EXPEDITION TICKER // PROTOCOL ASCII',
     'home.chronicles.placeholder': 'Carve entry into the stronghold stone...',
+    'home.chronicles.inputLabel': 'Guild chronicle entry',
     'home.chronicles.post': '[POST]',
     'home.chronicles.apex.time': '02 MINS AGO',
     'home.chronicles.apex.s1': '⚡ New Apex Speed Record set in Chamber #8849: ',
@@ -1977,6 +2003,17 @@ export const MESSAGES: Record<Locale, Messages> = {
     'account.modal.error.usernameTooLong': 'Name must be at most 32 characters.',
     'account.modal.error.usernameTaken': 'That name is already taken.',
     'account.modal.error.invalidUrl': 'Enter a valid http(s) image URL.',
+    'upload.chooseFile': '[ CHOOSE FILE ]',
+    'upload.hint': 'JPEG, PNG or WebP — 2 MB max. The real type is checked server-side.',
+    'upload.upload': '[ UPLOAD EMBLEM ]',
+    'upload.uploading': '[ ENGRAVING… ]',
+    'upload.error.fileTooLarge': 'The file exceeds 2 MB.',
+    'upload.error.unsupportedType': 'Unsupported format: JPEG, PNG or WebP only.',
+    'upload.error.emptyFile': 'The file is empty.',
+    'upload.error.missingFile': 'Choose a file first.',
+    'upload.error.rateLimited': 'Too many uploads. Try again in a minute.',
+    'upload.error.unexpected': 'Upload failed. Try again.',
+    'upload.error.unauthenticated': 'Session expired: sign in again.',
     // ------------------------------------------------------------ dev-only sprite demos
     'demo.preloading': 'Preloading sprite sheets…',
     'demo.showcaseTitle': 'Sprite Registry Showcase',

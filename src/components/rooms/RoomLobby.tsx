@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   closeRoom,
   kickMember,
@@ -108,9 +108,7 @@ export default function RoomLobby({
   const { status, snapshot, error, race, join, leave, startRace, quitRace, sendRaceProgress } =
     useRoomSocket();
 
-  const joinedRef = useRef(false);
-  const [leftByUser, setLeftByUser] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [leftByUser, setLeftByUser] = useState(false);  const [copied, setCopied] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmKickTarget, setConfirmKickTarget] = useState<string | null>(null);
@@ -119,10 +117,11 @@ export default function RoomLobby({
   const [editingConfig, setEditingConfig] = useState(false);
 
   useEffect(() => {
-    if (joinedRef.current) {
-      return;
-    }
-    joinedRef.current = true;
+    // React StrictMode (dev) runs mount → cleanup → remount: the hook's
+    // unmount cleanup closes the socket, so the remount must join AGAIN —
+    // a "ran once" ref guard would leave the lobby stranded in `connecting`
+    // with a socket that was closed mid-handshake. `join` is referentially
+    // stable, so this re-runs only on a real code/token change or a remount.
     join(invitationToken ? { invitationToken } : { code: roomCode });
   }, [join, invitationToken, roomCode]);
 
@@ -215,7 +214,12 @@ export default function RoomLobby({
     );
   }
 
-  if (error && error.code !== 'kicked') {
+  // Only a FATAL rejection (bad room, kick, full/rate-limited room) or a
+  // failed join (no snapshot yet) shows the error screen. Benign in-race
+  // rejections — e.g. the server answering `not_in_race` to a trailing
+  // progress flush sent right after a confirmed quit — must never kick a
+  // live lobby out of its room view.
+  if (error && error.code !== 'kicked' && (error.fatal || !snapshot)) {
     const errorKey =
       error.code === 'room_full'
         ? 'lobby.error.roomFull'
@@ -269,8 +273,15 @@ export default function RoomLobby({
   }
 
   const room = snapshot.room;
+  // The live race phase is authoritative once a race starts: the engine's
+  // `countdownStarted` / `raceStarted` / `raceFinished` messages carry the
+  // transitions, while `room.status` only changes on the next room snapshot
+  // (`raceAborted` is the one race message that syncs it back). Mapping the
+  // phase onto the display status is what lets the countdown / race /
+  // results branches of `RaceScreen` actually appear between snapshots.
+  const displayStatus = race?.phase ?? room.status;
   const participants = snapshot.members.filter((member) => member.role === 'participant').length;
-  const statusKey = STATUS_KEYS[room.status] ?? STATUS_KEYS.en_attente;
+  const statusKey = STATUS_KEYS[displayStatus] ?? STATUS_KEYS.en_attente;
   const visibilityKey = VISIBILITY_KEYS[room.visibility] ?? VISIBILITY_KEYS.public;
   const hostMember = snapshot.members.find(
     (member) => member.kind === 'user' && member.publicId === room.host.publicId,
@@ -366,7 +377,7 @@ export default function RoomLobby({
   return (
     <div className="flex flex-col gap-space-lg">
       <RaceScreen
-        roomStatus={room.status}
+        roomStatus={displayStatus}
         race={race}
         config={config}
         viewerRole={viewerRole}
@@ -384,11 +395,13 @@ export default function RoomLobby({
         onLeaveRoom={() => void handleLeave()}
       />
 
-      {/* Room header: code, visibility, status, capacity. */}
+      {/* Room header: code, visibility, status, capacity. The h1 of the room
+          page (A11Y-02): the room is the page's subject. */}
       <section className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl">
         <SectionHeader
           title={messages['raceSection.title']}
           subtitle={messages['raceSection.subtitle']}
+          level={1}
         />
 
         <div className="flex flex-col gap-space-md md:flex-row md:items-center md:justify-between">
@@ -568,7 +581,7 @@ export default function RoomLobby({
         <aside className="flex flex-col gap-space-lg">
           {isHost && (
             <section className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl">
-              <SectionHeader title={messages['lobby.hostControlsTitle']} />
+              <SectionHeader title={messages['lobby.hostControlsTitle']} level={2} />
 
               {!confirmClose ? (
                 <ButtonSecondary type="button" disabled={busy} onClick={() => setConfirmClose(true)}>
@@ -611,7 +624,7 @@ export default function RoomLobby({
                   value={transferTarget}
                   onChange={(event) => setTransferTarget(event.target.value)}
                   disabled={busy || transferCandidates.length === 0}
-                  className="w-full rounded border border-dwarf-border bg-dwarf-bg px-2 py-1.5 font-mono text-sm text-dwarf-parchment shadow-stone-inner focus:border-dwarf-gold focus:outline-none"
+                  className="w-full rounded border border-dwarf-border bg-dwarf-bg px-2 py-1.5 font-mono text-sm text-dwarf-parchment shadow-stone-inner focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
                 >
                   <option value="">{messages['lobby.transferHost']}…</option>
                   {transferCandidates.map((member) => (

@@ -70,6 +70,7 @@ export default function RoomExplorer({
       <SectionHeader
         title={messages['explorer.title']}
         subtitle={messages['explorer.subtitle']}
+        level={1}
       />
 
       {/* Filters (JOIN-02): links preserve the other filter. */}

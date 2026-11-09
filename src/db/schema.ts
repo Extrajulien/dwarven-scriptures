@@ -4,6 +4,7 @@ import {
   bigserial,
   boolean,
   check,
+  customType,
   index,
   integer,
   jsonb,
@@ -16,6 +17,18 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
+
+/**
+ * `bytea` column for the avatar binary (AUTH-04). drizzle-orm 0.45 has no
+ * first-class bytea type, so this maps PostgreSQL `bytea` to a `Buffer` in
+ * JavaScript — node-postgres hands bytea back as a Buffer, which is what the
+ * avatar route streams from.
+ */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return 'bytea';
+  },
+});
 
 /**
  * Tables use an internal auto-incrementing `id` for foreign keys and a public
@@ -37,6 +50,40 @@ export const users = pgTable('users', {
   pfpUrl: text(),
   createdAt: timestamp({ mode: 'date', withTimezone: true }).defaultNow().notNull(),
 });
+
+/**
+ * Uploaded profile-picture binary (AUTH-04, SEC-01/02). Avatars are stored
+ * as `bytea` rows in PostgreSQL instead of files on disk: the Railway
+ * deployment has an ephemeral filesystem, and PostgreSQL is already the one
+ * durable service the app owns, so no external object store is needed
+ * (TECH-08 — free tiers only). One row per user; re-uploading replaces the
+ * bytes in place. `users.pfpUrl` points at `GET /api/avatar/[publicId]`, so
+ * the binary itself is never served from anywhere else.
+ *
+ * The file type was already validated by magic bytes before the row is
+ * written (`src/lib/avatar-upload.ts`); the CHECK below is the database-side
+ * backstop so a direct write can never persist a type the route would serve
+ * with a misleading `Content-Type` (SEC-01).
+ */
+export const userAvatars = pgTable(
+  'user_avatars',
+  {
+    userId: bigint({ mode: 'number' })
+      .primaryKey()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** Real image type detected from magic bytes, never the client's MIME. */
+    contentType: varchar({ length: 16 }).notNull(),
+    /** The image binary, at most 2 MB (enforced in the action, AUTH-04). */
+    bytes: bytea().notNull(),
+    updatedAt: timestamp({ mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      'user_avatars_content_type_valid',
+      sql`${table.contentType} in ('image/jpeg', 'image/png', 'image/webp')`,
+    ),
+  ],
+);
 
 export const oauthAccounts = pgTable(
   'oauth_accounts',
@@ -518,7 +565,18 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     fields: [users.id],
     references: [userResources.userId],
   }),
+  avatar: one(userAvatars, {
+    fields: [users.id],
+    references: [userAvatars.userId],
+  }),
   oauthAccounts: many(oauthAccounts),
+}));
+
+export const userAvatarsRelations = relations(userAvatars, ({ one }) => ({
+  user: one(users, {
+    fields: [userAvatars.userId],
+    references: [users.id],
+  }),
 }));
 
 export const oauthAccountsRelations = relations(oauthAccounts, ({ one }) => ({
@@ -596,6 +654,8 @@ export const raceParticipantsRelations = relations(raceParticipants, ({ one }) =
 
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
+export type UserAvatar = InferSelectModel<typeof userAvatars>;
+export type NewUserAvatar = InferInsertModel<typeof userAvatars>;
 export type UserStat = InferSelectModel<typeof userStats>;
 export type NewUserStat = InferInsertModel<typeof userStats>;
 export type UserResource = InferSelectModel<typeof userResources>;
