@@ -9,9 +9,10 @@
  */
 
 import { defaultRoomConfig } from '../lib/room-config';
+import { generateBotSchedule } from '../lib/bots/schedule';
 import type { RoomConfig } from '../db/schema';
 import type { RaceText } from '../lib/race/state';
-import type { ServerMessage } from './protocol';
+import { raceTickMessageSchema, type ServerMessage } from './protocol';
 import {
   RaceEngine,
   RACE_AFK_TIMEOUT_MS,
@@ -20,6 +21,8 @@ import {
   RACE_RECONNECT_WINDOW_MS,
   RACE_TICK_BROADCAST_INTERVAL_MS,
   RACE_WPM_SERIES_MAX_POINTS,
+  buildBotRaceEntries,
+  syntheticBotParticipantId,
   type RaceEngineDeps,
   type RaceEngineMember,
   type RaceEngineProgress,
@@ -964,5 +967,381 @@ describe('room lifecycle', () => {
     expect(deps.messagesOf(ROOM_ID, 'countdownStarted')).toHaveLength(1);
     expect(errorSpy).toHaveBeenCalled();
     errorSpy.mockRestore();
+  });
+});
+
+describe('bots (BOT-01/04/05, ADR-011)', () => {
+  const BOTS_NOOB_EXPERT: RoomConfig = {
+    ...defaultRoomConfig,
+    timeLimitSeconds: null,
+    bots: [
+      { level: 'noob', count: 1 },
+      { level: 'expert', count: 1 },
+    ],
+  };
+  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+  /** Host (user 7) as the only human racer, plus one spectator. */
+  function soloRoomData(config: RoomConfig): RaceEngineRoomData {
+    return {
+      publicId: ROOM_PUBLIC_ID,
+      config,
+      hostUserId: 7,
+      members: [
+        member({
+          memberId: 1,
+          userId: 7,
+          publicId: ADA_PUBLIC_ID,
+          displayName: 'ada',
+          hubKey: 'user:7',
+        }),
+        member({
+          memberId: 4,
+          role: 'spectator',
+          userId: 9,
+          publicId: SPEC_PUBLIC_ID,
+          displayName: 'watcher',
+          hubKey: 'user:9',
+        }),
+      ],
+    };
+  }
+
+  /** Starts, ends the countdown and returns the first raceTick after `ms` of typing. */
+  async function startAndTickOnce(
+    engine: RaceEngine,
+    deps: FakeDeps,
+    typingMs: number,
+  ): Promise<Array<ServerMessage & { type: 'raceTick' }>> {
+    await engine.startRace(ROOM_ID, 'user:7');
+    deps.clock.advance(3_000);
+    engine.tick();
+    deps.clock.advance(typingMs);
+    engine.tick();
+    return deps.messagesOf(ROOM_ID, 'raceTick');
+  }
+
+  test('one human + two bots satisfies the start guard; bots appear in raceTick with UUID ids', async () => {
+    const { engine, deps } = makeEngine();
+    deps.room = soloRoomData(BOTS_NOOB_EXPERT);
+    const ticks = await startAndTickOnce(engine, deps, RACE_TICK_BROADCAST_INTERVAL_MS);
+    expect(engine.getPhase(ROOM_ID)).toBe('en_course');
+    expect(ticks).toHaveLength(1);
+    const bots = ticks[0].participants.filter((participant) => participant.kind === 'bot');
+    expect(bots.map((bot) => bot.displayName)).toEqual(['noob 1', 'expert 2']);
+    for (const bot of bots) {
+      expect(bot.participantId).toMatch(UUID_PATTERN);
+      expect(bot.position).toBeGreaterThanOrEqual(0);
+    }
+    // Wire compatibility: the client's Zod schema accepts the tick unchanged.
+    expect(raceTickMessageSchema.safeParse(ticks[0]).success).toBe(true);
+    const ada = ticks[0].participants.find((participant) => participant.participantId === ADA_PUBLIC_ID);
+    expect(ada?.kind).toBe('user');
+    expect(ada?.position).toBe(0);
+  });
+
+  test('bots advance over ticks from their schedules, faster levels first (BOT-01)', async () => {
+    const { engine, deps } = makeEngine();
+    deps.room = soloRoomData(BOTS_NOOB_EXPERT);
+    const ticks = await startAndTickOnce(engine, deps, 2_000);
+    expect(ticks).toHaveLength(1);
+
+    const noob = ticks[0].participants.find(
+      (participant) => participant.kind === 'bot' && participant.displayName === 'noob 1',
+    );
+    const expert = ticks[0].participants.find(
+      (participant) => participant.kind === 'bot' && participant.displayName === 'expert 2',
+    );
+    expect(noob?.position).toBeGreaterThan(0);
+    expect(expert?.position).toBeGreaterThan(noob?.position ?? 0);
+    expect(noob?.finished).toBe(false);
+    expect(expert?.wpm).toBeGreaterThan(0);
+  });
+
+  test('bot error counters accumulate exactly as the seeded schedule dictates (BOT-03/05)', async () => {
+    const { engine, deps } = makeEngine();
+    deps.room = soloRoomData({
+      ...defaultRoomConfig,
+      timeLimitSeconds: null,
+      bots: [{ level: 'noob', count: 1 }],
+    });
+    await engine.startRace(ROOM_ID, 'user:7');
+    deps.clock.advance(3_000);
+    engine.tick();
+
+    // Bot 1 seed = raceSeed (42) + 1 — recompute the same schedule the
+    // engine generated and compare the counters afterwards.
+    const expected = generateBotSchedule({
+      text: DEFAULT_BODY,
+      level: 'noob',
+      seed: 43,
+      errorMode: 'accumulate',
+    });
+    const expectedErrors = expected.steps.filter((step) => step.kind === 'error').length;
+    expect(expectedErrors).toBeGreaterThan(0);
+
+    // Noob on 43 characters takes ~30 s; walk until every bot is done.
+    for (let step = 0; step < 120; step += 1) {
+      deps.clock.advance(500);
+      engine.tick();
+    }
+    const totalLength = DEFAULT_BODY.length;
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({
+      ok: true,
+    });
+
+    const finished = deps.messagesOf(ROOM_ID, 'raceFinished');
+    expect(finished).toHaveLength(1);
+    const bot = finished[0].results.find((result) => result.kind === 'bot');
+    expect(bot?.status).toBe('finished');
+    expect(bot?.errors).toBe(expectedErrors);
+
+    // The persisted payload carries the same counters (RES-05, kind 'bot').
+    expect(deps.persistedResults).toHaveLength(1);
+    const persisted = deps.persistedResults[0].results.find((result) => result.kind === 'bot');
+    expect(persisted).toBeDefined();
+    expect(persisted?.userId).toBeNull();
+    expect(persisted?.guestToken).toBeNull();
+    expect(persisted?.correctKeystrokes).toBe(totalLength);
+    expect(persisted?.totalKeystrokes).toBe(totalLength + expectedErrors);
+    expect(persisted?.errors).toBe(expectedErrors);
+    expect(persisted?.displayName).toBe('noob 1');
+  });
+
+  test('bots finish by themselves and rank mixed with humans (COURSE-10)', async () => {
+    const { engine, deps } = makeEngine();
+    deps.room = soloRoomData(BOTS_NOOB_EXPERT);
+    await engine.startRace(ROOM_ID, 'user:7');
+    deps.clock.advance(3_000);
+    engine.tick();
+
+    // The human finishes first; the bots keep typing by themselves.
+    const totalLength = DEFAULT_BODY.length;
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({
+      ok: true,
+    });
+    for (let step = 0; step < 200 && deps.messagesOf(ROOM_ID, 'raceFinished').length === 0; step += 1) {
+      deps.clock.advance(500);
+      engine.tick();
+    }
+
+    const finished = deps.messagesOf(ROOM_ID, 'raceFinished');
+    expect(finished).toHaveLength(1);
+    expect(finished[0].results).toHaveLength(3);
+    expect(finished[0].results.map((result) => result.kind)).toEqual(['user', 'bot', 'bot']);
+    expect(finished[0].results.map((result) => result.rank)).toEqual([1, 2, 3]);
+
+    const expert = finished[0].results[1];
+    expect(expert.displayName).toBe('expert 2');
+    expect(expert.status).toBe('finished');
+    expect(expert.wpmSeries.length).toBeGreaterThan(0);
+
+    const finishes = deps.messagesOf(ROOM_ID, 'participantFinished');
+    expect(finishes).toHaveLength(3);
+    expect(finishes.map((message) => message.rank)).toEqual([1, 2, 3]);
+    expect(finishes[0].participantId).toBe(ADA_PUBLIC_ID);
+    expect(finishes[1].participantId).toMatch(UUID_PATTERN);
+    expect(finishes[2].participantId).toMatch(UUID_PATTERN);
+  });
+
+  test('two engines with the same seed drive identical bot timelines (BOT-05)', async () => {
+    const first = makeEngine();
+    const second = makeEngine();
+    for (const { engine, deps } of [first, second]) {
+      deps.room = soloRoomData(BOTS_NOOB_EXPERT);
+      await engine.startRace(ROOM_ID, 'user:7');
+    }
+
+    // Identical clock sequences on both engines.
+    for (let step = 0; step < 40; step += 1) {
+      first.deps.clock.advance(500);
+      first.engine.tick();
+      second.deps.clock.advance(500);
+      second.engine.tick();
+    }
+
+    const ticksA = first.deps.messagesOf(ROOM_ID, 'raceTick');
+    const ticksB = second.deps.messagesOf(ROOM_ID, 'raceTick');
+    expect(ticksB).toEqual(ticksA);
+    const botIds = ticksA[0].participants
+      .filter((participant) => participant.kind === 'bot')
+      .map((participant) => participant.participantId);
+    expect(botIds).toEqual([syntheticBotParticipantId(43), syntheticBotParticipantId(44)]);
+  });
+
+  test('a relaunch draws a fresh race seed: new bot schedules and ids (COURSE-11, BOT-05)', async () => {
+    const { engine, deps } = makeEngine();
+    deps.room = soloRoomData(BOTS_NOOB_EXPERT);
+
+    const noobPositions = (tickList: Array<ServerMessage & { type: 'raceTick' }>): number[] =>
+      tickList.map(
+        (tick) =>
+          tick.participants.find(
+            (participant) => participant.kind === 'bot' && participant.displayName === 'noob 1',
+          )?.position ?? -1,
+      );
+
+    // Race 1 (raceSeed 42 → bot seeds 43/44): sample the noob timeline.
+    await engine.startRace(ROOM_ID, 'user:7');
+    deps.clock.advance(3_000);
+    engine.tick();
+    for (let step = 0; step < 12; step += 1) {
+      deps.clock.advance(500);
+      engine.tick();
+    }
+    const raceOneTicks = deps.messagesOf(ROOM_ID, 'raceTick');
+    const firstIds = raceOneTicks[0].participants
+      .filter((participant) => participant.kind === 'bot')
+      .map((bot) => bot.participantId);
+    expect(firstIds).toEqual([syntheticBotParticipantId(43), syntheticBotParticipantId(44)]);
+    const firstTimeline = noobPositions(raceOneTicks);
+
+    // Finish race 1: the human completes, then the bots run to the end.
+    const totalLength = DEFAULT_BODY.length;
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({
+      ok: true,
+    });
+    for (let step = 0; step < 200 && deps.messagesOf(ROOM_ID, 'raceFinished').length === 0; step += 1) {
+      deps.clock.advance(500);
+      engine.tick();
+    }
+    expect(engine.getPhase(ROOM_ID)).toBe('resultats');
+    const raceOneTickCount = deps.messagesOf(ROOM_ID, 'raceTick').length;
+
+    // Relaunch: raceSeed 43 → bot seeds 44/45 — fresh schedules, fresh ids.
+    expect(await engine.startRace(ROOM_ID, 'user:7')).toEqual({ ok: true });
+    deps.clock.advance(3_000);
+    engine.tick();
+    for (let step = 0; step < 12; step += 1) {
+      deps.clock.advance(500);
+      engine.tick();
+    }
+    const raceTwoTicks = deps.messagesOf(ROOM_ID, 'raceTick').slice(raceOneTickCount);
+    const secondIds = raceTwoTicks[0].participants
+      .filter((participant) => participant.kind === 'bot')
+      .map((bot) => bot.participantId);
+    expect(secondIds).toEqual([syntheticBotParticipantId(44), syntheticBotParticipantId(45)]);
+    // A fresh seed produces a different typing timeline at the same clock.
+    expect(noobPositions(raceTwoTicks)).not.toEqual(firstTimeline);
+  });
+
+  test('an AFK abort after the bots finished cleans up and persists nothing (GAME-5)', async () => {
+    const { engine, deps } = makeEngine();
+    deps.room = soloRoomData({
+      ...defaultRoomConfig,
+      timeLimitSeconds: null,
+      bots: [{ level: 'expert', count: 1 }],
+    });
+    await engine.startRace(ROOM_ID, 'user:7');
+    deps.clock.advance(3_000);
+    engine.tick();
+
+    // The expert finishes in ~6 s; the human never types, so 60 s of global
+    // inactivity after that aborts the race.
+    for (let step = 0; step < 140; step += 1) {
+      deps.clock.advance(500);
+      engine.tick();
+    }
+    expect(deps.messagesOf(ROOM_ID, 'raceAborted')).toHaveLength(1);
+    expect(engine.getPhase(ROOM_ID)).toBe('en_attente');
+    expect(deps.persistedResults).toHaveLength(0);
+
+    // Relaunch from the aborted state rebuilds the bot with fresh, empty
+    // progress (the aborted runtimes, schedule included, are discarded).
+    expect(await engine.startRace(ROOM_ID, 'user:7')).toEqual({ ok: true });
+    deps.clock.advance(3_000);
+    engine.tick();
+    deps.clock.advance(RACE_TICK_BROADCAST_INTERVAL_MS);
+    engine.tick();
+    const tick = deps.messagesOf(ROOM_ID, 'raceTick').at(-1);
+    const bot = tick?.participants.find((participant) => participant.kind === 'bot');
+    expect(bot?.finished).toBe(false);
+    expect(bot?.position).toBeLessThan(DEFAULT_BODY.length);
+  });
+
+  test('bots without a single human racer are rejected by the start guard (COURSE-02)', async () => {
+    const { engine, deps } = makeEngine();
+    deps.room = {
+      ...soloRoomData(BOTS_NOOB_EXPERT),
+      members: [soloRoomData(BOTS_NOOB_EXPERT).members[1]], // spectator only
+    };
+    expect(await engine.startRace(ROOM_ID, 'user:7')).toMatchObject({
+      ok: false,
+      code: 'race_not_running',
+    });
+    expect(engine.roomCount()).toBe(0);
+  });
+
+  test('a time limit records still-typing bots as timeouts ranked by progression (COURSE-09/10)', async () => {
+    const { engine, deps } = makeEngine();
+    deps.textBody = LONG_BODY;
+    deps.room = soloRoomData({
+      ...defaultRoomConfig,
+      timeLimitSeconds: 30,
+      bots: [{ level: 'noob', count: 1 }],
+    });
+    await engine.startRace(ROOM_ID, 'user:7');
+    deps.clock.advance(3_000);
+    engine.tick();
+    for (let step = 0; step < 70; step += 1) {
+      deps.clock.advance(500);
+      engine.tick();
+    }
+
+    const finished = deps.messagesOf(ROOM_ID, 'raceFinished');
+    expect(finished).toHaveLength(1);
+    const bot = finished[0].results.find((result) => result.kind === 'bot');
+    expect(bot?.status).toBe('timeout');
+    expect((bot?.wpm ?? 0) > 0).toBe(true);
+    // Timeout ranking: the bot progressed, the human never typed → bot first.
+    expect(bot?.rank).toBe(1);
+  });
+});
+
+describe('buildBotRaceEntries (CONF-10)', () => {
+  test('creates one participant per configured bot, numbered across levels', () => {
+    const config: RoomConfig = {
+      ...defaultRoomConfig,
+      bots: [
+        { level: 'noob', count: 2 },
+        { level: 'expert', count: 1 },
+      ],
+    };
+    const entries = buildBotRaceEntries({ config, raceSeed: 7, text: 'hi', humanRacerCount: 3 });
+    expect(entries).toHaveLength(3);
+    expect(entries.map((entry) => entry.participant.displayName)).toEqual([
+      'noob 1',
+      'noob 2',
+      'expert 3',
+    ]);
+    expect(entries.every((entry) => entry.participant.kind === 'bot')).toBe(true);
+    expect(entries.every((entry) => !entry.participant.isSpectator)).toBe(true);
+    expect(entries.map((entry) => entry.participant.memberId)).toEqual(
+      entries.map((entry) => entry.participantId),
+    );
+    // Schedules are deterministic per seed.
+    expect(entries[0].schedule).toStrictEqual(
+      generateBotSchedule({ text: 'hi', level: 'noob', seed: 8, errorMode: 'accumulate' }),
+    );
+  });
+
+  test('caps the combined field at RACE_MAX_PARTICIPANTS (SALLE-05 ceiling)', () => {
+    const config: RoomConfig = {
+      ...defaultRoomConfig,
+      bots: [{ level: 'noob', count: 40 }],
+    };
+    const entries = buildBotRaceEntries({ config, raceSeed: 7, text: 'hi', humanRacerCount: 10 });
+    expect(entries).toHaveLength(20);
+    expect(entries.at(-1)?.participant.displayName).toBe('noob 20');
+  });
+});
+
+describe('syntheticBotParticipantId (BOT-05)', () => {
+  test('is a deterministic UUID v4 derived from the seed', () => {
+    expect(syntheticBotParticipantId(43)).toBe(syntheticBotParticipantId(43));
+    expect(syntheticBotParticipantId(43)).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(syntheticBotParticipantId(43)).not.toBe(syntheticBotParticipantId(44));
   });
 });

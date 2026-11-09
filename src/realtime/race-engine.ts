@@ -1,8 +1,10 @@
 import type { RoomConfig } from '../db/schema';
+import { generateBotSchedule, type BotSchedule } from '../lib/bots/schedule';
 import {
   RateLimitExceededError,
   SlidingWindowRateLimiter,
 } from '../lib/rate-limit';
+import { createSeededRandom } from '../lib/race/text-generator';
 import {
   advance,
   createRace,
@@ -12,6 +14,7 @@ import {
   textVisibleForPhase,
   type ParticipantFinalState,
   type ParticipantKind,
+  type RaceParticipant,
   type RacePhase,
   type RaceState,
   type RaceText,
@@ -77,6 +80,18 @@ import type {
  * - **Ranking (COURSE-10):** finishers by finish time, then timeouts by
  *   progression, then quits by progression at the moment of quitting.
  *   Computed server-side at the `en_course → resultats` transition.
+ * - **Bots (BOT-01/04/05, ADR-011):** at start, the engine appends one
+ *   participant per configured bot (`config.bots`, CONF-10) and drives each
+ *   of them through the same race model as humans — a seeded per-character
+ *   schedule (`src/lib/bots/schedule.ts`) applied inside the tick loop,
+ *   updating exactly the same cumulative counters. Bots finish when their
+ *   schedule completes, rank like humans (COURSE-10), appear in `raceTick`/
+ *   `raceFinished`, and persist as `kind: 'bot'` rows (no `user_stats`).
+ *   They have no hub key, so quit/reconnect paths never apply; a time limit
+ *   (COURSE-09) or an abort (GAME-5) ends them like anyone else. Bot seeds
+ *   are `raceSeed + botNumber` — deterministic and replayable (BOT-05):
+ *   relaunch draws a fresh race seed, so schedules (and synthetic ids)
+ *   regenerate.
  *
  * ## Persistence and replay (Phase 3)
  *
@@ -120,6 +135,14 @@ export const RACE_WPM_SERIES_MAX_POINTS = 2_400;
 
 export const RACE_ABORT_REASON_AFK = 'afk_timeout';
 export const RACE_ABORT_REASON_HOST_CLOSED = 'host_closed';
+
+/**
+ * SALLE-05/COURSE-02: the track holds at most 30 racers, humans and bots
+ * alike. The room capacity already caps humans at 30; the bot creation below
+ * applies the same ceiling to the combined field so the track and the
+ * persistence batch (races.ts) can never overflow.
+ */
+export const RACE_MAX_PARTICIPANTS = 30;
 
 /** Machine-readable failure codes the engine reports (protocol `WsErrorCode` subset). */
 export type RaceEngineErrorCode =
@@ -285,6 +308,10 @@ type ParticipantRuntime = {
   rateLimiter: SlidingWindowRateLimiter;
   /** WPM-over-time samples (RES-03), appended at tick-broadcast rate. */
   wpmSeries: WpmSeriesPoint[];
+  /** Bot timeline (BOT-01); `null` for human participants. */
+  botSchedule: BotSchedule | null;
+  /** Next unapplied schedule step index (bots only). */
+  botStepCursor: number;
 };
 
 /** One room's race: the pure machine state plus the transport runtime data. */
@@ -323,6 +350,84 @@ function mapStartError(error: RaceTransitionError): RaceEngineOutcome {
     return { ok: false, code: 'not_host', message: error.message };
   }
   return { ok: false, code: 'race_not_running', message: error.message };
+}
+
+/**
+ * BOT-05: deterministic synthetic participant id for a bot, shaped as a
+ * UUID v4 so the wire protocol (`participantId: z.uuid()`) accepts it
+ * unchanged. Derived from the bot's seed through the same mulberry32 PRNG as
+ * the schedule, so the same `raceSeed + botNumber` always yields the same
+ * id. Collision with a real member UUID is cryptographically negligible.
+ */
+export function syntheticBotParticipantId(seed: number): string {
+  const rand = createSeededRandom(seed);
+  const hex = Array.from({ length: 8 }, () =>
+    Math.floor(rand() * 0x1_0000_0000)
+      .toString(16)
+      .padStart(8, '0'),
+  ).join('');
+  const variant = '89ab'[Math.floor(rand() * 4)];
+  return (
+    `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-` +
+    `${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`
+  );
+}
+
+/** One configured bot turned into a race participant plus its schedule. */
+export type BotRaceEntry = {
+  participant: RaceParticipant;
+  /** Wire identity — the synthetic UUID, used as the machine's memberId too. */
+  participantId: string;
+  botNumber: number;
+  schedule: BotSchedule;
+};
+
+/**
+ * BOT-01/04/05, CONF-10: turns `config.bots` into race participants and
+ * per-bot schedules. Bots count towards the start guards like humans
+ * (COURSE-02), are numbered across levels (`botNumber`), seeded with
+ * `raceSeed + botNumber` and capped so the combined field never exceeds
+ * {@link RACE_MAX_PARTICIPANTS} (SALLE-05 ceiling — excess configured bots
+ * are skipped, documented choice). `humanRacerCount` is the number of racing
+ * humans already collected from the room membership.
+ */
+export function buildBotRaceEntries(options: {
+  config: RoomConfig;
+  raceSeed: number;
+  text: string;
+  humanRacerCount: number;
+}): BotRaceEntry[] {
+  const entries: BotRaceEntry[] = [];
+  let botNumber = 0;
+  for (const bot of options.config.bots) {
+    for (let offset = 0; offset < bot.count; offset++) {
+      if (options.humanRacerCount + entries.length >= RACE_MAX_PARTICIPANTS) {
+        return entries;
+      }
+      botNumber += 1;
+      const seed = options.raceSeed + botNumber;
+      const participantId = syntheticBotParticipantId(seed);
+      entries.push({
+        participant: {
+          memberId: participantId,
+          kind: 'bot',
+          // Neutral `"<level> <number>"` code — the UI localizes it (BOT-04);
+          // never rendered raw.
+          displayName: `${bot.level} ${botNumber}`,
+          isSpectator: false,
+        },
+        participantId,
+        botNumber,
+        schedule: generateBotSchedule({
+          text: options.text,
+          level: bot.level,
+          seed,
+          errorMode: options.config.errorMode,
+        }),
+      });
+    }
+  }
+  return entries;
 }
 
 export class RaceEngine implements RaceEngineHooks {
@@ -456,11 +561,26 @@ export class RaceEngine implements RaceEngineHooks {
       };
     }
 
+    // BOT-01/04/05: bots join from the config (CONF-10) with per-bot seeded
+    // schedules. Bot seeds derive from the race seed drawn above (the same
+    // value `pickText` received, i.e. the textSeed in random mode), so the
+    // whole race — text and bots — replays from one seed; a relaunch draws a
+    // fresh seed and therefore fresh schedules and synthetic ids.
+    const botEntries = buildBotRaceEntries({
+      config: room.config,
+      raceSeed: seed,
+      text: text.body,
+      humanRacerCount: participants.length,
+    });
+
     const now = this.deps.now();
     let started: RaceState;
     try {
       started = requestStart(
-        createRace({ participants, config: room.config }),
+        createRace({
+          participants: [...participants, ...botEntries.map((entry) => entry.participant)],
+          config: room.config,
+        }),
         now,
         { isHost: true },
         text,
@@ -497,8 +617,38 @@ export class RaceEngine implements RaceEngineHooks {
           now: () => this.deps.now().getTime(),
         }),
         wpmSeries: [],
+        botSchedule: null,
+        botStepCursor: 0,
       });
       byHubKey.set(member.hubKey, memberId);
+    }
+    for (const botEntry of botEntries) {
+      const runtime: ParticipantRuntime = {
+        memberId: botEntry.participantId,
+        // Bots have no hub membership: no socket, no hub key, unreachable by
+        // progress/quit/rejoin paths — they only advance through their
+        // schedule (BOT-04: server-side only, no ws messages to them).
+        hubKey: '',
+        publicId: botEntry.participantId,
+        kind: 'bot',
+        displayName: botEntry.participant.displayName,
+        userId: null,
+        guestToken: null,
+        progress: zeroProgress(),
+        connected: true,
+        disconnectedAt: null,
+        // Never consulted: bots have no hub key, so the progress rate cap
+        // cannot address them. Built with the standard cap for uniformity.
+        rateLimiter: new SlidingWindowRateLimiter({
+          maxAttempts: RACE_PROGRESS_MAX_PER_SECOND,
+          windowMs: RACE_PROGRESS_RATE_WINDOW_MS,
+          now: () => this.deps.now().getTime(),
+        }),
+        wpmSeries: [],
+        botSchedule: botEntry.schedule,
+        botStepCursor: 0,
+      };
+      runtimes.set(botEntry.participantId, runtime);
     }
 
     const entry: RoomRace = {
@@ -577,6 +727,11 @@ export class RaceEngine implements RaceEngineHooks {
         }
       }
 
+      // BOT-01/04: drive every bot against its seeded schedule before the
+      // AFK check — bot progress counts as race activity, so a race never
+      // aborts while a bot is still typing.
+      this.advanceBots(roomId, entry, now);
+
       // GAME-5: global inactivity aborts the race (no ranking is produced).
       if (now.getTime() - entry.lastActivityAt >= RACE_AFK_TIMEOUT_MS) {
         this.abortRace(roomId, entry, RACE_ABORT_REASON_AFK);
@@ -625,6 +780,79 @@ export class RaceEngine implements RaceEngineHooks {
   }
 
   // -------------------------------------------------------------- progress
+
+  /**
+   * BOT-01/04: applies every schedule step whose `atMs` has passed to the
+   * bot's cumulative counters — the exact same counters a human's typed
+   * progress updates (ADR-011: no bot-specific state machine paths).
+   *
+   * - `correct`/`correction`: `validatedChars` + `correctKeystrokes` +
+   *   `totalKeystrokes` (validated characters only move on a correct key,
+   *   Annexe A).
+   * - `error`: `totalKeystrokes` only — the wrong key is counted, the error
+   *   counter (`total − correct`) grows, and the following `correction`
+   *   validates the character (both CONF-08 modes, see the schedule module).
+   *
+   * When the schedule is exhausted the bot finished: `participantFinished`
+   * is broadcast with the finish-order rank (COURSE-10), exactly like a
+   * human's auto-finish. Bot progress refreshes `lastActivityAt` (GAME-5:
+   * a bot typing is activity). Abort cleanup needs nothing here: an aborted
+   * race's runtimes (including schedules) are discarded on the next
+   * `startRace`, which rebuilds them from a fresh seed.
+   */
+  private advanceBots(roomId: number, entry: RoomRace, now: Date): void {
+    if (entry.state.phase !== 'en_course') {
+      return;
+    }
+    const startMs = entry.state.startAt?.getTime() ?? now.getTime();
+    const elapsedMs = Math.max(0, now.getTime() - startMs);
+
+    for (const runtime of entry.runtimes.values()) {
+      const schedule = runtime.botSchedule;
+      if (schedule === null || hasResult(entry.state, runtime.memberId)) {
+        continue;
+      }
+
+      let progressed = false;
+      while (
+        runtime.botStepCursor < schedule.steps.length &&
+        schedule.steps[runtime.botStepCursor].atMs <= elapsedMs
+      ) {
+        const step = schedule.steps[runtime.botStepCursor];
+        runtime.botStepCursor += 1;
+        if (step.kind === 'error') {
+          runtime.progress.totalKeystrokes += 1;
+        } else {
+          runtime.progress.validatedChars += 1;
+          runtime.progress.correctKeystrokes += 1;
+          runtime.progress.totalKeystrokes += 1;
+        }
+        progressed = true;
+      }
+
+      if (progressed) {
+        entry.lastActivityAt = now.getTime();
+      }
+
+      if (
+        runtime.botStepCursor >= schedule.steps.length &&
+        !hasResult(entry.state, runtime.memberId)
+      ) {
+        const finished = finishParticipant(entry.state, runtime.memberId, now, 'finished');
+        if (finished !== entry.state) {
+          entry.state = finished;
+          entry.progressAtEnd.set(runtime.memberId, runtime.progress.validatedChars);
+          entry.finishOrder.push(runtime.memberId);
+          this.deps.broadcast(roomId, {
+            type: 'participantFinished',
+            roomPublicId: entry.publicId,
+            participantId: runtime.publicId,
+            rank: entry.finishOrder.length,
+          });
+        }
+      }
+    }
+  }
 
   /**
    * COURSE-06/PERF-02: applies one cumulative progress message after the
@@ -836,8 +1064,8 @@ export class RaceEngine implements RaceEngineHooks {
     for (const participant of entry.state.participants) {
       const runtime = entry.runtimes.get(participant.memberId);
       if (!runtime) {
-        // Bots arrive in Phase 4 as state participants without a member
-        // runtime; the tick still broadcasts them from the machine's view.
+        // Defensive only: every state participant (humans and bots alike)
+        // has a runtime since Phase 4.
         continue;
       }
       const wpm = netWpm({ correctChars: runtime.progress.validatedChars, elapsedMs });
