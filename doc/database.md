@@ -42,21 +42,23 @@ are declared there rather than in a separate file.
 
 ## Schema
 
-Eleven tables, all keyed so that no internal id ever reaches a client: the
+Twelve tables, all keyed so that no internal id ever reaches a client: the
 `users.id` `bigserial` is used only for foreign keys, while `publicId` (uuid)
 and `username` are the public identifiers. `username` holds the trimmed
 **display name** (it may contain spaces, is unique and ≤ 32 chars) rather than a
 URL slug — see [`doc/auth.md`](auth.md) for how registration and OAuth populate
-it. `user_stats`, `user_resources` and `oauth_accounts` reference `users(id)`
-with `ON DELETE CASCADE`. `texts` and `word_dictionaries` hold the typing
-content itself (reference data): they also have internal `id`s, but clients
-will only ever receive a passage's `title`/`body`, never a row id.
+it. `user_stats`, `user_resources`, `user_avatars` and `oauth_accounts`
+reference `users(id)` with `ON DELETE CASCADE`. `texts` and `word_dictionaries`
+hold the typing content itself (reference data): they also have internal
+`id`s, but clients will only ever receive a passage's `title`/`body`, never a
+row id.
 
 | Table             | Key            | Notes                                                   |
 | ----------------- | -------------- | ------------------------------------------------------- |
 | `users`           | `id` bigserial | unique `publicId` (uuid, `gen_random_uuid()`), unique `username` (display name ≤ 32 chars), `passwordHash` (**nullable** for OAuth accounts), `pfpUrl`, `createdAt` |
 | `user_stats`      | `userId` → `users.id` | `racesCompleted`, `totalWords`, `totalTimeMs`, `bestWpm`, `wins`, `correctKeystrokes`, `totalKeystrokes`, `updatedAt` |
 | `user_resources`  | `userId` → `users.id` | `coins`, `gems`, `updatedAt`                    |
+| `user_avatars`    | `userId` → `users.id` | uploaded profile picture: `contentType` (`image/jpeg`/`image/png`/`image/webp` CHECK), `bytes` bytea, `updatedAt` — see [Avatar uploads](#avatar-uploads-auth-04) below |
 | `oauth_accounts`  | `userId` → `users.id` | unique `(provider, providerAccountId)`, `provider`, `providerAccountId`, `createdAt` |
 | `texts`           | `id` bigserial | coherent-mode corpus: `language` (`fr`/`en` CHECK), `title`, `body`, `wordCount` (`> 0` CHECK), `complexity` (`facile`/`moyen`/`difficile` CHECK), metrics `avgWordLength`, `longWordRatio`, `specialCharRatio` (`>= 0` CHECKs), config flags `hasPunctuation`, `hasNumbers`, `hasCapitals`, `hasAccents`, `createdAt`; index on `(language, complexity)` |
 | `word_dictionaries` | `id` bigserial | random-mode word pools: unique `(language, complexity)`, `words` jsonb (string array, `jsonb_array_length >= 100` CHECK), `createdAt` |
@@ -79,6 +81,19 @@ read time as `correctKeystrokes / totalKeystrokes * 100` (rounded to 2
 decimals, `0` when nothing was typed yet — see `src/db/queries/users.ts`). A
 stored percentage could drift away from the counters that justify it; the
 formula can never contradict them.
+
+### Avatar uploads (AUTH-04)
+
+Uploaded profile pictures are stored **in PostgreSQL**, not on disk: the
+Railway filesystem is ephemeral, and PostgreSQL is already the one durable
+service the app owns, so no external object store is needed (TECH-08 — free
+tiers only). `user_avatars` keeps one row per user (re-uploads replace the
+bytes in place via `ON CONFLICT (userId) DO UPDATE`); `users.pfpUrl` only ever
+holds the serving route `GET /api/avatar/[publicId]?v=<upload epoch ms>`, so
+the write of the bytes and the URL pointer commit in a single transaction
+(`storeUserAvatar`, `src/db/queries/avatars.ts`). The file type was already
+decided by magic bytes before the write (SEC-02); the `contentType` CHECK is
+the database-side backstop. Migration: `0006_gigantic_queen_noir.sql`.
 
 ### Complexity (CONF-05)
 
