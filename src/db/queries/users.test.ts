@@ -205,12 +205,41 @@ describe('recordCompletedRace', () => {
     expect(sqlTextOf('insert')).toContain('"user_stats"."racesCompleted" + 1');
   });
 
+  test('increments wins and keystroke counters in SQL, never in JavaScript', async () => {
+    await recordCompletedRace({
+      ...params,
+      winsIncrement: 1,
+      correctKeystrokes: 45,
+      totalKeystrokes: 50,
+    });
+
+    const text = sqlTextOf('insert');
+    expect(text).toContain('"user_stats"."wins" + 1');
+    expect(text).toContain('"user_stats"."correctKeystrokes" + 45');
+    expect(text).toContain('"user_stats"."totalKeystrokes" + 50');
+    expect(calls.some((call) => call.operation === 'select')).toBe(false);
+  });
+
+  test('accepts the race executor so a caller can share its transaction', async () => {
+    const executor = {
+      insert: (...args: unknown[]) => chainable('insert', newCall('insert', args)),
+    };
+
+    await recordCompletedRace(params, executor);
+
+    expect(sqlTextOf('insert')).toContain('"user_stats"."racesCompleted" + 1');
+  });
+
   test.each([
     [{ ...params, internalUserId: 0 }, 'internalUserId'],
     [{ ...params, internalUserId: 1.5 }, 'internalUserId'],
     [{ ...params, wordsTyped: -1 }, 'wordsTyped'],
     [{ ...params, timeMs: -1 }, 'timeMs'],
     [{ ...params, wpm: -1 }, 'wpm'],
+    [{ ...params, winsIncrement: -1 }, 'winsIncrement'],
+    [{ ...params, correctKeystrokes: -1 }, 'correctKeystrokes'],
+    [{ ...params, totalKeystrokes: -1 }, 'totalKeystrokes'],
+    [{ ...params, correctKeystrokes: 10, totalKeystrokes: 5 }, 'must not exceed'],
   ])('rejects invalid input %#', async (invalid, field) => {
     await expect(recordCompletedRace(invalid)).rejects.toThrow(field as string);
     expect(calls).toHaveLength(0);

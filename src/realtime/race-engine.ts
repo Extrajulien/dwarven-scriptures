@@ -203,12 +203,20 @@ export type RaceEngineResultEntry = {
   participantId: string;
   /** Internal participant key (for Phase-3 persistence). */
   memberId: string;
+  /** Internal user id for `kind: 'user'`; `null` otherwise. Never on the wire. */
+  userId: number | null;
+  /** Guest cookie id for `kind: 'guest'`; `null` otherwise. Never on the wire. */
+  guestToken: string | null;
   displayName: string;
   kind: ParticipantKind;
   wpm: number;
   rawWpm: number;
   accuracy: number;
   errors: number;
+  /** Cumulative correct keystrokes at the participant's end (stats; not on the wire). */
+  correctKeystrokes: number;
+  /** Cumulative total keystrokes at the participant's end (stats; not on the wire). */
+  totalKeystrokes: number;
   status: ParticipantFinalState;
   /** Milliseconds after the typing start at which the status was recorded. */
   endedAtMs: number;
@@ -225,12 +233,23 @@ export type RaceEngineResultEntry = {
 };
 
 /**
- * The in-memory results payload SP-3B will persist (RES-05). It stays here,
- * keyed by room, for the room's lifetime — persistence is out of scope in
- * Phase 2 and documented as such.
+ * The in-memory results payload SP-3B persists (RES-05). It stays here,
+ * keyed by room, for the room's lifetime, and carries everything the race
+ * history needs: the room routing id, the text, the config snapshot taken at
+ * start and the per-participant identity and counters.
  */
 export type RaceResultsPayload = {
   roomId: number;
+  /** Room public id at finish — denormalized onto the persisted race row. */
+  roomPublicId: string;
+  /** Full text body typed in this race (history replay). */
+  textBody: string;
+  /** ISO 639-1 language of the text (config snapshot). */
+  textLanguage: string;
+  /** Race config snapshot taken at start (CONF-12). */
+  config: RoomConfig;
+  /** Typing start (countdown end); `durationMs` is measured from it. */
+  startedAt: Date;
   finishedAt: Date;
   durationMs: number;
   results: RaceEngineResultEntry[];
@@ -243,6 +262,10 @@ type ParticipantRuntime = {
   publicId: string;
   kind: ParticipantKind;
   displayName: string;
+  /** Internal user id for user participants (persistence identity). */
+  userId: number | null;
+  /** Guest cookie id for guest participants (persistence identity). */
+  guestToken: string | null;
   progress: RaceEngineProgress;
   connected: boolean;
   /** Timestamp (ms) of the socket drop, while the reconnect window runs. */
@@ -451,6 +474,8 @@ export class RaceEngine implements RaceEngineHooks {
         publicId: member.publicId,
         kind: member.userId !== null ? 'user' : 'guest',
         displayName: member.displayName,
+        userId: member.userId,
+        guestToken: member.guestToken,
         progress: zeroProgress(),
         connected: true,
         disconnectedAt: null,
@@ -881,12 +906,16 @@ export class RaceEngine implements RaceEngineHooks {
       return {
         participantId: runtime?.publicId ?? result.memberId,
         memberId: result.memberId,
+        userId: runtime?.userId ?? null,
+        guestToken: runtime?.guestToken ?? null,
         displayName: runtime?.displayName ?? 'unknown',
         kind: runtime?.kind ?? 'user',
         wpm: netWpm({ correctChars, elapsedMs }),
         rawWpm: rawWpm({ totalChars, elapsedMs }),
         accuracy: accuracy({ correctKeystrokes, totalKeystrokes: totalChars }),
         errors: Math.max(0, totalChars - correctKeystrokes),
+        correctKeystrokes,
+        totalKeystrokes: totalChars,
         status: result.finalState,
         endedAtMs: elapsedMs,
         endedAt: result.endedAt,
@@ -898,6 +927,11 @@ export class RaceEngine implements RaceEngineHooks {
 
     return {
       roomId: entry.roomId,
+      roomPublicId: entry.publicId,
+      textBody: state.chosenText?.body ?? '',
+      textLanguage: state.config.textLanguage,
+      config: state.config,
+      startedAt: state.startAt ?? state.startedAt ?? new Date(startMs),
       finishedAt: state.finishedAt ?? new Date(finishedAtMs),
       durationMs: Math.max(0, finishedAtMs - startMs),
       results,

@@ -79,7 +79,27 @@ export type RecordCompletedRaceParams = {
   wordsTyped: number;
   timeMs: number;
   wpm: number;
+  /**
+   * Races won by this finish — `1` when the participant ranked first and did
+   * not quit (a race everyone abandoned has no winner); default `0`.
+   */
+  winsIncrement?: number;
+  /**
+   * Correct keystrokes typed in this race (feeds `avgAccuracy`); default `0`.
+   */
+  correctKeystrokes?: number;
+  /**
+   * Total keystrokes typed in this race (feeds `avgAccuracy`); default `0`.
+   */
+  totalKeystrokes?: number;
 };
+
+/**
+ * Anything able to run the single upsert `recordCompletedRace` builds: the
+ * process-wide client, or the transaction handle of a caller that persists a
+ * race and its stats atomically (`persistRaceResult`, RES-05).
+ */
+export type RaceStatsExecutor = Pick<typeof db, 'insert'>;
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -265,12 +285,26 @@ export async function getUserCredentialsByUsername(
  *
  * The row is upserted so a user created outside this module (or one whose stats
  * row is missing) still gets a correct row, and every counter is incremented in
- * the database so concurrent finishes cannot lose writes.
+ * the database so concurrent finishes cannot lose writes. Guests and bots never
+ * reach this function (AUTH-03) — `persistRaceResult` skips them.
+ *
+ * `executor` lets a caller run the upsert inside its own transaction (a race
+ * and its user-stats updates commit together, RES-05); it defaults to the
+ * process-wide client.
  */
 export async function recordCompletedRace(
   params: RecordCompletedRaceParams,
+  executor: RaceStatsExecutor = db,
 ): Promise<void> {
-  const { internalUserId, wordsTyped, timeMs, wpm } = params;
+  const {
+    internalUserId,
+    wordsTyped,
+    timeMs,
+    wpm,
+    winsIncrement = 0,
+    correctKeystrokes = 0,
+    totalKeystrokes = 0,
+  } = params;
 
   if (!Number.isSafeInteger(internalUserId) || internalUserId <= 0) {
     throw new InvalidRaceReportError('internalUserId must be a positive integer');
@@ -284,8 +318,25 @@ export async function recordCompletedRace(
   if (!Number.isFinite(wpm) || wpm < 0) {
     throw new InvalidRaceReportError('wpm must be zero or greater');
   }
+  if (!Number.isFinite(winsIncrement) || winsIncrement < 0) {
+    throw new InvalidRaceReportError('winsIncrement must be zero or greater');
+  }
+  if (!Number.isFinite(correctKeystrokes) || correctKeystrokes < 0) {
+    throw new InvalidRaceReportError('correctKeystrokes must be zero or greater');
+  }
+  if (!Number.isFinite(totalKeystrokes) || totalKeystrokes < 0) {
+    throw new InvalidRaceReportError('totalKeystrokes must be zero or greater');
+  }
+  if (correctKeystrokes > totalKeystrokes) {
+    throw new InvalidRaceReportError('correctKeystrokes must not exceed totalKeystrokes');
+  }
 
-  await db
+  const keystrokeCounters = {
+    correctKeystrokes: BigInt(Math.trunc(correctKeystrokes)),
+    totalKeystrokes: BigInt(Math.trunc(totalKeystrokes)),
+  };
+
+  await executor
     .insert(userStats)
     .values({
       userId: internalUserId,
@@ -293,6 +344,9 @@ export async function recordCompletedRace(
       totalWords: BigInt(Math.trunc(wordsTyped)),
       totalTimeMs: BigInt(Math.trunc(timeMs)),
       bestWpm: wpm.toFixed(2),
+      wins: Math.trunc(winsIncrement),
+      correctKeystrokes: keystrokeCounters.correctKeystrokes,
+      totalKeystrokes: keystrokeCounters.totalKeystrokes,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -304,6 +358,11 @@ export async function recordCompletedRace(
         // GREATEST keeps a personal best: replaying a slower race must never
         // lower it.
         bestWpm: sql`GREATEST(${userStats.bestWpm}, ${wpm.toFixed(2)})`,
+        // SQL-side increments only: concurrent finishes cannot lose a win or
+        // a keystroke (no JavaScript read-modify-write).
+        wins: sql`${userStats.wins} + ${Math.trunc(winsIncrement)}`,
+        correctKeystrokes: sql`${userStats.correctKeystrokes} + ${keystrokeCounters.correctKeystrokes}`,
+        totalKeystrokes: sql`${userStats.totalKeystrokes} + ${keystrokeCounters.totalKeystrokes}`,
         updatedAt: new Date(),
       },
     });
