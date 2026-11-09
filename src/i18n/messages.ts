@@ -685,6 +685,9 @@ export interface Messages {
   'race.results.status.finished': string;
   'race.results.status.timeout': string;
   'race.results.status.quit': string;
+  // ------------------------------------------------------------ mobile race gate (DES-06)
+  'mobile.raceTitle': string;
+  'mobile.raceBody': string;
   // ------------------------------------------------------------ race progress track (COURSE-05, GAME-2/3)
   'track.title': string;
   'track.liveHint': string;
@@ -1342,6 +1345,10 @@ export const MESSAGES: Record<Locale, Messages> = {
     'race.results.status.finished': 'Terminé',
     'race.results.status.timeout': 'Temps écoulé',
     'race.results.status.quit': 'Abandon',
+    // ------------------------------------------------------------ portail mobile (DES-06)
+    'mobile.raceTitle': 'CLAVIER PHYSIQUE REQUIS',
+    'mobile.raceBody':
+      'La course se frappe au clavier physique. Rejoignez la salle depuis un ordinateur pour participer — d’ici, suivez la piste et le top 3 en direct.',
     // ------------------------------------------------------------ piste de progression (COURSE-05, GAME-2/3)
     'track.title': 'PISTE DE LA COURSE',
     'track.liveHint': 'EN DIRECT',
@@ -1992,6 +1999,10 @@ export const MESSAGES: Record<Locale, Messages> = {
     'race.results.status.finished': 'Finished',
     'race.results.status.timeout': 'Timed out',
     'race.results.status.quit': 'Quit',
+    // ------------------------------------------------------------ mobile race gate (DES-06)
+    'mobile.raceTitle': 'PHYSICAL KEYBOARD REQUIRED',
+    'mobile.raceBody':
+      'This race is typed on a physical keyboard. Join the room from a computer to take part — from here, follow the track and the top 3 live.',
     // ------------------------------------------------------------ race progress track (COURSE-05, GAME-2/3)
     'track.title': 'RACE TRACK',
     'track.liveHint': 'LIVE',

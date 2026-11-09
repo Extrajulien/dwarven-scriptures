@@ -8,6 +8,7 @@ import type { RoomConfig } from '../../db/schema';
 import ButtonPrimary from '../ButtonPrimary';
 import ButtonSecondary from '../ButtonSecondary';
 import SectionHeader from '../SectionHeader';
+import MobileRaceGate from './MobileRaceGate';
 import OvertakeIndicator from './OvertakeIndicator';
 import ProgressTrack from './ProgressTrack';
 import Top3Panel from './Top3Panel';
@@ -27,7 +28,11 @@ import TypingZone from './TypingZone';
  *   text is revealed (COURSE-03) but not yet typable;
  * - `en_course` — the `TypingZone` for a racing participant (via the keyed
  *   {@link RacerView}, so the local quit switch resets per race), or a
- *   spectator view (text visible, NO typing zone, badge);
+ *   spectator view (text visible, NO typing zone, badge). On mobile
+ *   viewports (DES-06) the typing zone is replaced by
+ *   {@link MobileRaceGate}'s physical-keyboard notice while the track and
+ *   top-3 stay visible; the quit button and the host's start button are not
+ *   typing input and remain available;
  * - `resultats` — a clearly-marked **provisional** results placeholder
  *   (top-3 + own line). The full results screen is Phase 3 (RES-01/02);
  *   this placeholder is explicitly labelled as provisional in code and i18n.
@@ -153,15 +158,20 @@ function RacerView({ race, config, messages, onQuitRace, onSendProgress }: Racer
           </div>
         </div>
       )}
-      <TypingZone
-        key={`${race.startAt ?? 'none'}-${race.ownProgress?.validatedChars ?? 0}`}
-        text={race.text ?? ''}
-        errorMode={config.errorMode}
-        enabled
-        initialProgress={race.ownProgress ?? undefined}
-        messages={messages}
-        onProgress={onSendProgress}
-      />
+      {/* DES-06: on mobile the typing zone is replaced by the physical-
+          keyboard notice; the track + top-3 (and the quit button) stay.
+          On desktop the zone renders exactly as before. */}
+      <MobileRaceGate messages={messages}>
+        <TypingZone
+          key={`${race.startAt ?? 'none'}-${race.ownProgress?.validatedChars ?? 0}`}
+          text={race.text ?? ''}
+          errorMode={config.errorMode}
+          enabled
+          initialProgress={race.ownProgress ?? undefined}
+          messages={messages}
+          onProgress={onSendProgress}
+        />
+      </MobileRaceGate>
     </section>
   );
 }

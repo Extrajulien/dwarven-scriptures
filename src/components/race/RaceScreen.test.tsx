@@ -4,6 +4,7 @@ import { MESSAGES } from '../../i18n/messages';
 import { defaultRoomConfig } from '../../lib/room-config';
 import type { RaceResultEntry } from '../../realtime/protocol';
 import type { RaceView } from '../../realtime/client-types';
+import { installMatchMedia } from '../../testing/matchMediaMock';
 import RaceScreen, {
   countdownSecondsRemaining,
   type RaceScreenProps,
@@ -331,5 +332,74 @@ describe('provisional results placeholder (resultats)', () => {
       race: makeRace({ phase: 'resultats', text: 'bonjour', totalLength: 7, finished: null }),
     });
     expect(screen.getByTestId('results-provisional')).toBeInTheDocument();
+  });
+});
+
+describe('mobile race gate integration (DES-06)', () => {
+  const racingRace = (overrides: Partial<RaceView> = {}) =>
+    makeRace({
+      phase: 'en_course',
+      startAt: new Date(T0 + 3_000).toISOString(),
+      text: 'bonjour',
+      totalLength: 7,
+      ownProgress: { validatedChars: 0, correctKeystrokes: 0, totalKeystrokes: 0 },
+      ...overrides,
+    });
+
+  test('mobile racer: notice replaces the typing zone, track + top-3 stay', () => {
+    installMatchMedia(true);
+    renderScreen({
+      roomStatus: 'en_course',
+      race: racingRace({
+        totalLength: 1_000,
+        lastTickAt: new Date(T0 + 500).toISOString(),
+        participants: [
+          { participantId: ADA, kind: 'user', displayName: 'ada', position: 300, wpm: 30, finished: false },
+          {
+            participantId: '88888888-8888-4888-8888-888888888888',
+            kind: 'user',
+            displayName: 'bob',
+            position: 600,
+            wpm: 50,
+            finished: false,
+          },
+        ],
+      }),
+      viewerRole: 'participant',
+    });
+
+    // The typing interaction is gone, replaced by the localized notice.
+    expect(screen.getByTestId('mobile-race-notice')).toHaveTextContent(
+      messages['mobile.raceTitle'],
+    );
+    expect(screen.getByTestId('mobile-race-notice')).toHaveTextContent(
+      messages['mobile.raceBody'],
+    );
+    expect(screen.queryByTestId('typing-zone')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('typing-input')).not.toBeInTheDocument();
+    // Spectator-like viewing: the track and the live top-3 stay visible.
+    expect(screen.getByTestId('progress-track')).toBeInTheDocument();
+    expect(screen.getByTestId('top3-panel')).toBeInTheDocument();
+    // Quit is not typing input: the control stays available on mobile.
+    expect(screen.getByRole('button', { name: messages['race.quitButton'] })).toBeInTheDocument();
+  });
+
+  test('mobile host: the start button stays available on the waiting screen', () => {
+    // Hosting a race from a phone while participants type on keyboards is
+    // legitimate — the launch panel is not gated by MobileRaceGate.
+    installMatchMedia(true);
+    renderScreen({ roomStatus: 'en_attente', race: null, isHost: true, participantCount: 2 });
+    const button = screen.getByRole('button', { name: messages['race.startButton'] });
+    expect(button).toBeEnabled();
+    expect(screen.queryByTestId('mobile-race-notice')).not.toBeInTheDocument();
+  });
+
+  test('mobile spectator view is unchanged (it already has no typing zone)', () => {
+    installMatchMedia(true);
+    renderScreen({ roomStatus: 'en_course', race: racingRace(), viewerRole: 'spectator' });
+    expect(screen.getByTestId('spectator-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('race-text')).toBeInTheDocument();
+    expect(screen.queryByTestId('mobile-race-notice')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('typing-zone')).not.toBeInTheDocument();
   });
 });

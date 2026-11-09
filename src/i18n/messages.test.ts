@@ -53,6 +53,13 @@ describe('fr/en parity (I18N-01)', () => {
       }
     }
   });
+
+  test('the mobile race gate keys (DES-06) are non-empty in both bags', () => {
+    for (const key of ['mobile.raceTitle', 'mobile.raceBody'] as const) {
+      expect(MESSAGES.fr[key].length).toBeGreaterThan(0);
+      expect(MESSAGES.en[key].length).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe('isLocale', () => {
