@@ -656,3 +656,65 @@ sequenceDiagram
 
 The track, top-3 and overtake strip render for participants **and**
 spectators alike; only the typing zone is role-gated (`RaceScreen.tsx`).
+
+### Results flow (SP-3A) — `raceFinished`, WPM series and the results screen
+
+The engine records a per-participant **WPM time series** while the race runs
+and ships it with the final standings; the client renders the full results
+screen (RES-01..04, COURSE-11) from that one authoritative payload.
+
+**Sampling rate (RES-03/05).** One `{elapsedMs, wpm}` sample per participant
+is appended inside `buildTick` — i.e. at most once per `raceTick` broadcast
+(≤ ~4/s, `RACE_TICK_BROADCAST_INTERVAL_MS` = 250 ms). The series is **never**
+part of the `raceTick` payload itself (bandwidth, PERF-02): it exists only in
+memory until the finish. At the `en_course → resultats` transition every
+series is closed with an exact final sample at the participant's `endedAtMs`
+(a final sample on the same millisecond overwrites the tick sample), so the
+last chart point always equals the ranked WPM. A defensive cap
+(`RACE_WPM_SERIES_MAX_POINTS` = 2 400) bounds the series; a 10-minute race
+tops out at ~2 400 points. The series travels in
+`raceFinished.results[].wpmSeries` and in the in-memory
+`RaceEngine.takeResults` payload SP-3B persists (RES-05).
+
+```mermaid
+sequenceDiagram
+    participant E as RaceEngine
+    participant C as Client (RaceScreen)
+    participant R as ResultsScreen (client)
+    Note over E: EN_COURSE: append wpmSeries sample per tick broadcast (~4/s)
+    E-->>C: raceFinished {results[], wpmSeries[], durationMs}
+    C-->>R: podium + table (RES-01/02) + WPM chart (all series) + local heatmap
+    Note over R: heatmap = LOCAL session keyErrors (typing reducer, no round-trip)
+    Note over R: record badge = local wpm > pre-race profile bestWpm (RES-04)
+    C->>E: host: startRace (relaunch — engine re-collects members + config)
+    Note over E: resultats → decompte; config guard (en_attente) unlocks again
+    C->>C: host: closeRoom action / others: leaveRoom action (COURSE-11)
+```
+
+Client-side rendering rules:
+
+* The chart (`ResultsWpmChart`) draws one polyline per participant from their
+  own series (distinct theme-token colours, legend, locale-formatted axes),
+  a dot for single-sample series; the account-page `ProgressionCharts`
+  visual language is reused (hand-rolled SVG, no dependency).
+* The keyboard heatmap (`RaceKeyboardHeatmap`) is **per-race and client-side
+  only**: the typing reducer counts wrong keystrokes per key
+  (`TypingState.keyErrors`, letters lower-cased) during the local session and
+  `RaceScreen` hands the latest map to the results screen — no server
+  round-trip, no persistence (aggregate keyboard stats are not required by
+  the matrix; the account-page `KeyboardHeatmap` is untouched). Spectators
+  and late joiners get an honest "unavailable" state, a clean race a
+  "no errors" state.
+* Personal record (RES-04): the room page loads `user_stats.bestWpm` from
+  the profile and threads it down; the badge shows when the local net WPM
+  strictly beats that **pre-race** best (guests have no stats — AUTH-03).
+  SP-3B persistence refreshes the value race after race; the comparison
+  itself is final.
+* COURSE-11: the host's relaunch re-invokes `startRace` (the engine
+  re-collects the current members and re-reads the stored config, so the
+  `en_attente`-only config guard unlocks automatically once the room leaves
+  `resultats`); close/leave reuse the existing `closeRoom`/`leaveRoom`
+  actions. A viewer joining while the room is already in `resultats`
+  (SALLE-09) never received `raceFinished`, so the client shows the honest
+  "results unavailable" state — replaying the standings for late joiners
+  comes with SP-3B persistence (HIST-02).
