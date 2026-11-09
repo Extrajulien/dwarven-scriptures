@@ -1,10 +1,13 @@
 /**
  * @jest-environment node
  *
- * Unit tests for the pure typing reducer (COURSE-04, CONF-04/08): the
- * error modes (accumulate vs stop), the documented backspace semantics, the
- * character classes (spaces, accents, case), completeness, and the live
- * stats math (Annexe A) computed by `liveStats` on the current counters.
+ * Unit tests for the pure typing reducer (COURSE-04, CONF-08): the two error
+ * modes now differ in real behaviour — `accumulate` advances freely past
+ * marked errors while `stop` blocks — plus the documented backspace
+ * semantics, the character classes (spaces, accents, case), completeness
+ * (finish requires correcting remaining errors in accumulate mode), and the
+ * live stats math (Annexe A) computed by `liveStats` on the current
+ * counters.
  */
 
 import {
@@ -28,6 +31,15 @@ function typeAll(initial: TypingState, chars: string[]): TypingState {
   );
 }
 
+/** Applies backspace `times` times. */
+function backspaces(initial: TypingState, times: number): TypingState {
+  let state = initial;
+  for (let i = 0; i < times; i += 1) {
+    state = typingReducer(state, { type: 'backspace' });
+  }
+  return state;
+}
+
 describe('createTypingState', () => {
   test('starts empty on the text', () => {
     const state = stateFor('dwarf');
@@ -39,6 +51,7 @@ describe('createTypingState', () => {
       totalKeystrokes: 0,
       currentIndex: 0,
       lastError: false,
+      errors: [],
     });
   });
 
@@ -52,6 +65,8 @@ describe('createTypingState', () => {
     expect(resumed.currentIndex).toBe(2);
     expect(resumed.correctKeystrokes).toBe(2);
     expect(resumed.totalKeystrokes).toBe(5);
+    // The server carries no per-position error marks: a resume starts clean.
+    expect(resumed.errors).toEqual([]);
 
     const clamped = createTypingState({
       text: 'abc',
@@ -72,6 +87,7 @@ describe('typeChar — correct keystrokes', () => {
     expect(next.totalKeystrokes).toBe(1);
     expect(next.currentIndex).toBe(1);
     expect(next.lastError).toBe(false);
+    expect(next.errors).toEqual([]);
     // validatedChars stays the correct contiguous prefix length.
     expect(next.validatedChars).toBe(next.currentIndex);
   });
@@ -97,25 +113,76 @@ describe('typeChar — correct keystrokes', () => {
   });
 });
 
-describe('typeChar — wrong keystrokes in both error modes', () => {
-  test('accumulate: a wrong char is counted and marked but never advances', () => {
-    const wrong = typingReducer(stateFor('ab', 'accumulate'), { type: 'typeChar', char: 'z' });
-    expect(wrong.validatedChars).toBe(0);
-    expect(wrong.currentIndex).toBe(0);
+describe('accumulate mode — free advancement past errors', () => {
+  test('a wrong char is counted and marked, and the caret ADVANCES past it', () => {
+    const wrong = typingReducer(stateFor('ab', 'accumulate'), { type: 'typeChar', char: 'x' });
+    expect(wrong.validatedChars).toBe(0); // nothing validated
+    expect(wrong.currentIndex).toBe(1); // the caret moved past the error
     expect(wrong.correctKeystrokes).toBe(0);
     expect(wrong.totalKeystrokes).toBe(1);
     expect(wrong.lastError).toBe(true);
-
-    // The next correct char at the same position validates it and advances.
-    const corrected = typingReducer(wrong, { type: 'typeChar', char: 'a' });
-    expect(corrected.validatedChars).toBe(1);
-    expect(corrected.currentIndex).toBe(1);
-    expect(corrected.correctKeystrokes).toBe(1);
-    expect(corrected.totalKeystrokes).toBe(2);
-    expect(corrected.lastError).toBe(false);
+    expect(wrong.errors).toEqual([0]); // the position is marked
   });
 
-  test('stop: wrong attempts keep counting and never advance (blocked)', () => {
+  test('subsequent chars compare against the ORIGINAL text position', () => {
+    // text "ab": 'x' is wrong at 0 (caret → 1), then 'b' is correct at
+    // position 1 and advances — but the validated prefix stays pinned at 0.
+    const state = typeAll(stateFor('ab', 'accumulate'), ['x', 'b']);
+    expect(state.currentIndex).toBe(2);
+    expect(state.correctKeystrokes).toBe(1);
+    expect(state.totalKeystrokes).toBe(2);
+    expect(state.validatedChars).toBe(0);
+    expect(state.errors).toEqual([0]);
+    expect(isComplete(state)).toBe(false);
+  });
+
+  test('errors beyond the prefix stay marked and block validatedChars growth', () => {
+    const state = typeAll(stateFor('abcd', 'accumulate'), ['x', 'b', 'y', 'd']);
+    expect(state.currentIndex).toBe(4);
+    expect(state.validatedChars).toBe(0);
+    expect(state.errors).toEqual([0, 2]);
+    expect(state.correctKeystrokes).toBe(2); // 'b' and 'd' were correct
+    expect(isComplete(state)).toBe(false);
+  });
+
+  test('finish requires correcting remaining errors (COURSE-09 interpretation)', () => {
+    // Typed to the very end with one error left: not complete, and further
+    // keystrokes at/past the end are ignored — only backspace + correction.
+    const atEnd = typeAll(stateFor('ab', 'accumulate'), ['x', 'b']);
+    expect(atEnd.currentIndex).toBe(2);
+    expect(typingReducer(atEnd, { type: 'typeChar', char: 'c' })).toBe(atEnd);
+
+    const corrected = typeAll(backspaces(atEnd, 2), ['a', 'b']);
+    expect(corrected.validatedChars).toBe(2);
+    expect(corrected.errors).toEqual([]);
+    expect(isComplete(corrected)).toBe(true);
+  });
+
+  test('correction flow: backspace, retype, validatedChars grows, error cleared', () => {
+    let state = typingReducer(stateFor('ab', 'accumulate'), { type: 'typeChar', char: 'x' });
+    expect(state.errors).toEqual([0]);
+    expect(state.currentIndex).toBe(1);
+
+    state = typingReducer(state, { type: 'backspace' });
+    expect(state.currentIndex).toBe(0); // caret back on the errored position
+    expect(state.errors).toEqual([]); // flag cleared on the vacated position
+    expect(state.validatedChars).toBe(0); // still locked
+
+    state = typingReducer(state, { type: 'typeChar', char: 'a' });
+    expect(state.validatedChars).toBe(1);
+    expect(state.correctKeystrokes).toBe(1);
+    expect(state.currentIndex).toBe(1);
+
+    state = typingReducer(state, { type: 'typeChar', char: 'b' });
+    expect(state.validatedChars).toBe(2);
+    expect(isComplete(state)).toBe(true);
+    // The wrong keystroke was undone by backspace: 2 correct / 2 total.
+    expect(state.totalKeystrokes).toBe(2);
+  });
+});
+
+describe('stop mode — blocked at errors', () => {
+  test('wrong attempts keep counting and never advance (blocked)', () => {
     let state = stateFor('ab', 'stop');
     state = typingReducer(state, { type: 'typeChar', char: 'z' });
     state = typingReducer(state, { type: 'typeChar', char: 'y' });
@@ -124,6 +191,7 @@ describe('typeChar — wrong keystrokes in both error modes', () => {
     expect(state.currentIndex).toBe(0);
     expect(state.totalKeystrokes).toBe(3);
     expect(state.correctKeystrokes).toBe(0);
+    expect(state.errors).toEqual([]); // nothing is ever marked in stop mode
 
     const corrected = typingReducer(state, { type: 'typeChar', char: 'a' });
     expect(corrected.validatedChars).toBe(1);
@@ -131,57 +199,78 @@ describe('typeChar — wrong keystrokes in both error modes', () => {
     expect(corrected.lastError).toBe(false);
   });
 
-  test('the counter behaviour is identical in both modes (only the marking differs)', () => {
-    const accumulate = typeAll(stateFor('abc', 'accumulate'), ['x', 'a', 'y', 'b', 'c']);
-    const stop = typeAll(stateFor('abc', 'stop'), ['x', 'a', 'y', 'b', 'c']);
-    const counters = (state: TypingState) => ({
-      validatedChars: state.validatedChars,
-      correctKeystrokes: state.correctKeystrokes,
-      totalKeystrokes: state.totalKeystrokes,
-      currentIndex: state.currentIndex,
-      lastError: state.lastError,
-    });
-    expect(counters(accumulate)).toEqual(counters(stop));
-    expect(accumulate.validatedChars).toBe(3);
-    expect(accumulate.correctKeystrokes).toBe(3);
-    expect(accumulate.totalKeystrokes).toBe(5);
-    expect(isComplete(accumulate)).toBe(true);
+  test('the two modes now differ in real behaviour on the same input', () => {
+    const accumulate = typeAll(stateFor('ab', 'accumulate'), ['x', 'a']);
+    const stop = typeAll(stateFor('ab', 'stop'), ['x', 'a']);
+    // Accumulate: advanced freely; 'x' marked at 0, 'a' wrong at 1 too.
+    expect(accumulate.currentIndex).toBe(2);
+    expect(accumulate.validatedChars).toBe(0);
+    expect(accumulate.errors).toEqual([0, 1]);
+    // Stop: blocked at 0 until the correct char ('a') validates position 0.
+    expect(stop.currentIndex).toBe(1);
+    expect(stop.validatedChars).toBe(1);
+    expect(stop.errors).toEqual([]);
   });
 });
 
-describe('backspace (documented choice)', () => {
-  test('removes the last incorrect keystroke from the counter only', () => {
-    const withError = typingReducer(stateFor('ab'), { type: 'typeChar', char: 'z' });
+describe('backspace (documented choices)', () => {
+  test('accumulate: moves the caret back and clears the flag on the vacated position', () => {
+    const withError = typingReducer(stateFor('ab'), { type: 'typeChar', char: 'x' });
     const afterBackspace = typingReducer(withError, { type: 'backspace' });
-    expect(afterBackspace.totalKeystrokes).toBe(0);
-    // Everything else is untouched: no un-validation, no caret move.
-    expect(afterBackspace.validatedChars).toBe(0);
     expect(afterBackspace.currentIndex).toBe(0);
+    expect(afterBackspace.errors).toEqual([]);
+    expect(afterBackspace.totalKeystrokes).toBe(0);
+    // No un-validation: the validated prefix is locked.
+    expect(afterBackspace.validatedChars).toBe(0);
     expect(afterBackspace.correctKeystrokes).toBe(0);
   });
 
-  test('can never un-validate a validated character or move the caret back', () => {
+  test('accumulate: never moves below validatedChars (locked prefix)', () => {
     const typed = typeAll(stateFor('abc'), ['a', 'b']);
     const afterBackspace = typingReducer(typed, { type: 'backspace' });
-    expect(afterBackspace.validatedChars).toBe(2);
-    expect(afterBackspace.currentIndex).toBe(2);
-    expect(afterBackspace).toBe(typed); // no-op: every keystroke was correct
+    expect(afterBackspace).toBe(typed); // no-op at the validated prefix
+
+    // With an error at the end, the caret can only come back to index 2.
+    const withError = typingReducer(typed, { type: 'typeChar', char: 'x' });
+    expect(withError.currentIndex).toBe(3);
+    const once = typingReducer(withError, { type: 'backspace' });
+    expect(once.currentIndex).toBe(2);
+    expect(once.errors).toEqual([]);
+    expect(typingReducer(once, { type: 'backspace' })).toBe(once);
+    expect(once.validatedChars).toBe(2); // never un-validated
   });
 
-  test('floors at the correct keystroke count (server invariants hold)', () => {
-    let state = typeAll(stateFor('ab'), ['z', 'a', 'b']);
-    expect(state.totalKeystrokes).toBe(3);
-    state = typingReducer(state, { type: 'backspace' });
+  test('accumulate: totalKeystrokes decreases but never below correctKeystrokes', () => {
+    let state = typeAll(stateFor('abc'), ['x', 'b']); // err@0, correct@1
     expect(state.totalKeystrokes).toBe(2);
-    state = typingReducer(state, { type: 'backspace' });
-    expect(state.totalKeystrokes).toBe(2); // floor: correctKeystrokes === 2
+    expect(state.correctKeystrokes).toBe(1);
+
+    state = typingReducer(state, { type: 'backspace' }); // vacate 1 (correct)
+    expect(state.totalKeystrokes).toBe(1); // floored at correctKeystrokes
+    expect(state.currentIndex).toBe(1);
+
+    state = typingReducer(state, { type: 'backspace' }); // vacate 0 (error)
+    expect(state.totalKeystrokes).toBe(1); // still floored
+    expect(state.errors).toEqual([]);
+    expect(state.currentIndex).toBe(0);
     expect(state.totalKeystrokes).toBeGreaterThanOrEqual(state.correctKeystrokes);
     expect(state.validatedChars).toBeLessThanOrEqual(state.totalKeystrokes);
   });
 
-  test('is a no-op on a fresh state', () => {
+  test('stop: backspace is counter-only and never moves the caret', () => {
+    const withError = typingReducer(stateFor('ab', 'stop'), { type: 'typeChar', char: 'z' });
+    const afterBackspace = typingReducer(withError, { type: 'backspace' });
+    expect(afterBackspace.totalKeystrokes).toBe(0);
+    expect(afterBackspace.currentIndex).toBe(0); // still blocked at the error
+    expect(afterBackspace.validatedChars).toBe(0);
+    expect(afterBackspace.correctKeystrokes).toBe(0);
+  });
+
+  test('is a no-op on a fresh state in both modes', () => {
     const fresh = stateFor('abc');
     expect(typingReducer(fresh, { type: 'backspace' })).toBe(fresh);
+    const freshStop = stateFor('abc', 'stop');
+    expect(typingReducer(freshStop, { type: 'backspace' })).toBe(freshStop);
   });
 });
 
@@ -206,7 +295,7 @@ describe('completeness and determinism', () => {
 
   test('the reducer is pure: the previous state is never mutated', () => {
     const before = typeAll(stateFor('abc'), ['a']);
-    const snapshot = { ...before };
+    const snapshot = { ...before, errors: [...before.errors] };
     typingReducer(before, { type: 'typeChar', char: 'x' });
     typingReducer(before, { type: 'backspace' });
     expect(before).toEqual(snapshot);
@@ -216,8 +305,8 @@ describe('completeness and determinism', () => {
 describe('liveStats (Annexe A on the current counters)', () => {
   test('net/raw WPM and accuracy follow the Annexe A formulas', () => {
     // "abc def" = 7 chars; 1 error, then corrected: 7 correct / 8 total.
-    let state = stateFor('abc def');
-    state = typingReducer(state, { type: 'typeChar', char: 'x' }); // error
+    let state = stateFor('abc def', 'stop');
+    state = typingReducer(state, { type: 'typeChar', char: 'x' }); // error (blocked)
     state = typeAll(state, ['a', 'b', 'c', ' ', 'd', 'e', 'f']);
 
     const stats = liveStats(state, 60_000);
@@ -244,7 +333,7 @@ describe('liveStats (Annexe A on the current counters)', () => {
   });
 
   test('progressCounters mirrors the state counters (COURSE-06 shape)', () => {
-    const state = typeAll(stateFor('ab'), ['z', 'a']);
+    const state = typeAll(stateFor('ab', 'stop'), ['z', 'a']);
     expect(progressCounters(state)).toEqual({
       validatedChars: 1,
       correctKeystrokes: 1,

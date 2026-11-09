@@ -1,45 +1,57 @@
 import { accuracy, netWpm, rawWpm } from './stats';
 
 /**
- * Pure typing logic for the race text (COURSE-04, CONF-08 groundwork).
+ * Pure typing logic for the race text (COURSE-04, CONF-08).
  *
  * A small deterministic reducer over plain data — no React, no timers, no
  * DOM — so the input rules of the typing zone can be unit-tested exactly like
  * the rest of the game logic, and the same rules can be reused by any other
  * consumer (tests, future bots, the results screen).
  *
- * ## Error modes (CONF-08)
+ * ## Error modes (CONF-08) — real behavioural difference
  *
- * - `'accumulate'` (libre / errors counted): a wrong character at the current
- *   position is counted as an incorrect keystroke and the position is
- *   *marked* as an error (`lastError`), but the caret does NOT advance past
- *   it — typing the correct character validates the position and advances.
- * - `'stop'` (correction obligatoire): a wrong character is counted exactly
- *   the same way, but the position is not marked as an error; the input is
- *   simply blocked until the correct character is typed.
- *
- * The counter behaviour is therefore identical in both modes — the only
- * difference is presentation (the UI renders the pending position red in
- * `accumulate` mode, see `TypingZone`). This follows the SP-2C spec ("the
- * input does NOT advance, next correct char advances") and keeps
- * `validatedChars` equal to the correct contiguous prefix length in every
- * state, which is the invariant the server's auto-finish relies on.
+ * - `'accumulate'` (libre / errors counted): a wrong character at the caret
+ *   position is counted (`totalKeystrokes + 1`), the position is **marked**
+ *   as an error in `errors`, and the caret **advances past it**. Subsequent
+ *   keystrokes are compared against the ORIGINAL text position
+ *   (`text[currentIndex]`), so the player keeps typing freely.
+ * - `'stop'` (correction obligatoire): a wrong character is counted the same
+ *   way but nothing is marked and the caret is blocked until the correct
+ *   character is typed.
  *
  * ## Backspace (documented choice)
  *
- * Backspace can **never un-validate** a character and never moves the caret
- * backwards: validated characters are locked in. Its only effect is to
- * remove the *last incorrect keystroke* from `totalKeystrokes`, and never
- * below `correctKeystrokes`, so the server invariants
- * (`correctKeystrokes <= totalKeystrokes`, `validatedChars <= totalKeystrokes`)
- * always hold for the counters the client sends. Because an error blocks the
- * caret until it is corrected, positional backspacing is never needed.
+ * - `'accumulate'`: backspace moves the caret back one position, **never
+ *   below `validatedChars`** (the validated prefix is locked), and clears
+ *   the error flag on the vacated position; `totalKeystrokes` decreases but
+ *   never below `correctKeystrokes`. Backspacing over a correctly typed
+ *   position un-types it (it must be typed again) — that is how the caret
+ *   physically reaches an earlier error.
+ * - `'stop'`: backspace is counter-only — it removes the last *incorrect*
+ *   keystroke from `totalKeystrokes` (floored at `correctKeystrokes`) and
+ *   never moves the caret; validated characters can never be un-validated.
  *
- * ## Counter contract (shared with the server, COURSE-06)
+ * ## Finishing (COURSE-09 interpretation)
  *
- * `validatedChars` and `correctKeystrokes` are monotonically increasing;
- * `totalKeystrokes` counts every keystroke (errors included) and can only go
- * down through {@link backspace}, never below `correctKeystrokes`.
+ * The text is complete when `validatedChars === text.length` — in
+ * `accumulate` mode errors keep `validatedChars` pinned, so a player who
+ * advanced freely past errors must backspace to them and retype the correct
+ * characters to finish; otherwise the server-side time limit ends the race
+ * (`timeout`). This interpretation is also documented under
+ * « Choix à documenter » (CONF-08) in `doc/EXIGENCES.md`.
+ *
+ * ## Invariants (shared with the server, COURSE-06)
+ *
+ * - `validatedChars` is always the correct contiguous prefix: positions
+ *   below it were typed correctly and carry no error flag.
+ * - Error flags only exist in `[validatedChars, currentIndex)` (positions the
+ *   caret has passed), kept as a sorted `readonly number[]`.
+ * - `validatedChars <= correctKeystrokes <= totalKeystrokes` holds in every
+ *   state, so the counters the client sends (`progressCounters`) stay
+ *   server-valid. `correctKeystrokes` and `totalKeystrokes` are monotonically
+ *   increased by typing; only `totalKeystrokes` can decrease (backspace),
+ *   floored at `correctKeystrokes` — the component keeps the running maximum
+ *   when sending (`TypingZone`).
  */
 
 /** The two error modes of CONF-08 (`errorMode` in the room config). */
@@ -53,14 +65,20 @@ export type TypingState = {
   errorMode: ErrorMode;
   /** Correct contiguous prefix length — what the participant has validated. */
   validatedChars: number;
-  /** Correct keystrokes so far (every keystroke that validated a character). */
+  /** Correct keystrokes so far (every keystroke that matched its position). */
   correctKeystrokes: number;
   /** Total keystrokes so far, errors included. */
   totalKeystrokes: number;
-  /** The position the next keystroke applies to; always == `validatedChars`. */
+  /** The position the next keystroke applies to. */
   currentIndex: number;
-  /** True right after a wrong keystroke at `currentIndex` (until corrected). */
+  /** True right after a wrong keystroke (updated by `typeChar` only). */
   lastError: boolean;
+  /**
+   * Error-marked positions, sorted ascending — only in
+   * `[validatedChars, currentIndex)`. Populated in `accumulate` mode; always
+   * empty in `stop` mode.
+   */
+  errors: readonly number[];
 };
 
 export type TypingAction = { type: 'typeChar'; char: string } | { type: 'backspace' };
@@ -76,7 +94,8 @@ export type TypingProgressCounters = {
  * Builds a fresh typing state for a race text. `initialProgress` restores
  * the cumulative counters the server sent on a mid-race reconnect
  * (COURSE-08 resume snapshot), clamped into `[0, text.length]` so defensive
- * callers can never produce an out-of-range state.
+ * callers can never produce an out-of-range state. The server does not carry
+ * per-position error marks, so a resumed state starts with none.
  */
 export function createTypingState(params: {
   text: string;
@@ -97,6 +116,7 @@ export function createTypingState(params: {
     totalKeystrokes,
     currentIndex: validatedChars,
     lastError: false,
+    errors: [],
   };
 }
 
@@ -104,8 +124,8 @@ export function createTypingState(params: {
  * The pure reducer: one keystroke (`typeChar`) or one `backspace`. It never
  * mutates the previous state, is deterministic, and returns the *same*
  * reference when the action has no effect (text complete, empty keystroke,
- * backspace with nothing to remove) so callers can detect "nothing changed".
- * The switch is exhaustive over the action union.
+ * keystroke beyond the text end, backspace with nothing to do) so callers can
+ * detect "nothing changed". The switch is exhaustive over the action union.
  */
 export function typingReducer(state: TypingState, action: TypingAction): TypingState {
   switch (action.type) {
@@ -122,24 +142,25 @@ export function typingReducer(state: TypingState, action: TypingAction): TypingS
 }
 
 function typeChar(state: TypingState, char: string): TypingState {
-  // The text is complete, or the keystroke is not a single printable
-  // character (the UI filters those out; the reducer stays defensive).
-  if (isComplete(state) || char.length !== 1) {
+  // The text is complete, the keystroke is not a single printable character
+  // (the UI filters those out; the reducer stays defensive), or the caret is
+  // at/past the text end (an error at the last character must be corrected
+  // with backspace — there is nothing to type beyond the text).
+  if (isComplete(state) || char.length !== 1 || state.currentIndex >= state.text.length) {
     return state;
   }
 
   const expected = state.text[state.currentIndex];
-  if (expected === undefined) {
-    // Defensive: cannot happen while `currentIndex <= validatedChars <=
-    // text.length`, but the reducer must stay total.
-    return state;
-  }
-
   if (char === expected) {
-    // The correct character validates the pending position and advances.
+    // The correct character at the caret. When the caret sits on the first
+    // unvalidated position (an error the player just came back to, or plain
+    // forward typing), the validated prefix extends; correctly typed
+    // characters *beyond* an error are counted but not validated — the
+    // prefix stays pinned until every earlier error is corrected.
+    const atPrefix = state.currentIndex === state.validatedChars;
     return {
       ...state,
-      validatedChars: state.validatedChars + 1,
+      validatedChars: atPrefix ? state.validatedChars + 1 : state.validatedChars,
       correctKeystrokes: state.correctKeystrokes + 1,
       totalKeystrokes: state.totalKeystrokes + 1,
       currentIndex: state.currentIndex + 1,
@@ -147,26 +168,66 @@ function typeChar(state: TypingState, char: string): TypingState {
     };
   }
 
-  // Wrong character: counted as a keystroke and flagged, but never
-  // validated — the caret stays until the correct character is typed
-  // (both modes; the UI marks the position red in `accumulate` mode).
+  // Wrong character: counted and flagged, and the caret advances past it
+  // (free advancement). In `stop` mode the caret must NOT advance — the same
+  // counters, but no error mark and a blocked caret.
+  if (state.errorMode === 'stop') {
+    return {
+      ...state,
+      totalKeystrokes: state.totalKeystrokes + 1,
+      lastError: true,
+    };
+  }
+
   return {
     ...state,
     totalKeystrokes: state.totalKeystrokes + 1,
+    currentIndex: state.currentIndex + 1,
     lastError: true,
+    errors: insertError(state.errors, state.currentIndex),
   };
 }
 
 function backspace(state: TypingState): TypingState {
-  // Documented choice (see the module header): only removes the last
-  // *incorrect* keystroke from the counter; it can never un-validate a
-  // validated character and never moves the caret back. The floor at
-  // `correctKeystrokes` keeps `correct <= total` so the counters stay
-  // server-valid (COURSE-06).
-  if (state.totalKeystrokes <= state.correctKeystrokes) {
+  if (state.errorMode === 'stop') {
+    // Counter-only backspace (documented): removes the last *incorrect*
+    // keystroke from the counter, never below the correct count, and never
+    // moves the caret — validated characters are locked.
+    if (state.totalKeystrokes <= state.correctKeystrokes) {
+      return state;
+    }
+    return { ...state, totalKeystrokes: state.totalKeystrokes - 1 };
+  }
+
+  // Accumulate mode: move the caret back one position, never below the
+  // validated prefix; the vacated position loses its error flag (if any) and
+  // its typed state — it must be typed again. totalKeystrokes decreases but
+  // never below correctKeystrokes (correct keystrokes stay locked).
+  if (state.currentIndex <= state.validatedChars) {
     return state;
   }
-  return { ...state, totalKeystrokes: state.totalKeystrokes - 1 };
+  const vacated = state.currentIndex - 1;
+  return {
+    ...state,
+    currentIndex: vacated,
+    errors: state.errors.filter((position) => position !== vacated),
+    totalKeystrokes: Math.max(state.correctKeystrokes, state.totalKeystrokes - 1),
+  };
+}
+
+/** Inserts a position into the sorted error array (no duplicates). */
+function insertError(errors: readonly number[], position: number): readonly number[] {
+  if (errors.includes(position)) {
+    return errors;
+  }
+  const next = [...errors];
+  const index = next.findIndex((entry) => entry > position);
+  if (index === -1) {
+    next.push(position);
+  } else {
+    next.splice(index, 0, position);
+  }
+  return next;
 }
 
 /** The participant validated the whole text (COURSE-06 auto-finish). */

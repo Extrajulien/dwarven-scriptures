@@ -8,9 +8,10 @@ import TypingZone, {
 
 /**
  * COURSE-04 + PERF-02: the typing zone renders the three character states
- * with a caret, drives the pure reducer from keyboard events, ignores paste,
- * throttles progress sends to one per 250 ms (with trailing + completion +
- * unmount flushes) and renders the fr i18n labels.
+ * with a caret (free advancement past marked errors in accumulate mode,
+ * blocked caret in stop mode), drives the pure reducer from keyboard events,
+ * ignores paste, throttles progress sends to one per 250 ms (with trailing +
+ * completion + unmount flushes) and renders the fr i18n labels.
  */
 
 const messages = MESSAGES.fr;
@@ -72,20 +73,60 @@ describe('character states and caret (COURSE-04)', () => {
     expect(screen.getByTestId('typing-text').querySelector('[data-caret="true"]')?.getAttribute('data-char-index')).toBe('2');
   });
 
-  test('accumulate mode marks a wrong character as incorrect without advancing', () => {
+  test('accumulate mode marks a wrong character and advances past it (CONF-08)', () => {
     renderZone();
     typeKey('x'); // text starts with 'b'
     expect(charState(0)).toBe('incorrect');
+    // The caret moved PAST the error (free advancement).
+    expect(screen.getByTestId('typing-text').querySelector('[data-caret="true"]')?.getAttribute('data-char-index')).toBe('1');
+    // The next keystroke compares against the ORIGINAL position 1 ('o').
+    typeKey('o');
+    expect(charState(1)).toBe('correct');
+    expect(charState(0)).toBe('incorrect'); // the error stays marked
+    expect(screen.getByTestId('typing-text').querySelector('[data-caret="true"]')?.getAttribute('data-char-index')).toBe('2');
+    // Progress is pinned by the pending error.
+    expect(screen.getByText('Progression: 0 / 7')).toBeInTheDocument();
+  });
+
+  test('accumulate correction flow: backspace clears the mark, retyping validates', () => {
+    renderZone();
+    typeKey('x'); // error at 0, caret advances to 1
+    typeKey('Backspace'); // caret back on 0, flag cleared → upcoming again
     expect(screen.getByTestId('typing-text').querySelector('[data-caret="true"]')?.getAttribute('data-char-index')).toBe('0');
-    typeKey('b'); // the correct character validates the marked position
+    expect(charState(0)).toBe('upcoming');
+    typeKey('b'); // correct now validates the position
     expect(charState(0)).toBe('correct');
-    expect(charState(1)).toBe('upcoming');
+    expect(screen.getByText('Progression: 1 / 7')).toBeInTheDocument();
+    typeKey('o');
+    expect(charState(1)).toBe('correct');
+    expect(screen.getByText('Progression: 2 / 7')).toBeInTheDocument();
+  });
+
+  test('accumulate finish requires correcting the remaining error', () => {
+    renderZone({ text: 'ab' });
+    typeKey('x'); // error at 0, caret → 1
+    typeKey('b'); // correct at 1, caret → 2 (end of text)
+    // The caret sits at the end (trailing caret) and the race is NOT over.
+    expect(screen.getByTestId('typing-text').querySelector('[data-caret="true"]')?.getAttribute('data-char-index')).toBe('2');
+    expect(screen.queryByText(messages['race.completeNotice'])).not.toBeInTheDocument();
+    expect(charState(0)).toBe('incorrect');
+
+    // Correct the error: backspace to it, retype, finish.
+    typeKey('Backspace');
+    typeKey('Backspace');
+    typeKey('a');
+    typeKey('b');
+    expect(screen.getByText(messages['race.completeNotice'])).toBeInTheDocument();
+    expect(charState(0)).toBe('correct');
+    expect(charState(1)).toBe('correct');
   });
 
   test('stop mode blocks silently: the position is never marked incorrect', () => {
     renderZone({ errorMode: 'stop' });
     typeKey('x');
     expect(charState(0)).toBe('upcoming');
+    // The caret does NOT advance in stop mode.
+    expect(screen.getByTestId('typing-text').querySelector('[data-caret="true"]')?.getAttribute('data-char-index')).toBe('0');
     typeKey('b');
     expect(charState(0)).toBe('correct');
   });
@@ -270,9 +311,9 @@ describe('live readout (client-side Annexe A stats, i18n fr)', () => {
     expect(screen.getByTestId('typing-accuracy')).toHaveTextContent('100');
   });
 
-  test('a wrong keystroke lowers the accuracy readout', () => {
-    renderZone({ text: 'ab' });
-    typeKey('x'); // wrong
+  test('a wrong keystroke lowers the accuracy readout (stop mode)', () => {
+    renderZone({ text: 'ab', errorMode: 'stop' });
+    typeKey('x'); // wrong (blocked)
     typeKey('a');
     act(() => {
       jest.advanceTimersByTime(60_000);

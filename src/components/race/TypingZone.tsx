@@ -28,6 +28,13 @@ import {
  * throttled to at most one message per {@link PROGRESS_FLUSH_INTERVAL_MS}
  * (PERF-02's ≤10 msg/s cap) with a final flush on completion and unmount.
  *
+ * Error modes (CONF-08) render differently because the reducer behaves
+ * differently: in `accumulate` mode every position in `state.errors` is
+ * marked incorrect (red) while the caret advances freely past errors — the
+ * player must backspace to them and retype the correct characters to finish
+ * (see `src/lib/race/typing.ts`); in `stop` mode nothing is ever marked and
+ * the caret stays blocked at the validated prefix.
+ *
  * Input strategy (documented choice): a **visually-hidden real `<input>`**
  * (`sr-only`, still focusable) rather than window-level key capture. A real
  * input keeps mobile-keyboard support clean (focus opens the keyboard — the
@@ -243,23 +250,22 @@ export default function TypingZone({
           data-testid="typing-text"
         >
           {[...state.text].map((char, index) => {
-            const isCorrect = index < state.validatedChars;
-            const isErrorMarked =
-              index === state.currentIndex &&
-              state.lastError &&
-              state.errorMode === 'accumulate' &&
-              !complete;
+            const isErrored = state.errors.includes(index);
+            // Typed & unmarked: validated prefix chars, and (accumulate mode)
+            // chars correctly typed beyond a pending error. Backspacing past
+            // a position un-types it, so it renders as upcoming again.
+            const isTypedCorrect = !isErrored && index < state.currentIndex;
             const isCaret = index === state.currentIndex && enabled && !complete;
-            const className = isCorrect
-              ? 'text-primary'
-              : isErrorMarked
-                ? 'text-error'
+            const className = isErrored
+              ? 'text-error'
+              : isTypedCorrect
+                ? 'text-primary'
                 : 'text-on-surface-variant';
             return (
               <span
                 key={index}
                 data-char-index={index}
-                data-state={isCorrect ? 'correct' : isErrorMarked ? 'incorrect' : 'upcoming'}
+                data-state={isErrored ? 'incorrect' : isTypedCorrect ? 'correct' : 'upcoming'}
                 data-caret={isCaret ? 'true' : undefined}
                 className={`${className}${isCaret ? ' border-b-2 border-primary animate-pulse' : ''}`}
               >
@@ -267,6 +273,17 @@ export default function TypingZone({
               </span>
             );
           })}
+          {/* Trailing caret: accumulate mode with an uncorrected error on the
+              last character — the caret sits at the end of the text. */}
+          {enabled && !complete && state.currentIndex === state.text.length && (
+            <span
+              data-caret="true"
+              data-char-index={state.text.length}
+              className="animate-pulse border-b-2 border-primary"
+            >
+              {'\u00A0'}
+            </span>
+          )}
         </p>
 
         <input
