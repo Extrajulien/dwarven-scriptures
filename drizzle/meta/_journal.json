@@ -8,6 +8,48 @@
       "when": 1791417237678,
       "tag": "0000_early_daimon_hellstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794067348278,
+      "tag": "0001_silly_lizard",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794102186405,
+      "tag": "0002_thick_squadron_sinister",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794103157884,
+      "tag": "0003_boring_meggan",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794191847083,
+      "tag": "0004_wide_sugar_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794193831911,
+      "tag": "0005_gorgeous_lady_ursula",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794240789498,
+      "tag": "0006_gigantic_queen_noir",
+      "breakpoints": true
     }
   ]
 }

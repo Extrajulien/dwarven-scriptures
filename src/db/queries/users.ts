@@ -79,7 +79,27 @@ export type RecordCompletedRaceParams = {
   wordsTyped: number;
   timeMs: number;
   wpm: number;
+  /**
+   * Races won by this finish — `1` when the participant ranked first and did
+   * not quit (a race everyone abandoned has no winner); default `0`.
+   */
+  winsIncrement?: number;
+  /**
+   * Correct keystrokes typed in this race (feeds `avgAccuracy`); default `0`.
+   */
+  correctKeystrokes?: number;
+  /**
+   * Total keystrokes typed in this race (feeds `avgAccuracy`); default `0`.
+   */
+  totalKeystrokes?: number;
 };
+
+/**
+ * Anything able to run the single upsert `recordCompletedRace` builds: the
+ * process-wide client, or the transaction handle of a caller that persists a
+ * race and its stats atomically (`persistRaceResult`, RES-05).
+ */
+export type RaceStatsExecutor = Pick<typeof db, 'insert'>;
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -161,6 +181,9 @@ export async function getUserFullProfile(
       totalWords: userStats.totalWords,
       totalTimeMs: userStats.totalTimeMs,
       bestWpm: userStats.bestWpm,
+      wins: userStats.wins,
+      correctKeystrokes: userStats.correctKeystrokes,
+      totalKeystrokes: userStats.totalKeystrokes,
       coins: userResources.coins,
       gems: userResources.gems,
     })
@@ -186,10 +209,75 @@ export async function getUserFullProfile(
     totalWords: profile.totalWords ?? 0n,
     totalTimeMs: profile.totalTimeMs ?? 0n,
     bestWpm: profile.bestWpm ?? '0.00',
+    wins: profile.wins ?? 0,
+    correctKeystrokes: profile.correctKeystrokes ?? 0n,
+    totalKeystrokes: profile.totalKeystrokes ?? 0n,
     coins: profile.coins ?? 0n,
     gems: profile.gems ?? 0,
     avgWpm: computeAverageWpm(profile.totalWords ?? 0n, profile.totalTimeMs ?? 0n),
+    avgAccuracy: computeAverageAccuracy(
+      profile.correctKeystrokes ?? 0n,
+      profile.totalKeystrokes ?? 0n,
+    ),
   };
+}
+
+/** Credentials needed to authenticate a user; never leaves the server. */
+export type UserCredentials = {
+  publicId: string;
+  username: string;
+  /** `null` for OAuth-only accounts, which have no password. */
+  passwordHash: string | null;
+};
+
+/**
+ * Public identity of a user by **internal** id — server-internal use only
+ * (host handover and the realtime layer resolve `rooms.hostUserId` to the
+ * public shape). Client inputs must never reach this function: callers obtain
+ * the internal id from the database or the session, never from a request.
+ */
+export async function getUserPublicInfoById(
+  id: number,
+): Promise<{ publicId: string; username: string } | null> {
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return null;
+  }
+
+  const rows = await db
+    .select({ publicId: users.publicId, username: users.username })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+
+  const row = rows[0];
+  return row ?? null;
+}
+
+/**
+ * Loads the password hash (and public identifiers) for a username, for the
+ * login flow. This is intentionally separate from `getUserFullProfile`: the
+ * profile projection strips `passwordHash`, while authentication needs it to
+ * verify a submitted password.
+ *
+ * Returns `null` when no user matches. The caller must not expose the hash.
+ */
+export async function getUserCredentialsByUsername(
+  username: string,
+): Promise<UserCredentials | null> {
+  const trimmed = username?.trim();
+  assertNonEmptyString(trimmed, 'username');
+
+  const rows = await db
+    .select({
+      publicId: users.publicId,
+      username: users.username,
+      passwordHash: users.passwordHash,
+    })
+    .from(users)
+    .where(eq(users.username, trimmed))
+    .limit(1);
+
+  return rows[0] ?? null;
 }
 
 /**
@@ -197,12 +285,26 @@ export async function getUserFullProfile(
  *
  * The row is upserted so a user created outside this module (or one whose stats
  * row is missing) still gets a correct row, and every counter is incremented in
- * the database so concurrent finishes cannot lose writes.
+ * the database so concurrent finishes cannot lose writes. Guests and bots never
+ * reach this function (AUTH-03) — `persistRaceResult` skips them.
+ *
+ * `executor` lets a caller run the upsert inside its own transaction (a race
+ * and its user-stats updates commit together, RES-05); it defaults to the
+ * process-wide client.
  */
 export async function recordCompletedRace(
   params: RecordCompletedRaceParams,
+  executor: RaceStatsExecutor = db,
 ): Promise<void> {
-  const { internalUserId, wordsTyped, timeMs, wpm } = params;
+  const {
+    internalUserId,
+    wordsTyped,
+    timeMs,
+    wpm,
+    winsIncrement = 0,
+    correctKeystrokes = 0,
+    totalKeystrokes = 0,
+  } = params;
 
   if (!Number.isSafeInteger(internalUserId) || internalUserId <= 0) {
     throw new InvalidRaceReportError('internalUserId must be a positive integer');
@@ -216,8 +318,25 @@ export async function recordCompletedRace(
   if (!Number.isFinite(wpm) || wpm < 0) {
     throw new InvalidRaceReportError('wpm must be zero or greater');
   }
+  if (!Number.isFinite(winsIncrement) || winsIncrement < 0) {
+    throw new InvalidRaceReportError('winsIncrement must be zero or greater');
+  }
+  if (!Number.isFinite(correctKeystrokes) || correctKeystrokes < 0) {
+    throw new InvalidRaceReportError('correctKeystrokes must be zero or greater');
+  }
+  if (!Number.isFinite(totalKeystrokes) || totalKeystrokes < 0) {
+    throw new InvalidRaceReportError('totalKeystrokes must be zero or greater');
+  }
+  if (correctKeystrokes > totalKeystrokes) {
+    throw new InvalidRaceReportError('correctKeystrokes must not exceed totalKeystrokes');
+  }
 
-  await db
+  const keystrokeCounters = {
+    correctKeystrokes: BigInt(Math.trunc(correctKeystrokes)),
+    totalKeystrokes: BigInt(Math.trunc(totalKeystrokes)),
+  };
+
+  await executor
     .insert(userStats)
     .values({
       userId: internalUserId,
@@ -225,6 +344,9 @@ export async function recordCompletedRace(
       totalWords: BigInt(Math.trunc(wordsTyped)),
       totalTimeMs: BigInt(Math.trunc(timeMs)),
       bestWpm: wpm.toFixed(2),
+      wins: Math.trunc(winsIncrement),
+      correctKeystrokes: keystrokeCounters.correctKeystrokes,
+      totalKeystrokes: keystrokeCounters.totalKeystrokes,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -236,9 +358,58 @@ export async function recordCompletedRace(
         // GREATEST keeps a personal best: replaying a slower race must never
         // lower it.
         bestWpm: sql`GREATEST(${userStats.bestWpm}, ${wpm.toFixed(2)})`,
+        // SQL-side increments only: concurrent finishes cannot lose a win or
+        // a keystroke (no JavaScript read-modify-write).
+        wins: sql`${userStats.wins} + ${Math.trunc(winsIncrement)}`,
+        correctKeystrokes: sql`${userStats.correctKeystrokes} + ${keystrokeCounters.correctKeystrokes}`,
+        totalKeystrokes: sql`${userStats.totalKeystrokes} + ${keystrokeCounters.totalKeystrokes}`,
         updatedAt: new Date(),
       },
     });
+}
+
+export type UpdateUserProfileParams = {
+  username: string;
+  pfpUrl: string | null;
+};
+
+/**
+ * Updates the editable account fields (display name and profile picture) for a
+ * user identified by internal id. The username is re-validated here so a caller
+ * can never persist an empty or over-long name, and a unique-violation on the
+ * `username` column is translated to `UsernameTakenError` for the action to map
+ * to a field error.
+ */
+export async function updateUserProfile(
+  internalUserId: number,
+  params: UpdateUserProfileParams,
+): Promise<void> {
+  if (!Number.isSafeInteger(internalUserId) || internalUserId <= 0) {
+    throw new InvalidUserInputError('internalUserId must be a positive integer');
+  }
+
+  const username = params.username?.trim();
+  assertNonEmptyString(username, 'username');
+  if (username.length > USERNAME_MAX_LENGTH) {
+    throw new InvalidUserInputError(
+      `username must be at most ${USERNAME_MAX_LENGTH} characters`,
+    );
+  }
+  if (params.pfpUrl != null && typeof params.pfpUrl !== 'string') {
+    throw new InvalidUserInputError('pfpUrl must be a string or null');
+  }
+
+  try {
+    await db
+      .update(users)
+      .set({ username, pfpUrl: params.pfpUrl })
+      .where(eq(users.id, internalUserId));
+  } catch (error) {
+    if (isUsernameUniqueViolation(error)) {
+      throw new UsernameTakenError();
+    }
+    throw error;
+  }
 }
 
 /**
@@ -299,6 +470,24 @@ function computeAverageWpm(totalWords: bigint, totalTimeMs: bigint): number {
   return Number(totalWords) / (Number(totalTimeMs) / 60_000);
 }
 
+/**
+ * `correctKeystrokes / totalKeystrokes * 100`, rounded to 2 decimals, or `0`
+ * when nothing has been typed yet. Accuracy is deliberately derived instead of
+ * stored (see `src/db/schema.ts`): a stored percentage could drift away from
+ * the counters that justify it, while the formula can never contradict them.
+ */
+function computeAverageAccuracy(
+  correctKeystrokes: bigint,
+  totalKeystrokes: bigint,
+): number {
+  if (totalKeystrokes <= 0n) {
+    return 0;
+  }
+
+  const ratio = Number(correctKeystrokes) / Number(totalKeystrokes);
+  return Math.round(ratio * 100 * 100) / 100;
+}
+
 const POSTGRES_UNIQUE_VIOLATION = '23505';
 const USERS_USERNAME_UNIQUE_CONSTRAINT = 'users_username_unique';
 
@@ -311,7 +500,7 @@ const USERS_USERNAME_UNIQUE_CONSTRAINT = 'users_username_unique';
  * value (`publicId` is a random UUID), so a missing constraint name is still
  * treated as a username clash.
  */
-function isUsernameUniqueViolation(error: unknown): boolean {
+export function isUsernameUniqueViolation(error: unknown): boolean {
   const seen = new Set<unknown>();
   let current: unknown = error;
 

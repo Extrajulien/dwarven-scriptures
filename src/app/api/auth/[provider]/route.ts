@@ -1,0 +1,59 @@
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import type { NextRequest } from 'next/server';
+import {
+  buildAuthorizeUrl,
+  generateState,
+  isProviderConfigured,
+} from '../../../../lib/oauth';
+import { oauthNextPathSchema, oauthProviderSchema } from '../../../../lib/oauth-validation';
+
+const STATE_COOKIE = 'oauth_state';
+const NEXT_COOKIE = 'oauth_next';
+const OAUTH_COOKIE_MAX_AGE = 10 * 60; // 10 minutes
+
+/**
+ * Starts the OAuth flow for `/api/auth/<provider>`.
+ *
+ * Generates a CSRF `state`, stores it (plus the sanitized post-login
+ * destination) in short-lived HttpOnly cookies, and redirects to the
+ * provider's authorize page. The `callback` route verifies the echoed `state`.
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ provider: string }> },
+) {
+  const { provider } = await params;
+  const providerParsed = oauthProviderSchema.safeParse(provider);
+  if (!providerParsed.success) {
+    return new Response('Unknown OAuth provider', { status: 404 });
+  }
+
+  // Password-login-only production (TECH-05): when the provider's client
+  // credentials are not configured, degrade to a friendly localized notice
+  // on /login instead of throwing a 500 from `buildAuthorizeUrl`.
+  if (!isProviderConfigured(providerParsed.data)) {
+    redirect('/login?oauth=unavailable');
+  }
+
+  const state = generateState();
+  const nextParsed = oauthNextPathSchema.safeParse(request.nextUrl.searchParams.get('next'));
+  const next = nextParsed.success ? nextParsed.data : '/';
+  const redirectUri = new URL(
+    `/api/auth/${providerParsed.data}/callback`,
+    request.nextUrl.origin,
+  ).toString();
+
+  const store = await cookies();
+  const options = {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: OAUTH_COOKIE_MAX_AGE,
+    path: '/',
+  };
+  store.set(STATE_COOKIE, state, options);
+  store.set(NEXT_COOKIE, next, options);
+
+  redirect(buildAuthorizeUrl(providerParsed.data, state, redirectUri).toString());
+}

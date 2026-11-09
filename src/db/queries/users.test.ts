@@ -23,6 +23,7 @@ let selectResult: unknown[] = [];
 let updateRowCount = 0;
 let insertRow: unknown;
 let insertError: unknown;
+let updateError: unknown;
 
 /** Creates the chain for one operation and records it exactly once. */
 function newCall(operation: RecordedCall['operation'], args: unknown[] = []): RecordedCall {
@@ -65,8 +66,12 @@ function chainable(operation: RecordedCall['operation'], call: RecordedCall): Re
     return Promise.resolve(Array.from({ length: updateRowCount }, (_value, index) => ({ index })));
   };
 
-  chain.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
-    Promise.resolve(selectResult).then(resolve, reject);
+  chain.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => {
+    if (operation === 'update' && updateError !== undefined) {
+      return Promise.reject(updateError).then(resolve, reject);
+    }
+    return Promise.resolve(selectResult).then(resolve, reject);
+  };
 
   return chain;
 }
@@ -85,7 +90,7 @@ jest.mock('../index', () => ({
   },
 }));
 
-import { adjustUserCoins, createUserWithProfiles, getUserFullProfile, recordCompletedRace, UsernameTakenError } from './users';
+import { adjustUserCoins, createUserWithProfiles, getUserCredentialsByUsername, getUserFullProfile, recordCompletedRace, updateUserProfile, UsernameTakenError, type RaceStatsExecutor } from './users';
 
 beforeEach(() => {
   calls.length = 0;
@@ -93,6 +98,7 @@ beforeEach(() => {
   updateRowCount = 0;
   insertRow = undefined;
   insertError = undefined;
+  updateError = undefined;
 });
 
 type Queryable = { toQuery: (config: unknown) => { sql: string; params: unknown[] } };
@@ -199,12 +205,43 @@ describe('recordCompletedRace', () => {
     expect(sqlTextOf('insert')).toContain('"user_stats"."racesCompleted" + 1');
   });
 
+  test('increments wins and keystroke counters in SQL, never in JavaScript', async () => {
+    await recordCompletedRace({
+      ...params,
+      winsIncrement: 1,
+      correctKeystrokes: 45,
+      totalKeystrokes: 50,
+    });
+
+    const text = sqlTextOf('insert');
+    expect(text).toContain('"user_stats"."wins" + 1');
+    expect(text).toContain('"user_stats"."correctKeystrokes" + 45');
+    expect(text).toContain('"user_stats"."totalKeystrokes" + 50');
+    expect(calls.some((call) => call.operation === 'select')).toBe(false);
+  });
+
+  test('accepts the race executor so a caller can share its transaction', async () => {
+    // The stub only implements the `.insert` the function uses; the cast
+    // keeps the test independent of the full Drizzle builder surface.
+    const executor = {
+      insert: (...args: unknown[]) => chainable('insert', newCall('insert', args)),
+    } as unknown as RaceStatsExecutor;
+
+    await recordCompletedRace(params, executor);
+
+    expect(sqlTextOf('insert')).toContain('"user_stats"."racesCompleted" + 1');
+  });
+
   test.each([
     [{ ...params, internalUserId: 0 }, 'internalUserId'],
     [{ ...params, internalUserId: 1.5 }, 'internalUserId'],
     [{ ...params, wordsTyped: -1 }, 'wordsTyped'],
     [{ ...params, timeMs: -1 }, 'timeMs'],
     [{ ...params, wpm: -1 }, 'wpm'],
+    [{ ...params, winsIncrement: -1 }, 'winsIncrement'],
+    [{ ...params, correctKeystrokes: -1 }, 'correctKeystrokes'],
+    [{ ...params, totalKeystrokes: -1 }, 'totalKeystrokes'],
+    [{ ...params, correctKeystrokes: 10, totalKeystrokes: 5 }, 'must not exceed'],
   ])('rejects invalid input %#', async (invalid, field) => {
     await expect(recordCompletedRace(invalid)).rejects.toThrow(field as string);
     expect(calls).toHaveLength(0);
@@ -302,6 +339,60 @@ describe('adjustUserCoins', () => {
   });
 });
 
+describe('updateUserProfile', () => {
+  test('sets the trimmed username and pfpUrl on the user row', async () => {
+    await updateUserProfile(7, { username: '  ada  ', pfpUrl: 'https://example.com/a.png' });
+
+    const updateCall = calls.find((call) => call.operation === 'update');
+    expect(updateCall).toBeDefined();
+    // args: [ [users table], [ { username, pfpUrl } ], [ where fragment ] ]
+    expect(updateCall!.args[1][0]).toEqual({ username: 'ada', pfpUrl: 'https://example.com/a.png' });
+    expect(sqlTextOf('update')).toContain('"users"."id" =');
+  });
+
+  test('accepts a null pfpUrl to clear the avatar', async () => {
+    await updateUserProfile(7, { username: 'ada', pfpUrl: null });
+
+    const updateCall = calls.find((call) => call.operation === 'update');
+    expect(updateCall!.args[1][0]).toEqual({ username: 'ada', pfpUrl: null });
+  });
+
+  test('rejects a non-positive internal id', async () => {
+    await expect(updateUserProfile(0, { username: 'ada', pfpUrl: null })).rejects.toThrow(
+      /positive integer/,
+    );
+    expect(calls).toHaveLength(0);
+  });
+
+  test('rejects an empty or over-long username', async () => {
+    await expect(updateUserProfile(7, { username: '   ', pfpUrl: null })).rejects.toThrow(/username/);
+    await expect(updateUserProfile(7, { username: 'a'.repeat(33), pfpUrl: null })).rejects.toThrow(
+      /at most 32/,
+    );
+    expect(calls).toHaveLength(0);
+  });
+
+  test('rejects a non-string pfpUrl', async () => {
+    await expect(updateUserProfile(7, { username: 'ada', pfpUrl: 42 as never })).rejects.toThrow(
+      /pfpUrl/,
+    );
+    expect(calls).toHaveLength(0);
+  });
+
+  test('maps a unique username violation to UsernameTakenError', async () => {
+    updateError = Object.assign(new Error('DrizzleQueryError'), {
+      cause: Object.assign(
+        new Error('duplicate key value violates unique constraint "users_username_unique"'),
+        { code: '23505', constraint: 'users_username_unique' },
+      ),
+    });
+
+    await expect(updateUserProfile(7, { username: 'ada', pfpUrl: null })).rejects.toThrow(
+      UsernameTakenError,
+    );
+  });
+});
+
 describe('getUserFullProfile', () => {
   const baseRow = {
     id: 3,
@@ -313,6 +404,9 @@ describe('getUserFullProfile', () => {
     totalWords: 900n,
     totalTimeMs: 90_000n,
     bestWpm: '120.00',
+    wins: 1,
+    correctKeystrokes: 190n,
+    totalKeystrokes: 200n,
     coins: 500n,
     gems: 3,
     passwordHash: 'secret',
@@ -335,10 +429,29 @@ describe('getUserFullProfile', () => {
     expect(profile).not.toHaveProperty('passwordHash');
   });
 
+  test('derives avgAccuracy from the keystroke counters', async () => {
+    selectResult = [baseRow];
+
+    const profile = await getUserFullProfile({ username: 'ada' });
+
+    expect(profile?.wins).toBe(1);
+    expect(profile?.correctKeystrokes).toBe(190n);
+    expect(profile?.totalKeystrokes).toBe(200n);
+    expect(profile?.avgAccuracy).toBe(95);
+  });
+
   test('reports avgWpm as zero when no time has been recorded', async () => {
     selectResult = [{ ...baseRow, totalWords: 0n, totalTimeMs: 0n }];
 
     await expect(getUserFullProfile({ username: 'ada' })).resolves.toMatchObject({ avgWpm: 0 });
+  });
+
+  test('reports avgAccuracy as zero when no keystroke has been recorded', async () => {
+    selectResult = [{ ...baseRow, correctKeystrokes: 0n, totalKeystrokes: 0n }];
+
+    await expect(getUserFullProfile({ username: 'ada' })).resolves.toMatchObject({
+      avgAccuracy: 0,
+    });
   });
 
   test('tolerates totals that exceed the safe integer range', async () => {
@@ -357,6 +470,9 @@ describe('getUserFullProfile', () => {
         totalWords: null,
         totalTimeMs: null,
         bestWpm: null,
+        wins: null,
+        correctKeystrokes: null,
+        totalKeystrokes: null,
         coins: null,
         gems: null,
       },
@@ -368,6 +484,8 @@ describe('getUserFullProfile', () => {
     expect(profile?.gems).toBe(0);
     expect(profile?.bestWpm).toBe('0.00');
     expect(profile?.avgWpm).toBe(0);
+    expect(profile?.wins).toBe(0);
+    expect(profile?.avgAccuracy).toBe(0);
   });
 
   test('looks up by username slug', async () => {
@@ -400,6 +518,39 @@ describe('getUserFullProfile', () => {
 
   test('rejects a malformed publicId before touching the database', async () => {
     await expect(getUserFullProfile({ publicId: 'nope' })).rejects.toThrow(/UUID/);
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe('getUserCredentialsByUsername', () => {
+  const credentialsRow = {
+    publicId: '11111111-1111-4111-8111-111111111111',
+    username: 'ada',
+    passwordHash: 'scrypt$32768$8$1$salt$hash',
+  };
+
+  test('returns the credentials when the user exists', async () => {
+    selectResult = [credentialsRow];
+
+    await expect(getUserCredentialsByUsername('ada')).resolves.toEqual(credentialsRow);
+  });
+
+  test('returns null when no user matches', async () => {
+    selectResult = [];
+
+    await expect(getUserCredentialsByUsername('ghost')).resolves.toBeNull();
+  });
+
+  test('trims the username and filters by it', async () => {
+    selectResult = [credentialsRow];
+
+    await getUserCredentialsByUsername('  ada  ');
+
+    expect(sqlTextOf('select')).toContain('"users"."username" =');
+  });
+
+  test('rejects an empty username before touching the database', async () => {
+    await expect(getUserCredentialsByUsername('   ')).rejects.toThrow(/username/);
     expect(calls).toHaveLength(0);
   });
 });

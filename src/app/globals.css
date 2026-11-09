@@ -3,6 +3,250 @@
 @tailwind utilities;
 
 @layer base {
+  /* --- Theme colour tokens -------------------------------------------------- */
+  /* Light is the default (:root); html.dark carries the dark values (the dark
+     triplets reproduce the previous hardcoded palette exactly). The RGB
+     triplets are duplicated in src/theme/palette.ts (single source of truth,
+     drift-checked by src/theme/palette.test.ts). The `<html>` class is set by
+     the pre-paint inline script in src/app/layout.tsx (DES-05). */
+  :root {
+    color-scheme: light;
+
+    /* main surfaces & text */
+    --background: 233 226 210;
+    --surface: 233 226 210;
+    --surface-dim: 216 208 190;
+    --surface-bright: 244 239 227;
+    --surface-container-lowest: 248 244 234;
+    --surface-container-low: 242 237 226;
+    --surface-container: 236 231 219;
+    --surface-container-high: 230 224 210;
+    --surface-container-highest: 224 217 201;
+    --surface-variant: 222 214 197;
+    --surface-tint: 197 155 39;
+    --on-surface: 36 31 22;
+    --on-surface-variant: 87 78 63;
+    --on-background: 36 31 22;
+    /* primary (gold family, darkened for light surfaces) */
+    --on-primary: 255 248 231;
+    --on-primary-container: 61 44 0;
+    --on-primary-fixed: 37 26 0;
+    --on-primary-fixed-variant: 90 67 0;
+    --primary: 111 81 0;
+    --primary-container: 242 217 138;
+    --primary-fixed: 255 223 152;
+    --primary-fixed-dim: 238 193 75;
+    --inverse-primary: 238 193 75;
+    /* secondary (ember / forge) */
+    --on-secondary: 255 248 240;
+    --on-secondary-container: 61 27 0;
+    --on-secondary-fixed: 46 21 0;
+    --on-secondary-fixed-variant: 109 58 0;
+    --secondary: 140 74 0;
+    --secondary-container: 255 219 194;
+    --secondary-fixed: 255 220 194;
+    --secondary-fixed-dim: 255 183 123;
+    /* tertiary (moss / rune green) */
+    --on-tertiary: 255 255 255;
+    --on-tertiary-container: 12 43 8;
+    --on-tertiary-fixed: 2 33 0;
+    --on-tertiary-fixed-variant: 40 80 30;
+    --tertiary: 61 102 50;
+    --tertiary-container: 204 233 190;
+    --tertiary-fixed: 192 240 173;
+    --tertiary-fixed-dim: 164 211 147;
+    /* error */
+    --on-error: 255 255 255;
+    --on-error-container: 65 0 2;
+    --error: 186 26 26;
+    --error-container: 255 218 214;
+    /* outline / inverse */
+    --outline: 121 111 90;
+    --outline-variant: 196 188 171;
+    --inverse-surface: 32 31 31;
+    --inverse-on-surface: 229 226 225;
+    /* "Dwarf Fortress" stone palette */
+    --dwarf-abyss: 255 248 231; /* cream: readable on gold fills in light mode */
+    --dwarf-bg: 233 226 210;
+    --dwarf-slate: 226 218 200;
+    --dwarf-basalt: 221 212 192;
+    --dwarf-border: 168 154 125;
+    --dwarf-border-light: 138 125 99;
+    --dwarf-parchment: 58 51 40;
+    --dwarf-parchment-muted: 103 95 81;
+    --dwarf-parchment-bright: 58 51 40;
+    --dwarf-gold: 111 81 0;
+    --dwarf-gold-light: 133 99 0;
+    --dwarf-gold-hover: 122 91 0;
+    --dwarf-rune-green: 79 121 66;
+    --dwarf-rune-bright: 56 96 43;
+    --dwarf-magma: 165 58 16;
+    /* stone terminal surfaces (auth screens) */
+    --dwarf-cave: 233 226 210;
+    --dwarf-terminal: 243 238 225;
+    --dwarf-terminal-header: 232 225 207;
+    --dwarf-rune-badge: 219 232 212;
+    --dwarf-status-strip: 239 232 216;
+    --dwarf-input-bg: 251 248 239;
+    --dwarf-input-border: 155 143 118;
+    --dwarf-track: 224 217 198;
+    --dwarf-divider-strong: 179 168 142;
+    --dwarf-divider: 192 182 160;
+    --dwarf-divider-soft: 211 203 184;
+    --dwarf-parchment-icon: 107 87 38;
+    --dwarf-gold-ink: 61 44 7;
+    --dwarf-showcase-header: 176 166 141;
+    --dwarf-showcase-frame: 162 150 124;
+    --dwarf-showcase-overlay: 239 233 219;
+    --dwarf-showcase-panel-border: 141 129 101;
+    --dwarf-showcase-panel: 246 242 230;
+    --dwarf-showcase-divider: 196 187 164;
+    --dwarf-danger: 185 28 28;
+    /* bespoke component colours */
+    --stone-panel-border: 168 154 125;
+    --stone-panel-outline: 125 115 96;
+    --stone-panel-inner-border: 195 185 163;
+    --chisel-gold-top: 233 189 63;
+    --chisel-gold-mid: 201 154 34;
+    --chisel-gold-bottom: 170 126 19;
+    --chisel-gold-border: 246 207 99;
+    --chisel-gold-base: 90 64 5;
+    --chisel-gold-hover-top: 219 171 47;
+    --chisel-gold-hover-mid: 184 139 27;
+    --chisel-gold-hover-bottom: 153 113 15;
+    --chisel-stone-border: 157 146 120;
+    --chisel-stone-base: 92 84 63;
+    --chisel-stone-hover: 221 213 194;
+    --chisel-stone-hover-border: 110 100 80;
+    --scanline: 0 0 0;
+    /* Alpha scrims (not palette colours; light-adjusted so bevels stay subtle) */
+    --scanlines-alpha: 0.08;
+    --stone-highlight: rgba(255, 255, 255, 0.75);
+    --stone-shadow: rgba(0, 0, 0, 0.18);
+    --stone-drop: rgba(0, 0, 0, 0.22);
+    --stone-inner-shadow: rgba(0, 0, 0, 0.15);
+    --chisel-gold-text-shadow: rgba(255, 255, 255, 0.4);
+  }
+
+  html.dark {
+    color-scheme: dark;
+
+    /* main surfaces & text */
+    --background: 19 19 19;
+    --surface: 19 19 19;
+    --surface-dim: 19 19 19;
+    --surface-bright: 57 57 57;
+    --surface-container-lowest: 14 14 14;
+    --surface-container-low: 28 27 27;
+    --surface-container: 32 31 31;
+    --surface-container-high: 42 42 42;
+    --surface-container-highest: 53 53 52;
+    --surface-variant: 53 53 52;
+    --surface-tint: 238 193 75;
+    --on-surface: 229 226 225;
+    --on-surface-variant: 209 197 175;
+    --on-background: 229 226 225;
+    /* primary */
+    --on-primary: 62 46 0;
+    --on-primary-container: 71 53 0;
+    --on-primary-fixed: 37 26 0;
+    --on-primary-fixed-variant: 90 67 0;
+    --primary: 238 193 75;
+    --primary-container: 197 155 39;
+    --primary-fixed: 255 223 152;
+    --primary-fixed-dim: 238 193 75;
+    --inverse-primary: 119 90 0;
+    /* secondary */
+    --on-secondary: 77 39 0;
+    --on-secondary-container: 255 178 112;
+    --on-secondary-fixed: 46 21 0;
+    --on-secondary-fixed-variant: 109 58 0;
+    --secondary: 255 183 123;
+    --secondary-container: 122 65 0;
+    --secondary-fixed: 255 220 194;
+    --secondary-fixed-dim: 255 183 123;
+    /* tertiary */
+    --on-tertiary: 17 56 9;
+    --on-tertiary-container: 25 64 16;
+    --on-tertiary-fixed: 2 33 0;
+    --on-tertiary-fixed-variant: 40 80 30;
+    --tertiary: 164 211 147;
+    --tertiary-container: 128 173 112;
+    --tertiary-fixed: 192 240 173;
+    --tertiary-fixed-dim: 164 211 147;
+    /* error */
+    --on-error: 105 0 5;
+    --on-error-container: 255 218 214;
+    --error: 255 180 171;
+    --error-container: 147 0 10;
+    /* outline / inverse */
+    --outline: 154 144 124;
+    --outline-variant: 78 70 53;
+    --inverse-surface: 229 226 225;
+    --inverse-on-surface: 49 48 48;
+    /* "Dwarf Fortress" stone palette */
+    --dwarf-abyss: 12 11 10;
+    --dwarf-bg: 20 19 18;
+    --dwarf-slate: 28 26 23;
+    --dwarf-basalt: 37 34 29;
+    --dwarf-border: 60 54 45;
+    --dwarf-border-light: 84 76 63;
+    --dwarf-parchment: 212 197 169;
+    --dwarf-parchment-muted: 150 136 112;
+    --dwarf-parchment-bright: 255 255 255;
+    --dwarf-gold: 197 155 39;
+    --dwarf-gold-light: 229 169 60;
+    --dwarf-gold-hover: 245 190 84;
+    --dwarf-rune-green: 79 121 66;
+    --dwarf-rune-bright: 98 158 82;
+    --dwarf-magma: 211 78 36;
+    /* stone terminal surfaces */
+    --dwarf-cave: 15 14 13;
+    --dwarf-terminal: 23 21 19;
+    --dwarf-terminal-header: 28 25 22;
+    --dwarf-rune-badge: 26 40 24;
+    --dwarf-status-strip: 31 28 24;
+    --dwarf-input-bg: 18 17 16;
+    --dwarf-input-border: 63 56 45;
+    --dwarf-track: 14 13 12;
+    --dwarf-divider-strong: 54 47 37;
+    --dwarf-divider: 52 46 36;
+    --dwarf-divider-soft: 35 32 26;
+    --dwarf-parchment-icon: 138 114 65;
+    --dwarf-gold-ink: 61 44 7;
+    --dwarf-showcase-header: 48 42 32;
+    --dwarf-showcase-frame: 59 51 39;
+    --dwarf-showcase-overlay: 16 14 12;
+    --dwarf-showcase-panel-border: 77 66 51;
+    --dwarf-showcase-panel: 22 20 18;
+    --dwarf-showcase-divider: 51 43 33;
+    --dwarf-danger: 220 38 38;
+    /* bespoke component colours */
+    --stone-panel-border: 74 65 53;
+    --stone-panel-outline: 28 26 23;
+    --stone-panel-inner-border: 54 48 38;
+    --chisel-gold-top: 219 171 47;
+    --chisel-gold-mid: 184 139 27;
+    --chisel-gold-bottom: 153 113 15;
+    --chisel-gold-border: 246 207 99;
+    --chisel-gold-base: 90 64 5;
+    --chisel-gold-hover-top: 233 189 63;
+    --chisel-gold-hover-mid: 201 154 34;
+    --chisel-gold-hover-bottom: 170 126 19;
+    --chisel-stone-border: 68 60 48;
+    --chisel-stone-base: 20 18 15;
+    --chisel-stone-hover: 43 39 34;
+    --chisel-stone-hover-border: 99 87 68;
+    --scanline: 0 0 0;
+    /* Alpha scrims — exact reproduction of the current dark rendering */
+    --scanlines-alpha: 0.25;
+    --stone-highlight: rgba(255, 255, 255, 0.08);
+    --stone-shadow: rgba(0, 0, 0, 0.9);
+    --stone-drop: rgba(0, 0, 0, 0.7);
+    --stone-inner-shadow: rgba(0, 0, 0, 0.75);
+    --chisel-gold-text-shadow: rgba(0, 0, 0, 0.8);
+  }
+
   html,
   body {
     margin: 0;
@@ -33,56 +277,110 @@
 
 /* --- Login terminal (stone UI bevels & effects) --------------------------- */
 /* Sourced from stitch/login.html; kept as bespoke classes because they layer
-   gradients/shadows that no single Tailwind utility reproduces. */
+   gradients/shadows that no single Tailwind utility reproduces. All solid
+   colours now reference the theme tokens above (light under :root, dark under
+   html.dark); the alpha scrims use the --stone-* scrim variables. */
 .stone-panel {
-  border: 2px solid #4a4135;
-  outline: 1px solid #1c1a17;
+  border: 2px solid rgb(var(--stone-panel-border));
+  outline: 1px solid rgb(var(--stone-panel-outline));
   box-shadow:
-    inset 1px 1px 0px rgba(255, 255, 255, 0.08),
-    inset -1px -1px 0px rgba(0, 0, 0, 0.9),
-    0 8px 30px rgba(0, 0, 0, 0.7);
+    inset 1px 1px 0px var(--stone-highlight),
+    inset -1px -1px 0px var(--stone-shadow),
+    0 8px 30px var(--stone-drop);
 }
 
 .stone-panel-inner {
-  border: 1px solid #363026;
-  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.75);
+  border: 1px solid rgb(var(--stone-panel-inner-border));
+  box-shadow: inset 1px 1px 2px var(--stone-inner-shadow);
+}
+
+/* Ambient cave lighting gradient of the (auth) layout — token-driven so it
+   adapts to the active theme (was an arbitrary bg-[radial-gradient(...)]). */
+.cave-ambient {
+  background: radial-gradient(
+    ellipse 80% 80% at 50% -20%,
+    rgb(var(--dwarf-gold) / 0.08),
+    rgb(var(--dwarf-cave) / 0.9)
+  );
+}
+
+/* --- Account screen stone cards (rune corner marks) ------------------------ */
+/* Sourced from stitch/profile.html; kept as bespoke classes because the
+   ::before/::after runes are not reproducible with a single Tailwind utility.
+   Border and background are applied via Tailwind classes on the element. */
+.stone-card {
+  position: relative;
+}
+.stone-card::before {
+  content: "᚛";
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-size: 10px;
+  line-height: 1;
+  color: rgb(var(--outline));
+  opacity: 0.5;
+}
+.stone-card::after {
+  content: "᚜";
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 10px;
+  line-height: 1;
+  color: rgb(var(--outline));
+  opacity: 0.5;
 }
 
 .btn-chisel-gold {
-  background: linear-gradient(180deg, #dbab2f 0%, #b88b1b 50%, #99710f 100%);
-  border: 1px solid #f6cf63;
-  border-bottom: 3px solid #5a4005;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  background: linear-gradient(
+    180deg,
+    rgb(var(--chisel-gold-top)) 0%,
+    rgb(var(--chisel-gold-mid)) 50%,
+    rgb(var(--chisel-gold-bottom)) 100%
+  );
+  border: 1px solid rgb(var(--chisel-gold-border));
+  border-bottom: 3px solid rgb(var(--chisel-gold-base));
+  text-shadow: 0 1px 2px var(--chisel-gold-text-shadow);
   transition: all 0.1s ease-in-out;
 }
 .btn-chisel-gold:hover {
-  background: linear-gradient(180deg, #e9bd3f 0%, #c99a22 50%, #aa7e13 100%);
+  background: linear-gradient(
+    180deg,
+    rgb(var(--chisel-gold-hover-top)) 0%,
+    rgb(var(--chisel-gold-hover-mid)) 50%,
+    rgb(var(--chisel-gold-hover-bottom)) 100%
+  );
+  /* Gold glow: decorative, identical in both themes. */
   box-shadow: 0 0 18px rgba(229, 169, 60, 0.5);
   transform: translateY(-1px);
 }
 .btn-chisel-gold:active {
   transform: translateY(2px);
-  border-bottom: 1px solid #5a4005;
+  border-bottom: 1px solid rgb(var(--chisel-gold-base));
 }
 
 .btn-chisel-stone {
-  border: 1px solid #443c30;
-  border-bottom: 3px solid #14120f;
+  border: 1px solid rgb(var(--chisel-stone-border));
+  border-bottom: 3px solid rgb(var(--chisel-stone-base));
   transition: all 0.12s ease;
 }
 .btn-chisel-stone:hover {
-  background-color: #2b2722;
-  border-color: #635744;
+  background-color: rgb(var(--chisel-stone-hover));
+  border-color: rgb(var(--chisel-stone-hover-border));
   transform: translateY(-1px);
 }
 .btn-chisel-stone:active {
   transform: translateY(2px);
-  border-bottom: 1px solid #14120f;
+  border-bottom: 1px solid rgb(var(--chisel-stone-base));
 }
 
 .retro-scanlines {
   background:
-    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+    linear-gradient(
+      rgb(var(--scanline) / 0) 50%,
+      rgb(var(--scanline) / var(--scanlines-alpha)) 50%
+    ),
     linear-gradient(
       90deg,
       rgba(255, 0, 0, 0.02),
@@ -96,7 +394,17 @@
 }
 
 .dwarf-checkbox:checked {
-  background-color: #c59b27;
-  border-color: #f5be54;
+  background-color: rgb(var(--dwarf-gold));
+  border-color: rgb(var(--dwarf-gold-hover));
+  /* Checkmark glyph fill: theme-independent (dark on gold in both themes). */
   background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='%23121214' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+}
+
+/* A11Y-04: keyboard focus indicator for every interactive element that does
+   not bring its own focus styling (inputs/selects with `focus:ring-*` keep
+   their ring; the outline below covers links, buttons, toggles and
+   checkboxes). The theme token keeps it legible in light and dark. */
+:focus-visible {
+  outline: 2px solid rgb(var(--primary));
+  outline-offset: 2px;
 }

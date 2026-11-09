@@ -4,8 +4,13 @@
  * Tests for the Drizzle connection singleton (`src/db/index.ts`).
  *
  * `pg` and `drizzle-orm/node-postgres` are mocked so the tests assert the
- * contract of our own module (pool options, single pool per process) without
- * opening real sockets.
+ * contract of our own module (pool options, single pool per process, lazy
+ * creation) without opening real sockets.
+ *
+ * TECH-05: since `next build` evaluates every route's module graph, the
+ * module must NOT read `DATABASE_URL` at import time. The pool is created
+ * on the first property access of `db` (the first query); a missing
+ * variable then throws the documented error.
  */
 
 type PoolOptions = {
@@ -69,6 +74,11 @@ async function loadDbModule(env: { DATABASE_URL?: string; NODE_ENV?: string }) {
   return import('./index');
 }
 
+/** One property access on `db` — the trigger of the lazy pool creation. */
+function touchDb(db: unknown): unknown {
+  return (db as { select: unknown }).select;
+}
+
 afterEach(() => {
   delete (globalThis as { conn?: unknown }).conn;
   process.env.DATABASE_URL = originalEnv.DATABASE_URL;
@@ -76,15 +86,32 @@ afterEach(() => {
 });
 
 describe('db client', () => {
-  test('throws when DATABASE_URL is missing', async () => {
-    await expect(loadDbModule({ NODE_ENV: 'development' })).rejects.toThrow(
+  test('imports without DATABASE_URL; the first use throws (TECH-05 build)', async () => {
+    const dbModule = await loadDbModule({ NODE_ENV: 'development' });
+
+    // Importing (what `next build` does when collecting route configuration)
+    // must not throw…
+    expect(dbModule.db).toBeDefined();
+    expect(poolInstances).toHaveLength(0);
+
+    // …and the first real query must fail loudly with the documented error.
+    expect(() => touchDb(dbModule.db)).toThrow(
       'DATABASE_URL is not set in environment variables',
     );
     expect(poolInstances).toHaveLength(0);
   });
 
+  test('creates the pool lazily, on first use, not at import', async () => {
+    const dbModule = await loadDbModule({ DATABASE_URL: LOCAL_URL, NODE_ENV: 'development' });
+    expect(poolInstances).toHaveLength(0);
+
+    touchDb(dbModule.db);
+    expect(poolInstances).toHaveLength(1);
+  });
+
   test('disables TLS for a plain local connection', async () => {
-    await loadDbModule({ DATABASE_URL: LOCAL_URL, NODE_ENV: 'development' });
+    const dbModule = await loadDbModule({ DATABASE_URL: LOCAL_URL, NODE_ENV: 'development' });
+    touchDb(dbModule.db);
 
     expect(poolInstances).toHaveLength(1);
     expect(poolInstances[0].options).toEqual({
@@ -94,22 +121,24 @@ describe('db client', () => {
   });
 
   test('enables TLS with relaxed certificate verification in production', async () => {
-    await loadDbModule({ DATABASE_URL: LOCAL_URL, NODE_ENV: 'production' });
+    const dbModule = await loadDbModule({ DATABASE_URL: LOCAL_URL, NODE_ENV: 'production' });
+    touchDb(dbModule.db);
 
     expect(poolInstances[0].options.ssl).toEqual({ rejectUnauthorized: false });
   });
 
   test('enables TLS for a hosted Railway connection even in development', async () => {
-    await loadDbModule({
+    const dbModule = await loadDbModule({
       DATABASE_URL: 'postgresql://postgres:secret@containers-us-west.railway.app:6543/railway',
       NODE_ENV: 'development',
     });
+    touchDb(dbModule.db);
 
     expect(poolInstances[0].options.ssl).toEqual({ rejectUnauthorized: false });
   });
 
   test('reuses one pool and one drizzle instance across imports', async () => {
-    await loadDbModule({ DATABASE_URL: LOCAL_URL, NODE_ENV: 'development' });
+    const dbModule = await loadDbModule({ DATABASE_URL: LOCAL_URL, NODE_ENV: 'development' });
     // Resolved after resetModules, so it is the same module instance the db
     // module registered (a top-level import would be a different instance).
     const schema = await import('./schema');
@@ -118,6 +147,10 @@ describe('db client', () => {
     const second = await import('./index');
 
     expect(first.db).toBe(second.db);
+
+    touchDb(first.db);
+    touchDb(second.db);
+
     expect(poolInstances).toHaveLength(1);
     expect(drizzleCalls).toHaveLength(1);
     expect(drizzleCalls[0].pool).toBe(poolInstances[0]);
