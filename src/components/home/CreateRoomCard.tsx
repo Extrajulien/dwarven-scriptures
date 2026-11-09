@@ -48,12 +48,12 @@ export default function CreateRoomCard({ messages }: { messages: Messages }) {
       aria-labelledby="create-room-title"
     >
       <div className="flex flex-col gap-space-xs">
-        <h3
+        <h2
           id="create-room-title"
           className="font-headline-sm text-headline-sm uppercase tracking-wide text-primary"
         >
           {messages['createRoom.title']}
-        </h3>
+        </h2>
         <p className="font-label-sm text-label-sm text-dwarf-parchmentMuted">
           {messages['raceSection.createHint']}
         </p>

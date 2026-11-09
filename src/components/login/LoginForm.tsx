@@ -208,7 +208,7 @@ export default function LoginForm({ messages }: { messages: Messages }) {
             type="button"
             aria-label={messages['auth.login.togglePassword']}
             onClick={() => setShowPassword((visible) => !visible)}
-            className={`absolute inset-y-0 right-0 flex items-center pr-3 transition-colors focus:outline-none ${
+            className={`absolute inset-y-0 right-0 flex items-center pr-3 transition-colors focus:outline-none focus:ring-1 focus:ring-dwarf-gold ${
               showPassword ? 'text-dwarf-gold' : 'text-dwarf-parchmentMuted hover:text-dwarf-gold'
             }`}
           >

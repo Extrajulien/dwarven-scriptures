@@ -409,6 +409,7 @@ export interface Messages {
   'home.chronicles.title': string;
   'home.chronicles.subtitle': string;
   'home.chronicles.placeholder': string;
+  'home.chronicles.inputLabel': string;
   'home.chronicles.post': string;
   'home.chronicles.apex.time': string;
   'home.chronicles.apex.s1': string;
@@ -1082,6 +1083,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'home.chronicles.title': '[ CHRONIQUES_DE_LA_GUILDE ]',
     'home.chronicles.subtitle': 'FIL DES EXPÉDITIONS EN DIRECT // PROTOCOLE ASCII',
     'home.chronicles.placeholder': 'Gravez une entrée dans la pierre de la forteresse…',
+    'home.chronicles.inputLabel': 'Entrée de la chronique de guilde',
     'home.chronicles.post': '[PUBLIER]',
     'home.chronicles.apex.time': 'IL Y A 02 MIN',
     'home.chronicles.apex.s1': '⚡ Nouveau record de vitesse maximale dans la chambre N° 8849 : ',
@@ -1764,6 +1766,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'home.chronicles.title': '[ GUILD_CHRONICLES ]',
     'home.chronicles.subtitle': 'LIVE EXPEDITION TICKER // PROTOCOL ASCII',
     'home.chronicles.placeholder': 'Carve entry into the stronghold stone...',
+    'home.chronicles.inputLabel': 'Guild chronicle entry',
     'home.chronicles.post': '[POST]',
     'home.chronicles.apex.time': '02 MINS AGO',
     'home.chronicles.apex.s1': '⚡ New Apex Speed Record set in Chamber #8849: ',

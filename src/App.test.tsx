@@ -37,7 +37,7 @@ test('renders the race cavern with quick play, join and the guest create empty s
   expect(screen.getByText(/caverne de course/i)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /démarrer une course/i })).toBeInTheDocument();
   expect(
-    screen.getByRole('heading', { level: 3, name: /fonder une salle/i })
+    screen.getByRole('heading', { level: 2, name: /fonder une salle/i })
   ).toBeInTheDocument();
 });
 

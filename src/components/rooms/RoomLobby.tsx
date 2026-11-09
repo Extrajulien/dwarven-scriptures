@@ -395,11 +395,13 @@ export default function RoomLobby({
         onLeaveRoom={() => void handleLeave()}
       />
 
-      {/* Room header: code, visibility, status, capacity. */}
+      {/* Room header: code, visibility, status, capacity. The h1 of the room
+          page (A11Y-02): the room is the page's subject. */}
       <section className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl">
         <SectionHeader
           title={messages['raceSection.title']}
           subtitle={messages['raceSection.subtitle']}
+          level={1}
         />
 
         <div className="flex flex-col gap-space-md md:flex-row md:items-center md:justify-between">
@@ -579,7 +581,7 @@ export default function RoomLobby({
         <aside className="flex flex-col gap-space-lg">
           {isHost && (
             <section className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl">
-              <SectionHeader title={messages['lobby.hostControlsTitle']} />
+              <SectionHeader title={messages['lobby.hostControlsTitle']} level={2} />
 
               {!confirmClose ? (
                 <ButtonSecondary type="button" disabled={busy} onClick={() => setConfirmClose(true)}>
@@ -622,7 +624,7 @@ export default function RoomLobby({
                   value={transferTarget}
                   onChange={(event) => setTransferTarget(event.target.value)}
                   disabled={busy || transferCandidates.length === 0}
-                  className="w-full rounded border border-dwarf-border bg-dwarf-bg px-2 py-1.5 font-mono text-sm text-dwarf-parchment shadow-stone-inner focus:border-dwarf-gold focus:outline-none"
+                  className="w-full rounded border border-dwarf-border bg-dwarf-bg px-2 py-1.5 font-mono text-sm text-dwarf-parchment shadow-stone-inner focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
                 >
                   <option value="">{messages['lobby.transferHost']}…</option>
                   {transferCandidates.map((member) => (

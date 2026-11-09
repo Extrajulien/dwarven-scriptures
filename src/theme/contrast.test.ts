@@ -82,6 +82,24 @@ const PAIRS: readonly ContrastPair[] = [
   { name: 'race top3 wpm text', foreground: 'dwarf-gold', background: 'dwarf-slate', minimum: 4.5 },
   { name: 'race you tag / finish badge on gold', foreground: 'dwarf-abyss', background: 'dwarf-gold', minimum: 4.5 },
   { name: 'race overtake down strip text', foreground: 'dwarf-parchment', background: 'dwarf-basalt', minimum: 4.5 },
+  // Phase 5 follow-ups (A11Y-01): the pairs flagged during the audit.
+  // BonusAnnouncer local banner (gold text on the basalt strip; the border
+  // lost its /70 alpha so the same pair covers it as non-text UI).
+  { name: 'bonus announcer banner text', foreground: 'dwarf-gold', background: 'dwarf-basalt', minimum: 4.5 },
+  { name: 'bonus announcer banner border (non-text UI)', foreground: 'dwarf-gold', background: 'dwarf-basalt', minimum: 3 },
+  // ResultsPodium: the gold title + winner WPM on the podium surface, and the
+  // winner rank badge (ink on the pale-gold primary container after the
+  // former `dwarf-goldInk` on `dwarf-gold` badge measured ≈1.83:1 in light).
+  { name: 'results podium gold text', foreground: 'dwarf-gold', background: 'surface-container-lowest', minimum: 4.5 },
+  { name: 'results podium winner rank badge', foreground: 'on-primary-container', background: 'primary-container', minimum: 4.5 },
+  // RaceKeyboardHeatmap "top" tone: solid error fill with on-error text (the
+  // old `on-surface` on `error`/60 measured ≈2.6:1 light / ≈2.1:1 dark).
+  { name: 'race heatmap top-tone key text', foreground: 'on-error', background: 'error', minimum: 4.5 },
+  // Overtake strips: the "up" strip text and both strip borders (the borders
+  // lost their /60 alpha — ≈1.6:1 before, below the 3:1 non-text floor).
+  { name: 'race overtake up strip text', foreground: 'dwarf-rune-bright', background: 'dwarf-rune-badge', minimum: 4.5 },
+  { name: 'race overtake up strip border (non-text UI)', foreground: 'dwarf-rune-bright', background: 'dwarf-rune-badge', minimum: 3 },
+  { name: 'race overtake down strip border (non-text UI)', foreground: 'dwarf-magma', background: 'dwarf-basalt', minimum: 3 },
 ];
 
 describe.each([

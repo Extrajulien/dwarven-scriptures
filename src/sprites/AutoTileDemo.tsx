@@ -91,7 +91,9 @@ export default function AutoTileDemo({ messages }: { messages: Messages }) {
         className="bg-outline-variant/30"
       />
 
-      <footer className="flex flex-wrap items-center gap-space-md">
+      {/* Panel footer row — a plain div, not a <footer>: the page-level
+          contentinfo landmark belongs to the site Footer only (A11Y-02). */}
+      <div className="flex flex-wrap items-center gap-space-md">
         <button
           type="button"
           onClick={reset}
@@ -113,7 +115,7 @@ export default function AutoTileDemo({ messages }: { messages: Messages }) {
             <span className="text-tertiary">■</span> {messages['demo.legendDwarf']}
           </span>
         </div>
-      </footer>
+      </div>
     </section>
   );
 }

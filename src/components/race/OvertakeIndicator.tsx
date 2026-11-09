@@ -100,8 +100,8 @@ export default function OvertakeIndicator({
           data-direction={event.direction}
           className={`flex w-full min-w-0 items-center justify-center gap-space-sm rounded border px-space-md py-space-sm shadow-stone-inner ${
             event.type === 'overtook'
-              ? 'border-dwarf-rune-bright/60 bg-dwarf-rune-badge text-dwarf-rune-bright'
-              : 'border-dwarf-magma/60 bg-dwarf-basalt text-dwarf-parchment'
+              ? 'border-dwarf-rune-bright bg-dwarf-rune-badge text-dwarf-rune-bright'
+              : 'border-dwarf-magma bg-dwarf-basalt text-dwarf-parchment'
           }`}
         >
           <span

@@ -126,8 +126,8 @@ export default function ResultsPodium({
                 <span
                   className={`flex h-8 w-8 items-center justify-center rounded border font-mono font-bold ${
                     isWinner
-                      ? 'border-dwarf-gold bg-dwarf-gold text-dwarf-goldInk'
-                      : 'border-dwarf-border bg-dwarf-basalt text-dwarf-parchmentMuted'
+                      ? 'border-dwarf-gold bg-primary-container text-on-primary-container'
+                      : 'border-dwarf-border bg-dwarf-basalt text-dwarf-parchment'
                   }`}
                 >
                   {formatNumber(rank, locale)}

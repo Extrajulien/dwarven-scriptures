@@ -83,12 +83,12 @@ export default function JoinByCodeForm({
       className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl"
       aria-labelledby="join-code-title"
     >
-      <h3
+      <h2
         id="join-code-title"
         className="font-headline-sm text-headline-sm uppercase tracking-wide text-primary"
       >
         {messages['joinCode.title']}
-      </h3>
+      </h2>
 
       <form className="flex flex-col gap-space-sm" action={joinAction} noValidate>
         {needsNickname && (
