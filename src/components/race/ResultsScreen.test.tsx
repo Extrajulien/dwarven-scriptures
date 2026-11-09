@@ -77,8 +77,8 @@ function renderResults(
 }
 
 const FOUR_RESULTS = [
-  entry({ rank: 1, participantId: BOB, displayName: 'bob', wpm: 50 }),
-  entry({ rank: 2, participantId: ADA, displayName: 'ada', wpm: 42 }),
+  entry({ rank: 1, participantId: BOB, displayName: 'bob', wpm: 50, bonusesReceived: 1 }),
+  entry({ rank: 2, participantId: ADA, displayName: 'ada', wpm: 42, bonusesReceived: 2 }),
   entry({ rank: 3, participantId: CARL, displayName: 'carl', wpm: 35, status: 'timeout' }),
   entry({ rank: 4, participantId: GUEST, displayName: 'Gimli', kind: 'guest', wpm: 30, status: 'quit' }),
 ];
@@ -147,11 +147,14 @@ describe('results table (RES-02)', () => {
     expect(screen.getByText(fr['race.results.status.timeout'])).toBeInTheDocument();
     expect(screen.getByText(fr['race.results.status.quit'])).toBeInTheDocument();
 
-    // The bonuses column is present and localized, always 0 until Phase 4.
+    // The bonuses column is present and localized, fed by the real
+    // per-participant counter of `raceFinished.results` (BONUS-01).
     expect(screen.getByRole('columnheader', { name: fr['results.table.bonuses'] })).toBeInTheDocument();
     const bonusCells = screen.getAllByTestId('results-bonuses');
     expect(bonusCells).toHaveLength(4);
-    expect(bonusCells[0]).toHaveTextContent('0');
+    expect(bonusCells[0]).toHaveTextContent('1'); // bob received one bonus
+    expect(bonusCells[1]).toHaveTextContent('2'); // ada received two
+    expect(bonusCells[2]).toHaveTextContent('0');
 
     // The local row is highlighted.
     const localRow = rows.find((row) => row.getAttribute('data-local') === 'true');

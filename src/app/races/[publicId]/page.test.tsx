@@ -77,7 +77,7 @@ function replayView(): RaceReplayView {
         status: 'finished',
         finishedAtMs: 55_000,
         rank: 1,
-        bonusesReceived: 0,
+        bonusesReceived: 2,
         wpmSeries: [
           { elapsedMs: 1_000, wpm: 80 },
           { elapsedMs: 55_000, wpm: 112 },
@@ -124,6 +124,8 @@ describe('RaceReplayPage (HIST-02)', () => {
     // Two ranked rows (user + guest) come from the persisted participants.
     expect(screen.getAllByTestId('results-row')).toHaveLength(2);
     expect(screen.getAllByTestId('results-row')[0]).toHaveAttribute('data-rank', '1');
+    // The persisted bonus counter is re-displayed (RES-02, HIST-02).
+    expect(screen.getAllByTestId('results-bonuses')[0]).toHaveTextContent('2');
     // The race text is re-displayed from the persisted body.
     expect(screen.getByText('the quick brown fox')).toBeInTheDocument();
   });
