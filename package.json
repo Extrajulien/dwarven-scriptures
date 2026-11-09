@@ -25,6 +25,7 @@
     "lint": "eslint .",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "db:docker": "docker-compose up -d",
     "db:generate": "drizzle-kit generate",
@@ -35,6 +36,7 @@
     "db:verify": "tsx src/db/verify-users.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.6.4",
     "@types/pg": "^8.23.1",
