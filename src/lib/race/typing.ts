@@ -79,6 +79,16 @@ export type TypingState = {
    * empty in `stop` mode.
    */
   errors: readonly number[];
+  /**
+   * Per-key error counts for the results keyboard heatmap (RES-03): key →
+   * number of WRONG keystrokes on that key during this race. Keys are the
+   * typed characters, letters lower-cased (a wrong `X` and a wrong `x` are
+   * the same physical key — see {@link errorKeyFor}); correct keystrokes and
+   * backspaces never touch this map. Client-side only: it feeds the LOCAL
+   * player's heatmap without any server round-trip (the server carries
+   * aggregate counters, not per-key detail).
+   */
+  keyErrors: Readonly<Record<string, number>>;
 };
 
 export type TypingAction = { type: 'typeChar'; char: string } | { type: 'backspace' };
@@ -117,6 +127,7 @@ export function createTypingState(params: {
     currentIndex: validatedChars,
     lastError: false,
     errors: [],
+    keyErrors: {},
   };
 }
 
@@ -170,12 +181,14 @@ function typeChar(state: TypingState, char: string): TypingState {
 
   // Wrong character: counted and flagged, and the caret advances past it
   // (free advancement). In `stop` mode the caret must NOT advance — the same
-  // counters, but no error mark and a blocked caret.
+  // counters, but no error mark and a blocked caret. Both modes record the
+  // wrong key for the per-key heatmap (RES-03).
   if (state.errorMode === 'stop') {
     return {
       ...state,
       totalKeystrokes: state.totalKeystrokes + 1,
       lastError: true,
+      keyErrors: bumpKeyError(state.keyErrors, char),
     };
   }
 
@@ -185,6 +198,7 @@ function typeChar(state: TypingState, char: string): TypingState {
     currentIndex: state.currentIndex + 1,
     lastError: true,
     errors: insertError(state.errors, state.currentIndex),
+    keyErrors: bumpKeyError(state.keyErrors, char),
   };
 }
 
@@ -228,6 +242,29 @@ function insertError(errors: readonly number[], position: number): readonly numb
     next.splice(index, 0, position);
   }
   return next;
+}
+
+/**
+ * The heatmap key for one typed character (RES-03): letters are lower-cased
+ * (`X` and `x` are the same physical key), every other printable character
+ * (digits, punctuation, space) maps to itself. Non-printable characters are
+ * never dispatched by the UI, but the reducer stays defensive and records
+ * them verbatim.
+ */
+export function errorKeyFor(char: string): string {
+  if (char.length === 1 && /[A-Za-z]/.test(char)) {
+    return char.toLowerCase();
+  }
+  return char;
+}
+
+/** Bumps the error count of one key, returning a fresh map (no mutation). */
+function bumpKeyError(
+  keyErrors: Readonly<Record<string, number>>,
+  char: string,
+): Readonly<Record<string, number>> {
+  const key = errorKeyFor(char);
+  return { ...keyErrors, [key]: (keyErrors[key] ?? 0) + 1 };
 }
 
 /** The participant validated the whole text (COURSE-06 auto-finish). */

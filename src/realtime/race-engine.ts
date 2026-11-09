@@ -25,6 +25,7 @@ import type {
   RaceTickMessage,
   RaceTickParticipant,
   ServerMessage,
+  WpmSeriesPoint,
 } from './protocol';
 
 /**
@@ -103,6 +104,13 @@ export const RACE_RECONNECT_WINDOW_MS = 30_000;
 
 /** GAME-5: global inactivity timeout — no accepted progress for 60 s. */
 export const RACE_AFK_TIMEOUT_MS = 60_000;
+
+/**
+ * RES-03/05: hard cap on the per-participant WPM series. Sampling is at most
+ * once per `raceTick` broadcast (≤ ~4/s), so a 10-minute race tops out at
+ * ~2400 points — the cap is a defensive bound, never hit in practice.
+ */
+export const RACE_WPM_SERIES_MAX_POINTS = 2_400;
 
 export const RACE_ABORT_REASON_AFK = 'afk_timeout';
 export const RACE_ABORT_REASON_HOST_CLOSED = 'host_closed';
@@ -208,6 +216,12 @@ export type RaceEngineResultEntry = {
   /** Validated characters at the moment the status was recorded (COURSE-10). */
   progressChars: number;
   rank: number;
+  /**
+   * WPM-over-time series for the results charts (RES-03); sampled at most
+   * once per tick broadcast and closed by a final sample at `endedAtMs`.
+   * SP-3B persists it alongside the rest of the payload (RES-05).
+   */
+  wpmSeries: WpmSeriesPoint[];
 };
 
 /**
@@ -234,6 +248,8 @@ type ParticipantRuntime = {
   /** Timestamp (ms) of the socket drop, while the reconnect window runs. */
   disconnectedAt: number | null;
   rateLimiter: SlidingWindowRateLimiter;
+  /** WPM-over-time samples (RES-03), appended at tick-broadcast rate. */
+  wpmSeries: WpmSeriesPoint[];
 };
 
 /** One room's race: the pure machine state plus the transport runtime data. */
@@ -443,6 +459,7 @@ export class RaceEngine implements RaceEngineHooks {
           windowMs: RACE_PROGRESS_RATE_WINDOW_MS,
           now: () => this.deps.now().getTime(),
         }),
+        wpmSeries: [],
       });
       byHubKey.set(member.hubKey, memberId);
     }
@@ -544,6 +561,20 @@ export class RaceEngine implements RaceEngineHooks {
             const runtime = entry.runtimes.get(result.memberId);
             entry.progressAtEnd.set(result.memberId, runtime?.progress.validatedChars ?? 0);
           }
+        }
+        // RES-03: close every series with the exact final sample (the last
+        // tick broadcast can be up to ~250 ms behind the participant's end).
+        const startMs = next.startAt?.getTime() ?? 0;
+        for (const result of next.results) {
+          const elapsedMs = Math.max(0, result.endedAt.getTime() - startMs);
+          this.appendSeriesSample(entry, result.memberId, {
+            elapsedMs,
+            wpm: netWpm({
+              correctChars: entry.progressAtEnd.get(result.memberId) ?? 0,
+              elapsedMs,
+            }),
+            final: true,
+          });
         }
         entry.finalResults = this.computeResults(entry, next);
         this.persistStatusLogged(roomId, 'resultats');
@@ -753,14 +784,18 @@ export class RaceEngine implements RaceEngineHooks {
         // runtime; the tick still broadcasts them from the machine's view.
         continue;
       }
+      const wpm = netWpm({ correctChars: runtime.progress.validatedChars, elapsedMs });
       participants.push({
         participantId: runtime.publicId,
         kind: participant.kind,
         displayName: participant.displayName,
         position: runtime.progress.validatedChars,
-        wpm: netWpm({ correctChars: runtime.progress.validatedChars, elapsedMs }),
+        wpm,
         finished: ended.has(participant.memberId),
       });
+      // RES-03: sample the WPM series at tick-broadcast rate (≤ ~4/s). The
+      // series is NEVER part of the tick payload itself (PERF-02).
+      this.appendSeriesSample(entry, participant.memberId, { elapsedMs, wpm });
     }
 
     return {
@@ -769,6 +804,42 @@ export class RaceEngine implements RaceEngineHooks {
       tickAt: now.toISOString(),
       participants,
     };
+  }
+
+  /**
+   * Appends one WPM sample to a participant's series (RES-03). Samples are
+   * strictly time-ordered; a `final` sample at the participant's exact end
+   * time overwrites a same-millisecond tick sample so the series' last point
+   * always equals the ranked WPM. Bounded by
+   * {@link RACE_WPM_SERIES_MAX_POINTS} (a defensive cap — the ~4/s sampling
+   * rate keeps a 10-minute race at ≤ ~2400 points).
+   */
+  private appendSeriesSample(
+    entry: RoomRace,
+    memberId: string,
+    sample: { elapsedMs: number; wpm: number; final?: boolean },
+  ): void {
+    const runtime = entry.runtimes.get(memberId);
+    if (!runtime) {
+      return;
+    }
+    const series = runtime.wpmSeries;
+    const last = series[series.length - 1];
+    if (last && last.elapsedMs > sample.elapsedMs) {
+      return; // never go backwards in time
+    }
+    if (last && last.elapsedMs === sample.elapsedMs) {
+      // A final sample at the same millisecond replaces the tick sample
+      // (same elapsed time, fresher progress counters).
+      if (sample.final) {
+        series[series.length - 1] = { elapsedMs: sample.elapsedMs, wpm: sample.wpm };
+      }
+      return;
+    }
+    if (series.length >= RACE_WPM_SERIES_MAX_POINTS) {
+      return;
+    }
+    series.push({ elapsedMs: sample.elapsedMs, wpm: sample.wpm });
   }
 
   /**
@@ -821,6 +892,7 @@ export class RaceEngine implements RaceEngineHooks {
         endedAt: result.endedAt,
         progressChars: correctChars,
         rank: index + 1,
+        wpmSeries: runtime ? [...runtime.wpmSeries] : [],
       };
     });
 
@@ -849,6 +921,7 @@ export class RaceEngine implements RaceEngineHooks {
         status: result.status,
         finishedAtMs: result.endedAtMs,
         rank: result.rank,
+        wpmSeries: result.wpmSeries,
       })),
     };
   }

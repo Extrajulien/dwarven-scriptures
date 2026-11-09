@@ -51,6 +51,7 @@ function makeResult(overrides: Partial<RaceResultEntry> = {}): RaceResultEntry {
     status: 'finished',
     finishedAtMs: 20_000,
     rank: 1,
+    wpmSeries: [],
     ...overrides,
   };
 }

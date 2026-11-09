@@ -392,12 +392,14 @@ describe('race messages reducer (GAME-1 groundwork, COURSE-08)', () => {
           status: 'finished',
           finishedAtMs: 41_000,
           rank: 1,
+          wpmSeries: [{ elapsedMs: 41_000, wpm: 60 }],
         },
       ],
     });
     expect(next.race?.phase).toBe('resultats');
     expect(next.race?.finished?.durationMs).toBe(45_321);
     expect(next.race?.finished?.results[0].rank).toBe(1);
+    expect(next.race?.finished?.results[0].wpmSeries).toEqual([{ elapsedMs: 41_000, wpm: 60 }]);
   });
 
   test('raceAborted clears the race and puts the room back to en_attente', () => {
