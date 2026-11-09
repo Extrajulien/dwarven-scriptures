@@ -662,6 +662,18 @@ export interface Messages {
   'race.results.status.finished': string;
   'race.results.status.timeout': string;
   'race.results.status.quit': string;
+  // ------------------------------------------------------------ race progress track (COURSE-05, GAME-2/3)
+  'track.title': string;
+  'track.liveHint': string;
+  'track.youTag': string;
+  'track.rankLabel': string;
+  'track.finishLabel': string;
+  'top3.title': string;
+  'top3.waiting': string;
+  'overtake.overtookPrefix': string;
+  'overtake.overtakenBySuffix': string;
+  'overtake.ariaUp': string;
+  'overtake.ariaDown': string;
   // ------------------------------------------------------------ chrome accessibility
   'chrome.guildEmblemAlt': string;
   'chrome.siteLogoAlt': string;
@@ -1285,6 +1297,18 @@ export const MESSAGES: Record<Locale, Messages> = {
     'race.results.status.finished': 'Terminé',
     'race.results.status.timeout': 'Temps écoulé',
     'race.results.status.quit': 'Abandon',
+    // ------------------------------------------------------------ piste de progression (COURSE-05, GAME-2/3)
+    'track.title': 'PISTE DE LA COURSE',
+    'track.liveHint': 'EN DIRECT',
+    'track.youTag': 'VOUS',
+    'track.rankLabel': 'Rang',
+    'track.finishLabel': 'Arrivée',
+    'top3.title': 'TÊTE DE COURSE',
+    'top3.waiting': 'En attente des coureurs…',
+    'overtake.overtookPrefix': 'Vous doublez',
+    'overtake.overtakenBySuffix': 'vous double',
+    'overtake.ariaUp': 'Vous avez doublé',
+    'overtake.ariaDown': 'Vous avez été doublé par',
     // ------------------------------------------------------------ chrome accessibility
     'chrome.guildEmblemAlt': 'Emblème de la guilde Dwarf Fortress Delve',
     'chrome.siteLogoAlt': 'Logo de Dwarven Scriptures',
@@ -1901,6 +1925,18 @@ export const MESSAGES: Record<Locale, Messages> = {
     'race.results.status.finished': 'Finished',
     'race.results.status.timeout': 'Timed out',
     'race.results.status.quit': 'Quit',
+    // ------------------------------------------------------------ race progress track (COURSE-05, GAME-2/3)
+    'track.title': 'RACE TRACK',
+    'track.liveHint': 'LIVE',
+    'track.youTag': 'YOU',
+    'track.rankLabel': 'Rank',
+    'track.finishLabel': 'Finished',
+    'top3.title': 'LEADERS',
+    'top3.waiting': 'Waiting for racers…',
+    'overtake.overtookPrefix': 'You overtake',
+    'overtake.overtakenBySuffix': 'overtakes you',
+    'overtake.ariaUp': 'You overtook',
+    'overtake.ariaDown': 'You were overtaken by',
     // ------------------------------------------------------------ chrome accessibility
     'chrome.guildEmblemAlt': 'Dwarf Fortress Delve Guild Emblem',
     'chrome.siteLogoAlt': 'Dwarven Scriptures logo',
