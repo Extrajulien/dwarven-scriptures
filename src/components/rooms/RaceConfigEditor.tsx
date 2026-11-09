@@ -35,7 +35,8 @@ import ButtonSecondary from '../ButtonSecondary';
  *   English turns the option off, the toggle is disabled and the payload
  *   never stores `accents: true` for an English config.
  * - Bots (CONF-10) are `{ level, count }` rows; a count of 0 removes the
- *   entry from the saved payload. The bot ENGINE arrives in Phase 4 (BOT-*).
+ *   entry from the saved payload. The bot engine (BOT-*) drives them from
+ *   Phase 4 — bots join races now.
  */
 
 /** Localized label keys for the five bot levels (BOT-01), shared with the lobby summary. */
@@ -529,7 +530,6 @@ export default function RaceConfigEditor({
                 {messages['lobby.config.error.botCount']}
               </p>
             )}
-            <p className={LABEL_CLASSES}>{messages['lobby.config.botsNote']}</p>
           </div>
         </fieldset>
 

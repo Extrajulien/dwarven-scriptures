@@ -79,4 +79,28 @@ describe('Top3Panel (GAME-2 live top-3)', () => {
     expect(rows[1]).toHaveAttribute('data-local', 'true');
     expect(rows[1]).toHaveTextContent(messages['track.youTag']);
   });
+
+  test('localizes bot names in the top-3 rows (BOT-04)', () => {
+    render(
+      <Top3Panel
+        finishRanks={{}}
+        localParticipantId={ADA}
+        messages={messages}
+        participants={[
+          participant({
+            participantId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            kind: 'bot',
+            displayName: 'expert 2',
+            position: 600,
+            wpm: 60,
+          }),
+          participant({ participantId: ADA, displayName: 'ada', position: 500, wpm: 45 }),
+        ]}
+      />,
+    );
+
+    const botRow = screen.getAllByTestId('top3-row').find((row) => row.getAttribute('data-rank') === '1');
+    expect(botRow).toHaveTextContent('Expert n°2');
+    expect(screen.queryByText('expert 2')).not.toBeInTheDocument();
+  });
 });

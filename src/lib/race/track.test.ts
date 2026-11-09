@@ -236,7 +236,7 @@ describe('detectRankChanges (GAME-3 overtake warnings)', () => {
     expect(events[0]).toMatchObject({
       type: 'overtook',
       direction: 'up',
-      other: { participantId: 'rival', displayName: 'Rival' },
+      other: { participantId: 'rival', displayName: 'Rival', kind: 'user' },
       rank: 1,
     });
   });
@@ -249,9 +249,23 @@ describe('detectRankChanges (GAME-3 overtake warnings)', () => {
     expect(events[0]).toMatchObject({
       type: 'overtaken',
       direction: 'down',
-      other: { participantId: 'rival', displayName: 'Rival' },
+      other: { participantId: 'rival', displayName: 'Rival', kind: 'user' },
       rank: 2,
     });
+  });
+
+  test('carries the other participant kind so the UI can localize bot names (BOT-04)', () => {
+    const rivalBot = participant({
+      participantId: 'bot-7',
+      displayName: 'expert 2',
+      kind: 'bot',
+      position: 450,
+      wpm: 62,
+    });
+    const prev = ranked([ada, rivalBot]);
+    const next = ranked([{ ...ada, position: 500 }, rivalBot]);
+    const events = detectRankChanges(prev, next, 'ada');
+    expect(events[0].other).toMatchObject({ participantId: 'bot-7', kind: 'bot' });
   });
 
   test('reports the directly-ahead participant when several ranks are gained', () => {

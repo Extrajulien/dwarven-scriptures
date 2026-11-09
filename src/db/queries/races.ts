@@ -542,7 +542,13 @@ export async function getRaceForReplay(publicId: string): Promise<RaceReplayView
     finishedAt: race.finishedAt,
     durationMs: race.durationMs,
     results: rows.map((row) => ({
-      participantId: (row.kind === 'user' ? row.userPublicId : row.guestToken) ?? '',
+      // Bots carry no persisted identity (kind 'bot'), so the replay id is
+      // derived from the unique rank: `bot-<rank>` is stable and unique
+      // within the race (the live race's synthetic UUID is not persisted).
+      participantId:
+        row.kind === 'bot'
+          ? `bot-${row.rank}`
+          : ((row.kind === 'user' ? row.userPublicId : row.guestToken) ?? ''),
       displayName: row.displayName,
       kind: row.kind,
       pfpUrl: row.kind === 'user' ? row.pfpUrl : null,

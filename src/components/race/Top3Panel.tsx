@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import type { Messages } from '../../i18n/messages';
+import { localizeBotDisplayName } from '../../lib/race/bot-display';
 import { deriveRanking } from '../../lib/race/track';
 import type { RaceTrackParticipant } from '../../realtime/client-types';
 
@@ -62,7 +63,9 @@ export default function Top3Panel({
                 {entry.rank}
               </span>
               <span className="min-w-0 flex-1 truncate font-body-sm text-body-sm text-dwarf-parchment">
-                {entry.displayName}
+                {entry.kind === 'bot'
+                  ? localizeBotDisplayName(entry.displayName, messages)
+                  : entry.displayName}
                 {isLocal && (
                   <span className="ml-space-xs font-label-sm text-label-sm text-dwarf-gold">
                     ({messages['track.youTag']})

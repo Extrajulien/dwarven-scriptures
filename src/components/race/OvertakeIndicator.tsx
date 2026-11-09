@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { Messages } from '../../i18n/messages';
+import { localizeBotDisplayName } from '../../lib/race/bot-display';
 import {
   deriveRanking,
   detectRankChanges,
@@ -77,12 +78,16 @@ export default function OvertakeIndicator({
     return () => clearTimeout(id);
   }, [event]);
 
+  const otherName =
+    event !== null && event.other.kind === 'bot'
+      ? localizeBotDisplayName(event.other.displayName, messages)
+      : (event?.other.displayName ?? '');
   const announce =
     event === null
       ? ''
       : event.type === 'overtook'
-        ? `${messages['overtake.ariaUp']} ${event.other.displayName} — ${messages['track.rankLabel']} ${event.rank}`
-        : `${messages['overtake.ariaDown']} ${event.other.displayName} — ${messages['track.rankLabel']} ${event.rank}`;
+        ? `${messages['overtake.ariaUp']} ${otherName} — ${messages['track.rankLabel']} ${event.rank}`
+        : `${messages['overtake.ariaDown']} ${otherName} — ${messages['track.rankLabel']} ${event.rank}`;
 
   return (
     <>
@@ -109,8 +114,8 @@ export default function OvertakeIndicator({
           </span>
           <p className="min-w-0 truncate font-label-md text-label-md">
             {event.type === 'overtook'
-              ? `${messages['overtake.overtookPrefix']} ${event.other.displayName}`
-              : `${event.other.displayName} ${messages['overtake.overtakenBySuffix']}`}
+              ? `${messages['overtake.overtookPrefix']} ${otherName}`
+              : `${otherName} ${messages['overtake.overtakenBySuffix']}`}
           </p>
           <span
             data-testid="overtake-rank"

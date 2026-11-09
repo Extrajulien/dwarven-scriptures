@@ -168,8 +168,9 @@ export type RankChangeEvent = {
   type: 'overtook' | 'overtaken';
   /** 'up': the local participant gained a rank; 'down': they lost one. */
   direction: 'up' | 'down';
-  /** The directly involved other participant (passed / passer). */
-  other: { participantId: string; displayName: string };
+  /** The directly involved other participant (passed / passer). `kind` lets
+   * the UI localize bot display names (BOT-04). */
+  other: { participantId: string; displayName: string; kind: RaceTrackParticipant['kind'] };
   /** The local participant's rank after the change (1-based). */
   rank: number;
 };
@@ -204,7 +205,11 @@ export function detectRankChanges(
       {
         type: 'overtook',
         direction: 'up',
-        other: { participantId: overtaken.participantId, displayName: overtaken.displayName },
+        other: {
+          participantId: overtaken.participantId,
+          displayName: overtaken.displayName,
+          kind: overtaken.kind,
+        },
         rank: nextLocal.rank,
       },
     ];
@@ -220,7 +225,11 @@ export function detectRankChanges(
       {
         type: 'overtaken',
         direction: 'down',
-        other: { participantId: passer.participantId, displayName: passer.displayName },
+        other: {
+          participantId: passer.participantId,
+          displayName: passer.displayName,
+          kind: passer.kind,
+        },
         rank: nextLocal.rank,
       },
     ];

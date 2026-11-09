@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import type { Locale, Messages } from '../../i18n/messages';
 import { formatNumber } from '../../i18n/format';
+import { localizeBotDisplayName } from '../../lib/race/bot-display';
 import type { RaceResultEntry, WpmSeriesPoint } from '../../realtime/protocol';
 import Icon from '../Icon';
 
@@ -110,11 +111,21 @@ export default function ResultsWpmChart({
       ...results.flatMap((entry) => entry.wpmSeries.map((point) => point.wpm)),
     );
     return {
-      lines: results.map((entry) => buildChartLine(entry, maxElapsed, maxRate)),
+      // Bot legend labels are localized from their neutral wire name
+      // (BOT-04/I18N-01); human names pass through untouched.
+      lines: results.map((entry) =>
+        buildChartLine(
+          entry.kind === 'bot'
+            ? { ...entry, displayName: localizeBotDisplayName(entry.displayName, messages) }
+            : entry,
+          maxElapsed,
+          maxRate,
+        ),
+      ),
       maxElapsedMs: maxElapsed,
       maxWpm: maxRate,
     };
-  }, [results]);
+  }, [results, messages]);
 
   // Gridline/axis values (ProgressionCharts visual language).
   const yTicks = [0, 0.5, 1].map((ratio) => Math.round(maxWpm * ratio));

@@ -181,7 +181,6 @@ export interface Messages {
   'lobby.config.saved': string;
   'lobby.config.timeLimitHint': string;
   'lobby.config.accentsHint': string;
-  'lobby.config.botsNote': string;
   'lobby.config.addBot': string;
   'lobby.config.removeBot': string;
   'lobby.config.botLevel': string;
@@ -669,6 +668,12 @@ export interface Messages {
   'results.table.status': string;
   'results.table.bonuses': string;
   'results.botTag': string;
+  'bot.level.noob': string;
+  'bot.level.debutant': string;
+  'bot.level.intermediaire': string;
+  'bot.level.expert': string;
+  'bot.level.impossible': string;
+  'bot.nameSuffix': string;
   'results.chart.title': string;
   'results.chart.caption': string;
   'results.heatmap.title': string;
@@ -831,7 +836,6 @@ export const MESSAGES: Record<Locale, Messages> = {
     'lobby.config.saved': 'Configuration enregistrée — toutes les personnes présentes la voient.',
     'lobby.config.timeLimitHint': '30 s à 10 min ; vide = aucune limite',
     'lobby.config.accentsHint': 'Les accents ne s’appliquent qu’au français.',
-    'lobby.config.botsNote': 'Les bots rejoignent les courses à partir de la phase 4.',
     'lobby.config.addBot': 'Ajouter un bot',
     'lobby.config.removeBot': 'Retirer ce bot',
     'lobby.config.botLevel': 'Niveau',
@@ -1339,6 +1343,12 @@ export const MESSAGES: Record<Locale, Messages> = {
     'results.table.status': 'Statut',
     'results.table.bonuses': 'Bonus reçus',
     'results.botTag': 'BOT',
+    'bot.level.noob': 'Noob',
+    'bot.level.debutant': 'Débutant',
+    'bot.level.intermediaire': 'Intermédiaire',
+    'bot.level.expert': 'Expert',
+    'bot.level.impossible': 'Impossible',
+    'bot.nameSuffix': 'n°',
     'results.chart.title': 'MPM AU FIL DU TEMPS',
     'results.chart.caption': 'MPM net de chaque participant pendant la course',
     'results.heatmap.title': 'TOUCHES LES PLUS MANQUÉES',
@@ -1503,7 +1513,6 @@ export const MESSAGES: Record<Locale, Messages> = {
     'lobby.config.saved': 'Configuration saved — everyone in the room sees it.',
     'lobby.config.timeLimitHint': '30 s to 10 min; empty = no limit',
     'lobby.config.accentsHint': 'Accents apply to French text only.',
-    'lobby.config.botsNote': 'Bots join races from Phase 4.',
     'lobby.config.addBot': 'Add a bot',
     'lobby.config.removeBot': 'Remove this bot',
     'lobby.config.botLevel': 'Level',
@@ -2007,6 +2016,12 @@ export const MESSAGES: Record<Locale, Messages> = {
     'results.table.status': 'Status',
     'results.table.bonuses': 'Bonuses received',
     'results.botTag': 'BOT',
+    'bot.level.noob': 'Noob',
+    'bot.level.debutant': 'Beginner',
+    'bot.level.intermediaire': 'Intermediate',
+    'bot.level.expert': 'Expert',
+    'bot.level.impossible': 'Impossible',
+    'bot.nameSuffix': '#',
     'results.chart.title': 'WPM OVER TIME',
     'results.chart.caption': 'Each participant’s net WPM during the race',
     'results.heatmap.title': 'MOST MISSED KEYS',

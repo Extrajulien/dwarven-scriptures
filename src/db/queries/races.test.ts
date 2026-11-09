@@ -446,10 +446,11 @@ function replayRaceRow(): Record<string, unknown> {
 }
 
 function replayParticipantRow(
-  kind: 'user' | 'guest',
+  kind: 'user' | 'guest' | 'bot',
   userPublicId: string | null,
   displayName: string,
   pfpUrl: string | null,
+  rank = 1,
 ): Record<string, unknown> {
   return {
     kind,
@@ -462,7 +463,7 @@ function replayParticipantRow(
     errors: 3,
     status: 'finished',
     finishedAtMs: 45_000,
-    rank: 1,
+    rank,
     bonusesReceived: 0,
     wpmSeries: [{ elapsedMs: 1_000, wpm: 80.12 }],
     userPublicId,
@@ -502,6 +503,24 @@ describe('getRaceForReplay (HIST-02)', () => {
       kind: 'guest',
       pfpUrl: null,
     });
+  });
+
+  test('derives unique rank-keyed participant ids for bot rows (BOT-04)', async () => {
+    selectQueue = [
+      [replayRaceRow()],
+      [
+        replayParticipantRow('bot', null, 'noob 1', null, 2),
+        replayParticipantRow('bot', null, 'expert 2', null, 3),
+      ],
+    ];
+
+    const view = await getRaceForReplay('22222222-2222-4222-8222-222222222222');
+
+    // Bots carry no persisted identity: the rank is the stable, unique key.
+    expect(view?.results.map((result) => result.participantId)).toEqual(['bot-2', 'bot-3']);
+    expect(view?.results.every((result) => result.kind === 'bot')).toBe(true);
+    expect(view?.results.every((result) => result.pfpUrl === null)).toBe(true);
+    expect(view?.results[0]).toMatchObject({ displayName: 'noob 1', rank: 2 });
   });
 
   test('returns null for a missing race', async () => {

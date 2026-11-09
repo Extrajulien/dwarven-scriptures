@@ -219,4 +219,38 @@ describe('OvertakeIndicator (GAME-3)', () => {
       jest.useRealTimers();
     }
   });
+
+  test('localizes bot names in the overtake strip (BOT-04)', () => {
+    const botRival = participant({
+      participantId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      kind: 'bot',
+      displayName: 'expert 2',
+      position: 600,
+      wpm: 60,
+    });
+    const { rerender } = renderIndicator({
+      participants: [
+        botRival,
+        participant({ participantId: ADA, displayName: 'ada', position: 400, wpm: 40 }),
+      ],
+    });
+    expect(screen.queryByTestId('overtake-panel')).not.toBeInTheDocument();
+
+    // Ada passes the bot: the strip names the bot in the viewer's language.
+    rerender(
+      <OvertakeIndicator
+        messages={messages}
+        localParticipantId={ADA}
+        finishRanks={{}}
+        participants={[
+          botRival,
+          participant({ participantId: ADA, displayName: 'ada', position: 700, wpm: 60 }),
+        ]}
+      />,
+    );
+    const panel = screen.getByTestId('overtake-panel');
+    expect(panel).toHaveAttribute('data-direction', 'up');
+    expect(panel).toHaveTextContent('Expert n°2');
+    expect(panel).not.toHaveTextContent('expert 2');
+  });
 });

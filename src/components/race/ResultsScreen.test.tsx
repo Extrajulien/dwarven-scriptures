@@ -173,14 +173,21 @@ describe('results table (RES-02)', () => {
     expect(screen.getByText(en['race.results.status.quit'])).toBeInTheDocument();
   });
 
-  test('marks bot-kind participants with the localized tag (podium + table)', () => {
+  test('marks bot-kind participants with the localized tag and name (podium + table)', () => {
     renderResults(
       makeResults([
-        entry({ rank: 1, participantId: '66666666-6666-4666-8666-666666666666', displayName: 'Noob-1', kind: 'bot', status: 'quit' }),
+        entry({ rank: 1, participantId: '66666666-6666-4666-8666-666666666666', displayName: 'noob 1', kind: 'bot', status: 'quit' }),
         entry({ rank: 2, participantId: ADA, displayName: 'ada' }),
       ]),
     );
     expect(screen.getAllByText(fr['results.botTag'])).toHaveLength(2);
+    // The neutral wire name is localized in the podium, the table and the
+    // chart legend; the raw code is never shown.
+    expect(screen.getAllByText(/Noob n°1/)).toHaveLength(3);
+    expect(screen.queryByText('noob 1')).not.toBeInTheDocument();
+    // Bots stand on a stone rune, never on a human avatar.
+    expect(screen.getByTestId('results-podium-bot-rune')).toBeInTheDocument();
+    expect(screen.getByTestId('results-bot-rune')).toBeInTheDocument();
   });
 
   test('formats the elapsed time with locale decimals and the seconds unit', () => {

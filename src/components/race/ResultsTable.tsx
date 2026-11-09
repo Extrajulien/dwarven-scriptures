@@ -2,16 +2,18 @@
 
 import type { Locale, Messages } from '../../i18n/messages';
 import { formatNumber } from '../../i18n/format';
+import { localizeBotDisplayName } from '../../lib/race/bot-display';
 import type { RaceResultEntry } from '../../realtime/protocol';
 import UserAvatar from '../UserAvatar';
 import GuestAvatar from '../rooms/GuestAvatar';
 
 /**
- * Complete results table (RES-02): rank, participant (avatar + name, bot-kind
- * ready), net WPM, raw WPM, accuracy, errors, time and localized status, plus
- * the bonuses column (always 0 until Phase 4 — the label is localized). All
- * numbers go through `src/i18n/format.ts` so fr/en viewers get their own
- * separators (I18N-03). The local player's row is highlighted.
+ * Complete results table (RES-02): rank, participant (avatar + name; bots get
+ * a stone rune, the localized level label and the BOT tag — BOT-04), net WPM,
+ * raw WPM, accuracy, errors, time and localized status, plus the bonuses
+ * column (always 0 until Phase 4 — the label is localized). All numbers go
+ * through `src/i18n/format.ts` so fr/en viewers get their own separators
+ * (I18N-03). The local player's row is highlighted.
  */
 
 const STATUS_KEYS = {
@@ -101,6 +103,14 @@ export default function ResultsTable({
                           seed={entry.participantId}
                           className="h-8 w-8 shrink-0 text-body-md"
                         />
+                      ) : entry.kind === 'bot' ? (
+                        <span
+                          data-testid="results-bot-rune"
+                          aria-hidden="true"
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-dwarf-border bg-dwarf-basalt font-display text-body-md text-dwarf-parchmentMuted"
+                        >
+                          {'ᛝ'}
+                        </span>
                       ) : (
                         <UserAvatar
                           pfpUrl={pfpUrls[entry.participantId] ?? null}
@@ -110,7 +120,9 @@ export default function ResultsTable({
                         />
                       )}
                       <span className="truncate font-body-sm text-body-sm text-dwarf-parchment">
-                        {entry.displayName}
+                        {entry.kind === 'bot'
+                          ? localizeBotDisplayName(entry.displayName, messages)
+                          : entry.displayName}
                         {isLocal && (
                           <span className="ml-space-xs font-label-sm text-label-sm text-dwarf-gold">
                             ({messages['track.youTag']})
