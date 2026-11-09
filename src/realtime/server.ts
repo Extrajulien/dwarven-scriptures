@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, Server as HttpServer } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { getRoomForJoin, setRoomStatus } from '../db/queries/rooms';
+import { persistRaceResult } from '../db/queries/races';
 import { getUserFullProfile } from '../db/queries/users';
 // Pure token codecs — the realtime server runs before the Next request
 // context exists, so it must never import `next/headers` here.
@@ -171,6 +172,10 @@ function createRaceEngine(getHub: () => RoomHub): RaceEngine {
     },
     pickText: pickRaceText,
     persistStatus: (roomId, status) => setRoomStatus(roomId, status),
+    // RES-05: the engine hands over the finished race exactly once; the
+    // persistence layer writes race + participants + user stats in one
+    // transaction. Failures are logged by the engine, not thrown here.
+    persistResults: (payload) => persistRaceResult(payload),
     broadcast: (roomId, message) => getHub().sendToRoom(roomId, message),
     randomSeed: () => Math.floor(Math.random() * 0x1_0000_0000),
   });
@@ -368,6 +373,20 @@ async function dispatchMessage(
   switch (parsed.data.type) {
     case 'joinRoom':
       await hub.handleJoin(connection, parsed.data);
+      // COURSE-11 replay (RES-05): a joiner arriving while the room shows
+      // the results screen receives the last finished race re-broadcast to
+      // this connection only, in the exact `raceFinished` shape the other
+      // members already received. `null` when the engine has no payload
+      // (never raced, relaunched, or server restarted).
+      {
+        const membership = hub.membershipOf(connection);
+        if (membership) {
+          const replayed = engine.raceFinishedReplay(membership.roomId);
+          if (replayed) {
+            connection.send(replayed);
+          }
+        }
+      }
       break;
     case 'leaveRoom':
       await hub.handleLeave(connection);

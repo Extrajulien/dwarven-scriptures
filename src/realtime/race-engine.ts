@@ -25,6 +25,7 @@ import type {
   RaceTickMessage,
   RaceTickParticipant,
   ServerMessage,
+  WpmSeriesPoint,
 } from './protocol';
 
 /**
@@ -77,12 +78,18 @@ import type {
  *   progression, then quits by progression at the moment of quitting.
  *   Computed server-side at the `en_course → resultats` transition.
  *
- * ## Persistence seam (Phase 3)
+ * ## Persistence and replay (Phase 3)
  *
- * The engine keeps the final {@link RaceResultsPayload} in memory for the
- * room's lifetime ({@link takeResults}); persisting it to PostgreSQL
- * (`races`/race history, RES-05) is SP-3B's job — it consumes this payload
- * and the WPM series the tick loop already aggregates.
+ * At the `en_course → resultats` transition the engine keeps the final
+ * {@link RaceResultsPayload} in memory for the room's lifetime
+ * ({@link takeResults}) and hands it to the `persistResults` seam exactly
+ * once (PERF-02: one write per finished race, fire-and-forget with error
+ * logging — the in-memory state stays authoritative). **Aborted races
+ * (GAME-5) are NOT persisted**: they produce no ranking, and persisting an
+ * unranked race into the user's history would be dishonest — the choice is
+ * documented here and in `doc/ARCHITECTURE.md`. Late joiners arriving on a
+ * `resultats` room receive the payload re-broadcast as a `raceFinished`
+ * message ({@link raceFinishedReplay}).
  */
 
 /** Engine clock interval: how often the state machine is advanced. */
@@ -103,6 +110,13 @@ export const RACE_RECONNECT_WINDOW_MS = 30_000;
 
 /** GAME-5: global inactivity timeout — no accepted progress for 60 s. */
 export const RACE_AFK_TIMEOUT_MS = 60_000;
+
+/**
+ * RES-03/05: hard cap on the per-participant WPM series. Sampling is at most
+ * once per `raceTick` broadcast (≤ ~4/s), so a 10-minute race tops out at
+ * ~2400 points — the cap is a defensive bound, never hit in practice.
+ */
+export const RACE_WPM_SERIES_MAX_POINTS = 2_400;
 
 export const RACE_ABORT_REASON_AFK = 'afk_timeout';
 export const RACE_ABORT_REASON_HOST_CLOSED = 'host_closed';
@@ -167,6 +181,12 @@ export type RaceEngineDeps = {
   pickText(config: RoomConfig, seed: number): Promise<RaceText | null>;
   /** Persists `rooms.status` on every phase change (COURSE-01). */
   persistStatus(roomId: number, status: RacePhase): Promise<void>;
+  /**
+   * Persists a finished race, its participants and the user-stats updates in
+   * one transaction (RES-05). Called exactly once per finished race; the
+   * engine logs failures and never lets them disturb the race flow.
+   */
+  persistResults(payload: RaceResultsPayload): Promise<void>;
   /** Broadcasts one message to every live connection of the room. */
   broadcast(roomId: number, message: ServerMessage): void;
   /** Random seed for random-mode texts (recorded in the race state, BOT-05-style). */
@@ -195,12 +215,20 @@ export type RaceEngineResultEntry = {
   participantId: string;
   /** Internal participant key (for Phase-3 persistence). */
   memberId: string;
+  /** Internal user id for `kind: 'user'`; `null` otherwise. Never on the wire. */
+  userId: number | null;
+  /** Guest cookie id for `kind: 'guest'`; `null` otherwise. Never on the wire. */
+  guestToken: string | null;
   displayName: string;
   kind: ParticipantKind;
   wpm: number;
   rawWpm: number;
   accuracy: number;
   errors: number;
+  /** Cumulative correct keystrokes at the participant's end (stats; not on the wire). */
+  correctKeystrokes: number;
+  /** Cumulative total keystrokes at the participant's end (stats; not on the wire). */
+  totalKeystrokes: number;
   status: ParticipantFinalState;
   /** Milliseconds after the typing start at which the status was recorded. */
   endedAtMs: number;
@@ -208,15 +236,32 @@ export type RaceEngineResultEntry = {
   /** Validated characters at the moment the status was recorded (COURSE-10). */
   progressChars: number;
   rank: number;
+  /**
+   * WPM-over-time series for the results charts (RES-03); sampled at most
+   * once per tick broadcast and closed by a final sample at `endedAtMs`.
+   * SP-3B persists it alongside the rest of the payload (RES-05).
+   */
+  wpmSeries: WpmSeriesPoint[];
 };
 
 /**
- * The in-memory results payload SP-3B will persist (RES-05). It stays here,
- * keyed by room, for the room's lifetime — persistence is out of scope in
- * Phase 2 and documented as such.
+ * The in-memory results payload SP-3B persists (RES-05). It stays here,
+ * keyed by room, for the room's lifetime, and carries everything the race
+ * history needs: the room routing id, the text, the config snapshot taken at
+ * start and the per-participant identity and counters.
  */
 export type RaceResultsPayload = {
   roomId: number;
+  /** Room public id at finish — denormalized onto the persisted race row. */
+  roomPublicId: string;
+  /** Full text body typed in this race (history replay). */
+  textBody: string;
+  /** ISO 639-1 language of the text (config snapshot). */
+  textLanguage: RoomConfig['textLanguage'];
+  /** Race config snapshot taken at start (CONF-12). */
+  config: RoomConfig;
+  /** Typing start (countdown end); `durationMs` is measured from it. */
+  startedAt: Date;
   finishedAt: Date;
   durationMs: number;
   results: RaceEngineResultEntry[];
@@ -229,11 +274,17 @@ type ParticipantRuntime = {
   publicId: string;
   kind: ParticipantKind;
   displayName: string;
+  /** Internal user id for user participants (persistence identity). */
+  userId: number | null;
+  /** Guest cookie id for guest participants (persistence identity). */
+  guestToken: string | null;
   progress: RaceEngineProgress;
   connected: boolean;
   /** Timestamp (ms) of the socket drop, while the reconnect window runs. */
   disconnectedAt: number | null;
   rateLimiter: SlidingWindowRateLimiter;
+  /** WPM-over-time samples (RES-03), appended at tick-broadcast rate. */
+  wpmSeries: WpmSeriesPoint[];
 };
 
 /** One room's race: the pure machine state plus the transport runtime data. */
@@ -435,6 +486,8 @@ export class RaceEngine implements RaceEngineHooks {
         publicId: member.publicId,
         kind: member.userId !== null ? 'user' : 'guest',
         displayName: member.displayName,
+        userId: member.userId,
+        guestToken: member.guestToken,
         progress: zeroProgress(),
         connected: true,
         disconnectedAt: null,
@@ -443,6 +496,7 @@ export class RaceEngine implements RaceEngineHooks {
           windowMs: RACE_PROGRESS_RATE_WINDOW_MS,
           now: () => this.deps.now().getTime(),
         }),
+        wpmSeries: [],
       });
       byHubKey.set(member.hubKey, memberId);
     }
@@ -545,8 +599,26 @@ export class RaceEngine implements RaceEngineHooks {
             entry.progressAtEnd.set(result.memberId, runtime?.progress.validatedChars ?? 0);
           }
         }
+        // RES-03: close every series with the exact final sample (the last
+        // tick broadcast can be up to ~250 ms behind the participant's end).
+        const startMs = next.startAt?.getTime() ?? 0;
+        for (const result of next.results) {
+          const elapsedMs = Math.max(0, result.endedAt.getTime() - startMs);
+          this.appendSeriesSample(entry, result.memberId, {
+            elapsedMs,
+            wpm: netWpm({
+              correctChars: entry.progressAtEnd.get(result.memberId) ?? 0,
+              elapsedMs,
+            }),
+            final: true,
+          });
+        }
         entry.finalResults = this.computeResults(entry, next);
         this.persistStatusLogged(roomId, 'resultats');
+        // RES-05, PERF-02: persist exactly once per finished race, in the
+        // background — in-memory state stays authoritative. Aborted races
+        // never reach this branch (GAME-5 produces no ranking, no history).
+        this.persistResultsLogged(entry.finalResults);
         this.deps.broadcast(roomId, this.buildRaceFinished(entry));
       }
     }
@@ -717,12 +789,27 @@ export class RaceEngine implements RaceEngineHooks {
   }
 
   /**
-   * Phase-3 seam: the final ranking kept in memory for the room's lifetime.
-   * SP-3B persists this payload (RES-05); nothing here writes to the
-   * database. `null` before the race reached `resultats`.
+   * The final ranking kept in memory for the room's lifetime (RES-05). The
+   * wiring persists it through the `persistResults` seam; `null` before the
+   * race reached `resultats`.
    */
   takeResults(roomId: number): RaceResultsPayload | null {
     return this.rooms.get(roomId)?.finalResults ?? null;
+  }
+
+  /**
+   * COURSE-11 replay (RES-05): the last finished race, re-shaped as the
+   * `raceFinished` message a late joiner missed, or `null` when the room's
+   * current state is not `resultats` or the payload is not in memory (for
+   * example after a server restart — the persisted `/races/[publicId]` page
+   * remains available in that case, HIST-02).
+   */
+  raceFinishedReplay(roomId: number): RaceFinishedMessage | null {
+    const entry = this.rooms.get(roomId);
+    if (!entry || entry.state.phase !== 'resultats' || !entry.finalResults) {
+      return null;
+    }
+    return this.buildRaceFinished(entry);
   }
 
   // ---------------------------------------------------------------- helpers
@@ -753,14 +840,18 @@ export class RaceEngine implements RaceEngineHooks {
         // runtime; the tick still broadcasts them from the machine's view.
         continue;
       }
+      const wpm = netWpm({ correctChars: runtime.progress.validatedChars, elapsedMs });
       participants.push({
         participantId: runtime.publicId,
         kind: participant.kind,
         displayName: participant.displayName,
         position: runtime.progress.validatedChars,
-        wpm: netWpm({ correctChars: runtime.progress.validatedChars, elapsedMs }),
+        wpm,
         finished: ended.has(participant.memberId),
       });
+      // RES-03: sample the WPM series at tick-broadcast rate (≤ ~4/s). The
+      // series is NEVER part of the tick payload itself (PERF-02).
+      this.appendSeriesSample(entry, participant.memberId, { elapsedMs, wpm });
     }
 
     return {
@@ -769,6 +860,42 @@ export class RaceEngine implements RaceEngineHooks {
       tickAt: now.toISOString(),
       participants,
     };
+  }
+
+  /**
+   * Appends one WPM sample to a participant's series (RES-03). Samples are
+   * strictly time-ordered; a `final` sample at the participant's exact end
+   * time overwrites a same-millisecond tick sample so the series' last point
+   * always equals the ranked WPM. Bounded by
+   * {@link RACE_WPM_SERIES_MAX_POINTS} (a defensive cap — the ~4/s sampling
+   * rate keeps a 10-minute race at ≤ ~2400 points).
+   */
+  private appendSeriesSample(
+    entry: RoomRace,
+    memberId: string,
+    sample: { elapsedMs: number; wpm: number; final?: boolean },
+  ): void {
+    const runtime = entry.runtimes.get(memberId);
+    if (!runtime) {
+      return;
+    }
+    const series = runtime.wpmSeries;
+    const last = series[series.length - 1];
+    if (last && last.elapsedMs > sample.elapsedMs) {
+      return; // never go backwards in time
+    }
+    if (last && last.elapsedMs === sample.elapsedMs) {
+      // A final sample at the same millisecond replaces the tick sample
+      // (same elapsed time, fresher progress counters).
+      if (sample.final) {
+        series[series.length - 1] = { elapsedMs: sample.elapsedMs, wpm: sample.wpm };
+      }
+      return;
+    }
+    if (series.length >= RACE_WPM_SERIES_MAX_POINTS) {
+      return;
+    }
+    series.push({ elapsedMs: sample.elapsedMs, wpm: sample.wpm });
   }
 
   /**
@@ -810,22 +937,32 @@ export class RaceEngine implements RaceEngineHooks {
       return {
         participantId: runtime?.publicId ?? result.memberId,
         memberId: result.memberId,
+        userId: runtime?.userId ?? null,
+        guestToken: runtime?.guestToken ?? null,
         displayName: runtime?.displayName ?? 'unknown',
         kind: runtime?.kind ?? 'user',
         wpm: netWpm({ correctChars, elapsedMs }),
         rawWpm: rawWpm({ totalChars, elapsedMs }),
         accuracy: accuracy({ correctKeystrokes, totalKeystrokes: totalChars }),
         errors: Math.max(0, totalChars - correctKeystrokes),
+        correctKeystrokes,
+        totalKeystrokes: totalChars,
         status: result.finalState,
         endedAtMs: elapsedMs,
         endedAt: result.endedAt,
         progressChars: correctChars,
         rank: index + 1,
+        wpmSeries: runtime ? [...runtime.wpmSeries] : [],
       };
     });
 
     return {
       roomId: entry.roomId,
+      roomPublicId: entry.publicId,
+      textBody: state.chosenText?.body ?? '',
+      textLanguage: state.config.textLanguage,
+      config: state.config,
+      startedAt: state.startAt ?? state.startedAt ?? new Date(startMs),
       finishedAt: state.finishedAt ?? new Date(finishedAtMs),
       durationMs: Math.max(0, finishedAtMs - startMs),
       results,
@@ -849,6 +986,7 @@ export class RaceEngine implements RaceEngineHooks {
         status: result.status,
         finishedAtMs: result.endedAtMs,
         rank: result.rank,
+        wpmSeries: result.wpmSeries,
       })),
     };
   }
@@ -883,6 +1021,17 @@ export class RaceEngine implements RaceEngineHooks {
   private persistStatusLogged(roomId: number, status: RacePhase): void {
     this.deps.persistStatus(roomId, status).catch((error: unknown) => {
       console.error(`race-engine: failed to persist rooms.status=${status} for room ${roomId}`, error);
+    });
+  }
+
+  /**
+   * Fire-and-forget result persistence (RES-05): one call per finished race.
+   * A failed write is logged and the in-memory state keeps serving the
+   * results screen — persistence must never break the live race flow.
+   */
+  private persistResultsLogged(payload: RaceResultsPayload): void {
+    this.deps.persistResults(payload).catch((error: unknown) => {
+      console.error(`race-engine: failed to persist results for room ${payload.roomId}`, error);
     });
   }
 }

@@ -64,12 +64,15 @@ export default async function RoomPage({
   let viewer: Viewer = null;
   let internalUserId: number | null = null;
   let guestToken: string | null = null;
+  /** The signed-in viewer's stored personal best (RES-04), `null` otherwise. */
+  let profileBestWpm: string | null = null;
 
   if (session) {
     const profile = await getUserFullProfile({ publicId: session.publicId });
     if (profile) {
       internalUserId = profile.id;
       viewer = { kind: 'user', publicId: session.publicId, username: profile.username };
+      profileBestWpm = profile.bestWpm;
     }
   } else if (guest) {
     guestToken = guest.guestId;
@@ -152,6 +155,11 @@ export default async function RoomPage({
 
   const isHost = viewer.kind === 'user' && viewer.publicId === room.hostPublicId;
   const initialInvitations = isHost ? await listInvitationsForRoom(publicId) : null;
+  // RES-04: the viewer's pre-race personal best feeds the record indicator.
+  // Only logged-in users have stats (AUTH-03); a non-finite stored value is
+  // treated as unknown. SP-3B persistence will refresh it race after race.
+  const parsedBest = Number.parseFloat(profileBestWpm ?? '');
+  const bestWpm = Number.isFinite(parsedBest) ? parsedBest : null;
 
   return shell(
     <RoomLobby
@@ -161,6 +169,8 @@ export default async function RoomPage({
       viewer={viewer}
       initialInvitations={initialInvitations}
       messages={messages}
+      locale={locale}
+      viewerBestWpm={bestWpm}
     />,
   );
 }

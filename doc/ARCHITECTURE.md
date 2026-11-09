@@ -25,7 +25,10 @@ race **domain logic** is implemented as pure modules (`src/lib/race/`): the
 state machine (COURSE-01), the Annexe A WPM formulas (`stats.ts`), the seeded
 random-text generator, the coherent-text selection ranking and the race
 start rules. The realtime race wiring (start command, progress stream,
-results persistence), bots and bonuses are still not built.
+results broadcast) is implemented, and **results persistence + history +
+replay landed in SP-3B** (RES-05, HIST-01/02 — see
+[Persistence and replay](#persistence-and-replay-res-05-hist-0102)); bots and
+bonuses are still not built.
 
 ## Folder layout
 
@@ -137,6 +140,36 @@ erDiagram
         timestamptz revokedAt "nullable"
         timestamptz createdAt
     }
+    races {
+        bigint id PK
+        uuid publicId UK
+        bigint roomId FK "nullable, ON DELETE SET NULL"
+        varchar roomPublicId "denormalized, indexed"
+        text textBody
+        varchar textLanguage "fr | en (CHECK)"
+        jsonb config "RoomConfig snapshot at start"
+        varchar status "finished | aborted (CHECK)"
+        integer durationMs "> 0 (CHECK)"
+        timestamptz startedAt
+        timestamptz finishedAt
+    }
+    race_participants {
+        bigint id PK
+        bigint raceId FK "ON DELETE CASCADE"
+        varchar kind "user | guest | bot (CHECK, tied to identity)"
+        bigint userId FK "nullable"
+        varchar guestToken "nullable"
+        varchar displayName "snapshot"
+        numeric wpm
+        numeric rawWpm
+        numeric accuracy
+        integer errors ">= 0 (CHECK)"
+        varchar status "finished | timeout | quit (CHECK)"
+        integer finishedAtMs
+        integer rank ">= 1 (CHECK)"
+        integer bonusesReceived "default 0"
+        jsonb wpmSeries "array of {elapsedMs, wpm}"
+    }
     users ||--|| user_stats : "1:1"
     users ||--|| user_resources : "1:1"
     users ||--o{ oauth_accounts : "has"
@@ -145,6 +178,9 @@ erDiagram
     rooms ||--o{ room_members : "contains"
     rooms ||--o{ invitation_links : "grants"
     room_members ||--o{ invitation_links : "binds"
+    rooms ||--o{ races : "runs"
+    races ||--o{ race_participants : "ranks"
+    users ||--o{ race_participants : "results"
 ```
 
 Rules: internal `id`s never reach the client (public ids are `publicId` /
@@ -162,8 +198,8 @@ on every write (CONF-01..12), and invitation tokens are ≥ 128-bit random
 
 ### Planned tables (design only)
 
-Needed by the assignment requirements; the final schema will be added through
-committed migrations when each feature is built:
+Needed by the assignment requirements, originally sketched here and since
+built through committed migrations as each feature landed:
 
 * ~~`texts`~~ — **implemented** (see current schema): language, title, body,
   word count, complexity metrics and config flags
@@ -179,9 +215,10 @@ committed migrations when each feature is built:
   active room per person (SALLE-06).
 * ~~`invitation_links`~~ — **implemented** (see current schema): ≥ 128-bit
   token, status, bound IP + membership, revoked timestamps (SALLE-04).
-* `races` / `race_participants` — per-race config snapshot, start/end time,
-  per-participant progress, errors, WPM series, bonuses received (RES-05),
-  quit/status flags (COURSE-06/08/10).
+* `races` / `race_participants` — **implemented** (SP-3B): per-race config
+  snapshot, start/end time, text and language, per-participant progress,
+  errors, WPM series, rank and status (RES-05), plus the history/replay
+  queries (HIST-01/02) — see the persistence flow below.
 
 ## Race state machine (COURSE-01)
 
@@ -656,3 +693,133 @@ sequenceDiagram
 
 The track, top-3 and overtake strip render for participants **and**
 spectators alike; only the typing zone is role-gated (`RaceScreen.tsx`).
+
+### Results flow (SP-3A) — `raceFinished`, WPM series and the results screen
+
+The engine records a per-participant **WPM time series** while the race runs
+and ships it with the final standings; the client renders the full results
+screen (RES-01..04, COURSE-11) from that one authoritative payload.
+
+**Sampling rate (RES-03/05).** One `{elapsedMs, wpm}` sample per participant
+is appended inside `buildTick` — i.e. at most once per `raceTick` broadcast
+(≤ ~4/s, `RACE_TICK_BROADCAST_INTERVAL_MS` = 250 ms). The series is **never**
+part of the `raceTick` payload itself (bandwidth, PERF-02): it exists only in
+memory until the finish. At the `en_course → resultats` transition every
+series is closed with an exact final sample at the participant's `endedAtMs`
+(a final sample on the same millisecond overwrites the tick sample), so the
+last chart point always equals the ranked WPM. A defensive cap
+(`RACE_WPM_SERIES_MAX_POINTS` = 2 400) bounds the series; a 10-minute race
+tops out at ~2 400 points. The series travels in
+`raceFinished.results[].wpmSeries` and in the in-memory
+`RaceEngine.takeResults` payload that SP-3B persists with the race (RES-05).
+
+```mermaid
+sequenceDiagram
+    participant E as RaceEngine
+    participant C as Client (RaceScreen)
+    participant R as ResultsScreen (client)
+    Note over E: EN_COURSE: append wpmSeries sample per tick broadcast (~4/s)
+    E-->>C: raceFinished {results[], wpmSeries[], durationMs}
+    C-->>R: podium + table (RES-01/02) + WPM chart (all series) + local heatmap
+    Note over R: heatmap = LOCAL session keyErrors (typing reducer, no round-trip)
+    Note over R: record badge = local wpm > pre-race profile bestWpm (RES-04)
+    C->>E: host: startRace (relaunch — engine re-collects members + config)
+    Note over E: resultats → decompte; config guard (en_attente) unlocks again
+    C->>C: host: closeRoom action / others: leaveRoom action (COURSE-11)
+```
+
+Client-side rendering rules:
+
+* The chart (`ResultsWpmChart`) draws one polyline per participant from their
+  own series (distinct theme-token colours, legend, locale-formatted axes),
+  a dot for single-sample series; the account-page `ProgressionCharts`
+  visual language is reused (hand-rolled SVG, no dependency).
+* The keyboard heatmap (`RaceKeyboardHeatmap`) is **per-race and client-side
+  only**: the typing reducer counts wrong keystrokes per key
+  (`TypingState.keyErrors`, letters lower-cased) during the local session and
+  `RaceScreen` hands the latest map to the results screen — no server
+  round-trip, no persistence (aggregate keyboard stats are not required by
+  the matrix; the account-page `KeyboardHeatmap` keeps its placeholder
+  values, noted honestly). Spectators and late joiners get an honest
+  "unavailable" state, a clean race a "no errors" state.
+* Personal record (RES-04): the room page loads `user_stats.bestWpm` from
+  the profile and threads it down; the badge shows when the local net WPM
+  strictly beats that **pre-race** best (guests have no stats — AUTH-03).
+  Since SP-3B the stored best is refreshed race after race by
+  `persistRaceResult` (SQL `GREATEST`), so the comparison reads a live
+  personal record.
+* COURSE-11: the host's relaunch re-invokes `startRace` (the engine
+  re-collects the current members and re-reads the stored config, so the
+  `en_attente`-only config guard unlocks automatically once the room leaves
+  `resultats`); close/leave reuse the existing `closeRoom`/`leaveRoom`
+  actions. A viewer joining while the room is already in `resultats`
+  (SALLE-09) **receives the replayed `raceFinished`** since SP-3B (see
+  below); the "results unavailable" state only remains for the degenerate
+  case where the engine has no payload in memory (e.g. a server restart —
+  the persisted `/races/[publicId]` page stays available, HIST-02).
+
+## Persistence and replay (RES-05, HIST-01/02)
+
+One write per finished race, from the engine's in-memory payload; the
+account history, the progression charts and the `/races/[publicId]` replay
+page all read PostgreSQL.
+
+**Persist (engine → database).** At the `en_course → resultats` transition
+the engine builds the `RaceResultsPayload` (room routing id, text body and
+language, the config snapshot taken at start, and one result line per
+participant with the identity snapshot — user id / guest token — the
+cumulative keystroke counters and the WPM series) and hands it to the
+`persistResults` seam exactly once (PERF-02), fire-and-forget with error
+logging: a failed write never disturbs the live race, and the in-memory
+state stays authoritative. `persistRaceResult`
+(`src/db/queries/races.ts`) writes in **one transaction**: the `races` row,
+all `race_participants` rows (bounded batch — ≤ 30 racers while bots do not
+race yet) and, for every human user participant, a `user_stats` upsert whose
+counters move in SQL (`racesCompleted + 1`,
+`totalWords + floor(totalKeystrokes / 5)`, `totalTimeMs + finishedAtMs`,
+`bestWpm = GREATEST(bestWpm, wpm)`, `wins + 1` when the participant ranked
+first and did not quit, keystroke counters feeding `avgAccuracy`). Guests
+and bots never touch `user_stats` (AUTH-03). The engine payload → row
+mapping is a pure, tested function with a defensive `clampPersistedWpm`
+bound (a millisecond race can legitimately produce a five-digit Annexe-A
+WPM; `numeric(8,2)` holds it — migration `0005_gorgeous_lady_ursula.sql`).
+
+**Aborted races are not persisted.** GAME-5 aborts produce no ranking;
+writing an unranked race into a user's history and stats would be dishonest.
+`races.status` keeps `aborted` as a legal value for a future policy change,
+but today only `finished` rows are ever written (documented in
+`src/realtime/race-engine.ts`).
+
+**Replay to late joiners (COURSE-11).** The engine keeps
+`finalResults` for the room's lifetime. When a connection joins a room whose
+status is `resultats`, the ws wiring sends — right after the `roomSnapshot`
+— the same `raceFinished` message the other members received
+(`RaceEngine.raceFinishedReplay`, no new protocol message). The client
+reducer builds the results view from it even without a prior race view.
+After a server restart the payload is gone from memory: the room still shows
+`resultats` (persisted status), the screen falls back to the honest
+"unavailable" state, and the persisted page `/races/[publicId]` replays the
+full results (podium, table, WPM chart, race text) from PostgreSQL.
+
+**History and profile stats (HIST-01/02, AUTH-06).** `listUserRaces` pages
+the user's finished races (LIMIT/OFFSET — the choice is documented in the
+module: the page needs a total count and the partial index keeps OFFSET
+cheap), `listRecentUserRaces`/`countUserRacesPerDay` feed the account
+progression charts (WPM per race, races per day + streak), and
+`getRaceForReplay` returns the public replay view (wire identities only, no
+internal ids). Every history row links to `/races/[publicId]`.
+
+```mermaid
+sequenceDiagram
+    participant E as RaceEngine
+    participant DB as PostgreSQL
+    participant H as Hub/ws wiring
+    participant L as Late joiner
+    participant A as Account page (/account, /races/[id])
+    E->>DB: persistResults(payload) — ONE transaction (race + participants + user_stats)
+    E-->>H: raceFinished broadcast (in-memory stays authoritative)
+    L->>H: joinRoom (room.status = resultats)
+    H-->>L: roomSnapshot + raceFinished replay (engine memory)
+    A->>DB: listUserRaces / getRaceForReplay
+    DB-->>A: history page / replay page (HIST-01/02)
+```

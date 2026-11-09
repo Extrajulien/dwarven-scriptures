@@ -401,7 +401,23 @@ export const participantQuitMessageSchema = z
   })
   .strict();
 
-/** One ranked result line (COURSE-10, RES-02 groundwork). */
+/**
+ * One WPM-over-time sample recorded by the engine during EN_COURSE (RES-03/
+ * RES-05 groundwork). Sampled at most once per `raceTick` broadcast (≤ ~4/s)
+ * and closed by a final sample at the participant's end time; it is carried
+ * **only** by `raceFinished`/the persisted payload — never by `raceTick`
+ * (bandwidth, PERF-02).
+ */
+export const wpmSeriesPointSchema = z
+  .object({
+    /** Milliseconds after the typing start at which the WPM was sampled. */
+    elapsedMs: z.number().int().min(0),
+    /** Net WPM at that moment (Annexe A). */
+    wpm: z.number().min(0),
+  })
+  .strict();
+
+/** One ranked result line (COURSE-10, RES-02/03 groundwork). */
 export const raceResultEntrySchema = z
   .object({
     participantId: z.uuid(),
@@ -419,6 +435,8 @@ export const raceResultEntrySchema = z
     /** Milliseconds after the typing start at which the status was recorded. */
     finishedAtMs: z.number().int().min(0),
     rank: z.number().int().positive(),
+    /** WPM-over-time series for the results charts (RES-03). */
+    wpmSeries: z.array(wpmSeriesPointSchema),
   })
   .strict();
 
@@ -510,6 +528,7 @@ export type RaceTickParticipant = z.infer<typeof raceTickParticipantSchema>;
 export type RaceTickMessage = z.infer<typeof raceTickMessageSchema>;
 export type ParticipantFinishedMessage = z.infer<typeof participantFinishedMessageSchema>;
 export type ParticipantQuitMessage = z.infer<typeof participantQuitMessageSchema>;
+export type WpmSeriesPoint = z.infer<typeof wpmSeriesPointSchema>;
 export type RaceResultEntry = z.infer<typeof raceResultEntrySchema>;
 export type RaceFinishedMessage = z.infer<typeof raceFinishedMessageSchema>;
 export type RaceAbortedMessage = z.infer<typeof raceAbortedMessageSchema>;

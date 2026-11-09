@@ -19,6 +19,7 @@ import {
   RACE_PROGRESS_MAX_PER_SECOND,
   RACE_RECONNECT_WINDOW_MS,
   RACE_TICK_BROADCAST_INTERVAL_MS,
+  RACE_WPM_SERIES_MAX_POINTS,
   type RaceEngineDeps,
   type RaceEngineMember,
   type RaceEngineProgress,
@@ -109,7 +110,9 @@ class FakeDeps implements RaceEngineDeps {
   textId: string | null = null;
   nextSeed = 42;
   pickedSeeds: number[] = [];
-  persisted: Array<{ roomId: number; status: string }> = [];
+  readonly persisted: Array<{ roomId: number; status: string }> = [];
+  persistedResults: RaceResultsPayload[] = [];
+  persistResultsError: Error | null = null;
   broadcasts = new Map<number, ServerMessage[]>();
   persistError: Error | null = null;
 
@@ -137,6 +140,13 @@ class FakeDeps implements RaceEngineDeps {
       throw this.persistError;
     }
     this.persisted.push({ roomId, status });
+  }
+
+  async persistResults(payload: RaceResultsPayload): Promise<void> {
+    if (this.persistResultsError) {
+      throw this.persistResultsError;
+    }
+    this.persistedResults.push(payload);
   }
 
   broadcast(roomId: number, message: ServerMessage): void {
@@ -654,6 +664,95 @@ describe('finish and ranking (COURSE-09/10)', () => {
     expect(results?.results).toHaveLength(3);
   });
 
+  test('persists the finished race exactly once through the seam (RES-05, PERF-02)', async () => {
+    const { engine, deps } = makeEngine();
+    await startAndCountdown(engine, deps);
+    // Let the race actually run for a while so the duration is measurable.
+    deps.clock.advance(1_000);
+    engine.tick();
+    const totalLength = DEFAULT_BODY.length;
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(totalLength))).toEqual({ ok: true });
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({ ok: true });
+    expect(engine.quitRace(ROOM_ID, `guest:${GUEST_TOKEN}`)).toEqual({ ok: true });
+
+    expect(deps.persistedResults).toHaveLength(1);
+    const payload = deps.persistedResults[0];
+    expect(payload.roomId).toBe(ROOM_ID);
+    expect(payload.roomPublicId).toBe(ROOM_PUBLIC_ID);
+    expect(payload.textBody).toBe(DEFAULT_BODY);
+    expect(payload.textLanguage).toBe('fr');
+    expect(payload.durationMs).toBe(1_000);
+    // Persistence identity rides along, never on the wire.
+    const ada = payload.results.find((entry) => entry.participantId === ADA_PUBLIC_ID);
+    expect(ada?.userId).toBe(7);
+    expect(ada?.guestToken).toBeNull();
+    const gimli = payload.results.find((entry) => entry.participantId === GUEST_TOKEN);
+    expect(gimli?.userId).toBeNull();
+    expect(gimli?.guestToken).toBe(GUEST_TOKEN);
+
+    // PERF-02: one write per finished race — extra ticks change nothing.
+    deps.clock.advance(RACE_TICK_BROADCAST_INTERVAL_MS);
+    engine.tick();
+    expect(deps.persistedResults).toHaveLength(1);
+  });
+
+  test('never persists an aborted race (GAME-5: no ranking, no history)', async () => {
+    const { engine, deps } = makeEngine();
+    await startAndCountdown(engine, deps);
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(5))).toEqual({ ok: true });
+
+    deps.clock.advance(RACE_AFK_TIMEOUT_MS);
+    engine.tick();
+
+    expect(deps.messagesOf(ROOM_ID, 'raceAborted')).toHaveLength(1);
+    expect(deps.persistedResults).toHaveLength(0);
+    expect(engine.takeResults(ROOM_ID)).toBeNull();
+  });
+
+  test('a persistence failure is logged away and never breaks the finish flow', async () => {
+    const { engine, deps } = makeEngine();
+    deps.persistResultsError = new Error('database down');
+    await startAndCountdown(engine, deps);
+    const totalLength = DEFAULT_BODY.length;
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(totalLength))).toEqual({ ok: true });
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({ ok: true });
+    expect(engine.quitRace(ROOM_ID, `guest:${GUEST_TOKEN}`)).toEqual({ ok: true });
+
+    // The broadcast still happened: the results screen is authoritative live.
+    expect(deps.messagesOf(ROOM_ID, 'raceFinished')).toHaveLength(1);
+  });
+
+  test('raceFinishedReplay returns the last finished race for a resultats room', async () => {
+    const { engine, deps } = makeEngine();
+    expect(engine.raceFinishedReplay(ROOM_ID)).toBeNull();
+
+    await startAndCountdown(engine, deps);
+    const totalLength = DEFAULT_BODY.length;
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(totalLength))).toEqual({ ok: true });
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({ ok: true });
+    expect(engine.quitRace(ROOM_ID, `guest:${GUEST_TOKEN}`)).toEqual({ ok: true });
+
+    const replayed = engine.raceFinishedReplay(ROOM_ID);
+    expect(replayed?.type).toBe('raceFinished');
+    expect(replayed?.roomPublicId).toBe(ROOM_PUBLIC_ID);
+    expect(replayed?.results).toHaveLength(3);
+    expect(replayed?.results[0].rank).toBe(1);
+  });
+
+  test('raceFinishedReplay is null after a relaunch or an abort', async () => {
+    const { engine, deps } = makeEngine();
+    await startAndCountdown(engine, deps);
+    const totalLength = DEFAULT_BODY.length;
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(totalLength))).toEqual({ ok: true });
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({ ok: true });
+    expect(engine.quitRace(ROOM_ID, `guest:${GUEST_TOKEN}`)).toEqual({ ok: true });
+    expect(engine.raceFinishedReplay(ROOM_ID)).not.toBeNull();
+
+    // Relaunch: the fresh race has no results yet.
+    expect(await engine.startRace(ROOM_ID, 'user:7')).toEqual({ ok: true });
+    expect(engine.raceFinishedReplay(ROOM_ID)).toBeNull();
+  });
+
   test('the host can start again from the results screen', async () => {
     const { engine, deps } = makeEngine();
     await startAndCountdown(engine, deps);
@@ -667,6 +766,182 @@ describe('finish and ranking (COURSE-09/10)', () => {
     expect(engine.getPhase(ROOM_ID)).toBe('decompte');
     const countdowns = deps.messagesOf(ROOM_ID, 'countdownStarted');
     expect(countdowns).toHaveLength(2);
+  });
+
+  test('a relaunch from resultats re-collects the CURRENT participants (COURSE-11)', async () => {
+    const { engine, deps } = makeEngine();
+    await startAndCountdown(engine, deps);
+    const totalLength = DEFAULT_BODY.length;
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(totalLength))).toEqual({ ok: true });
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({ ok: true });
+    expect(engine.quitRace(ROOM_ID, `guest:${GUEST_TOKEN}`)).toEqual({ ok: true });
+    expect(engine.getPhase(ROOM_ID)).toBe('resultats');
+
+    // The guest left the room between the two races: the fresh start must
+    // read the members again (not reuse the stale participant set).
+    const currentRoom = deps.room;
+    expect(currentRoom).not.toBeNull();
+    if (currentRoom) {
+      deps.room = {
+        ...currentRoom,
+        members: currentRoom.members.filter((entry) => entry.memberId !== 3),
+      };
+    }
+    expect(await engine.startRace(ROOM_ID, 'user:7')).toEqual({ ok: true });
+    expect(engine.getPhase(ROOM_ID)).toBe('decompte');
+
+    deps.clock.advance(3_000);
+    engine.tick();
+    deps.clock.advance(RACE_TICK_BROADCAST_INTERVAL_MS);
+    engine.tick();
+    const ticks = deps.messagesOf(ROOM_ID, 'raceTick');
+    const tick = ticks[ticks.length - 1];
+    expect(tick?.participants.map((p) => p.participantId)).toEqual([
+      ADA_PUBLIC_ID,
+      BOB_PUBLIC_ID,
+    ]);
+  });
+});
+
+describe('WPM time series sampling (RES-03/05 groundwork)', () => {
+  test('samples at tick-broadcast rate, monotonically, and stays OUT of raceTick (PERF-02)', async () => {
+    const { engine, deps } = makeEngine();
+    await startAndCountdown(engine, deps);
+
+    for (let step = 0; step < 4; step += 1) {
+      deps.clock.advance(RACE_TICK_BROADCAST_INTERVAL_MS);
+      engine.tick();
+    }
+    const ticks = deps.messagesOf(ROOM_ID, 'raceTick');
+    expect(ticks).toHaveLength(4);
+    // The series is never part of the per-tick payload (bandwidth, PERF-02).
+    for (const tick of ticks) {
+      for (const participant of tick.participants) {
+        expect('wpmSeries' in participant).toBe(false);
+      }
+    }
+
+    // Finish the race ~100 ms past the last tick so the final sample is a
+    // distinct point (the tick at 1000 ms and the finish at 1100 ms).
+    deps.clock.advance(100);
+    const totalLength = DEFAULT_BODY.length;
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(totalLength))).toEqual({
+      ok: true,
+    });
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({
+      ok: true,
+    });
+    expect(engine.quitRace(ROOM_ID, `guest:${GUEST_TOKEN}`)).toEqual({ ok: true });
+
+    const finished = deps.messagesOf(ROOM_ID, 'raceFinished');
+    const bob = finished[0].results.find((entry) => entry.participantId === BOB_PUBLIC_ID);
+    expect(bob).toBeDefined();
+    // 4 tick samples + the final sample at the exact end time.
+    expect(bob?.wpmSeries).toHaveLength(5);
+    const elapsed = (bob?.wpmSeries ?? []).map((point) => point.elapsedMs);
+    expect(elapsed).toEqual([250, 500, 750, 1_000, 1_100]);
+    // Monotonic in time and closed by the ranked WPM (chart end == table).
+    expect([...elapsed].sort((a, b) => a - b)).toEqual(elapsed);
+    expect(elapsed[elapsed.length - 1]).toBe(bob?.finishedAtMs);
+    expect(bob?.wpmSeries[elapsed.length - 1].wpm).toBe(bob?.wpm);
+
+    // RES-05: the in-memory payload SP-3B persists carries the series too.
+    const payload: RaceResultsPayload | null = engine.takeResults(ROOM_ID);
+    const payloadBob = payload?.results.find((entry) => entry.participantId === BOB_PUBLIC_ID);
+    expect(payloadBob?.wpmSeries).toEqual(bob?.wpmSeries);
+  });
+
+  test('a final sample at the same millisecond overwrites the tick sample', async () => {
+    const { engine, deps } = makeEngine();
+    await startAndCountdown(engine, deps);
+
+    // The finish lands exactly on a tick boundary: no extra point, but the
+    // last point must carry the ranked (final) WPM.
+    deps.clock.advance(RACE_TICK_BROADCAST_INTERVAL_MS);
+    engine.tick();
+    const totalLength = DEFAULT_BODY.length;
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(totalLength))).toEqual({
+      ok: true,
+    });
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({
+      ok: true,
+    });
+    expect(engine.quitRace(ROOM_ID, `guest:${GUEST_TOKEN}`)).toEqual({ ok: true });
+
+    const finished = deps.messagesOf(ROOM_ID, 'raceFinished');
+    const bob = finished[0].results.find((entry) => entry.participantId === BOB_PUBLIC_ID);
+    expect(bob).toBeDefined();
+    const series = bob?.wpmSeries ?? [];
+    expect(series).toHaveLength(1);
+    expect(series[0]).toEqual({ elapsedMs: 250, wpm: bob?.wpm });
+  });
+
+  test('sampled wpm values follow the Annexe A formula at each sample time', async () => {
+    const { engine, deps } = makeEngine();
+    await startAndCountdown(engine, deps);
+
+    // 10 validated chars; the first sample is taken 1000 ms in.
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(10))).toEqual({ ok: true });
+    deps.clock.advance(1_000);
+    engine.tick();
+    // Finish 100 ms past the sample so it is not overwritten by the final one.
+    deps.clock.advance(100);
+
+    const totalLength = DEFAULT_BODY.length;
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(totalLength))).toEqual({
+      ok: true,
+    });
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({
+      ok: true,
+    });
+    expect(engine.quitRace(ROOM_ID, `guest:${GUEST_TOKEN}`)).toEqual({ ok: true });
+
+    const finished = deps.messagesOf(ROOM_ID, 'raceFinished');
+    const bob = finished[0].results.find((entry) => entry.participantId === BOB_PUBLIC_ID);
+    // net WPM = 10 chars ÷ 5 ÷ (1000 / 60000 min) = 120.
+    expect(bob?.wpmSeries[0]).toEqual({ elapsedMs: 1_000, wpm: 120 });
+  });
+
+  test('the series is bounded by RACE_WPM_SERIES_MAX_POINTS (defensive cap)', async () => {
+    const { engine, deps } = makeEngine();
+    deps.room = roomData({ ...defaultRoomConfig, timeLimitSeconds: null });
+    deps.textBody = LONG_BODY;
+    await startAndCountdown(engine, deps);
+    const totalLength = LONG_BODY.length;
+
+    // Keep one participant typing (just below completion) while the loop
+    // crosses far more tick boundaries than the cap; fresh progress every
+    // 20 ticks also keeps the GAME-5 AFK abort away.
+    let chars = 0;
+    for (let step = 0; step <= RACE_WPM_SERIES_MAX_POINTS + 5; step += 1) {
+      deps.clock.advance(RACE_TICK_BROADCAST_INTERVAL_MS);
+      if (step % 20 === 0) {
+        chars = Math.min(chars + 5, totalLength - 1);
+        expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(chars))).toEqual({
+          ok: true,
+        });
+      }
+      engine.tick();
+    }
+    expect(engine.getPhase(ROOM_ID)).toBe('en_course');
+
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(totalLength))).toEqual({
+      ok: true,
+    });
+    // The host finishes in ≤ RACE_PROGRESS_MAX_DELTA jumps (from zero).
+    for (let chunk = RACE_PROGRESS_MAX_DELTA; chunk < totalLength; chunk += RACE_PROGRESS_MAX_DELTA) {
+      expect(
+        engine.handleRaceProgress(ROOM_ID, 'user:7', progress(Math.min(chunk, totalLength))),
+      ).toEqual({ ok: true });
+    }
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({
+      ok: true,
+    });
+    expect(engine.quitRace(ROOM_ID, `guest:${GUEST_TOKEN}`)).toEqual({ ok: true });
+
+    const finished = deps.messagesOf(ROOM_ID, 'raceFinished');
+    const bob = finished[0].results.find((entry) => entry.participantId === BOB_PUBLIC_ID);
+    expect(bob?.wpmSeries.length).toBeLessThanOrEqual(RACE_WPM_SERIES_MAX_POINTS);
   });
 });
 

@@ -199,6 +199,7 @@ describe('useRoomSocket (mocked WebSocket)', () => {
             status: 'finished',
             finishedAtMs: 3_900,
             rank: 1,
+            wpmSeries: [{ elapsedMs: 3_900, wpm: 50 }],
           },
         ],
       });

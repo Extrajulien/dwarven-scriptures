@@ -480,6 +480,10 @@ describe('server → client messages', () => {
           status: 'finished',
           finishedAtMs: 41_000,
           rank: 1,
+          wpmSeries: [
+            { elapsedMs: 1_000, wpm: 40 },
+            { elapsedMs: 41_000, wpm: 61.2 },
+          ],
         },
         {
           participantId: GUEST_TOKEN,
@@ -492,6 +496,7 @@ describe('server → client messages', () => {
           status: 'timeout',
           finishedAtMs: 45_321,
           rank: 2,
+          wpmSeries: [{ elapsedMs: 45_321, wpm: 12.3 }],
         },
         {
           participantId: '3a4b5c6d-7e8f-4a9b-8c0d-1e2f3a4b5c6d',
@@ -504,6 +509,7 @@ describe('server → client messages', () => {
           status: 'quit',
           finishedAtMs: 22_000,
           rank: 3,
+          wpmSeries: [],
         },
       ],
     });
@@ -515,7 +521,69 @@ describe('server → client messages', () => {
         'timeout',
         'quit',
       ]);
+      expect(parsed.data.results[0].wpmSeries).toHaveLength(2);
     }
+  });
+
+  test('rejects raceFinished results missing the wpmSeries or with invalid samples', () => {
+    const valid = {
+      type: 'raceFinished',
+      roomPublicId: ROOM_PUBLIC_ID,
+      durationMs: 10_000,
+      results: [
+        {
+          participantId: USER_PUBLIC_ID,
+          displayName: 'ada',
+          kind: 'user',
+          wpm: 60,
+          rawWpm: 60,
+          accuracy: 100,
+          errors: 0,
+          status: 'finished',
+          finishedAtMs: 9_000,
+          rank: 1,
+          wpmSeries: [{ elapsedMs: 9_000, wpm: 60 }],
+        },
+      ],
+    };
+    expect(raceFinishedMessageSchema.safeParse(valid).success).toBe(true);
+
+    const missing = {
+      ...valid,
+      results: [{ ...valid.results[0], wpmSeries: undefined }],
+    };
+    expect(raceFinishedMessageSchema.safeParse(missing).success).toBe(false);
+
+    expect(
+      raceFinishedMessageSchema.safeParse({
+        ...valid,
+        results: [
+          { ...valid.results[0], wpmSeries: [{ elapsedMs: -1, wpm: 60 }] },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      raceFinishedMessageSchema.safeParse({
+        ...valid,
+        results: [
+          { ...valid.results[0], wpmSeries: [{ elapsedMs: 1.5, wpm: 60 }] },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      raceFinishedMessageSchema.safeParse({
+        ...valid,
+        results: [
+          { ...valid.results[0], wpmSeries: [{ elapsedMs: 100, wpm: -2 }] },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      raceFinishedMessageSchema.safeParse({
+        ...valid,
+        results: [{ ...valid.results[0], wpmSeries: 'nope' }],
+      }).success,
+    ).toBe(false);
   });
 
   test('rejects raceFinished results with bad status, rank or accuracy', () => {
@@ -535,6 +603,7 @@ describe('server → client messages', () => {
           status: 'finished' as string,
           finishedAtMs: 9_000,
           rank: 1,
+          wpmSeries: [],
         },
       ],
     };

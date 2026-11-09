@@ -12,6 +12,7 @@
 
 import {
   createTypingState,
+  errorKeyFor,
   isComplete,
   liveStats,
   progressCounters,
@@ -52,6 +53,7 @@ describe('createTypingState', () => {
       currentIndex: 0,
       lastError: false,
       errors: [],
+      keyErrors: {},
     });
   });
 
@@ -299,6 +301,71 @@ describe('completeness and determinism', () => {
     typingReducer(before, { type: 'typeChar', char: 'x' });
     typingReducer(before, { type: 'backspace' });
     expect(before).toEqual(snapshot);
+  });
+});
+
+describe('per-key error counts (RES-03 heatmap data)', () => {
+  test('only WRONG keystrokes are recorded, and they accumulate per key', () => {
+    // text "abc": 'x' wrong at 0, 'b' correct at 1, 'y' wrong at 1.
+    const state = typeAll(stateFor('abc', 'accumulate'), ['x', 'b', 'y']);
+    expect(state.keyErrors).toEqual({ x: 1, y: 1 });
+    expect(state.correctKeystrokes).toBe(1);
+  });
+
+  test('stop mode records the same per-key errors (blocked but counted)', () => {
+    let state = stateFor('ab', 'stop');
+    state = typingReducer(state, { type: 'typeChar', char: 'z' });
+    state = typingReducer(state, { type: 'typeChar', char: 'z' });
+    state = typingReducer(state, { type: 'typeChar', char: 'w' });
+    expect(state.keyErrors).toEqual({ z: 2, w: 1 });
+    expect(state.errors).toEqual([]); // stop mode never marks positions
+  });
+
+  test('letters are lower-cased: X and x are the same physical key', () => {
+    expect(errorKeyFor('X')).toBe('x');
+    expect(errorKeyFor('a')).toBe('a');
+    const state = typeAll(stateFor('A', 'stop'), ['x', 'X']);
+    expect(state.keyErrors).toEqual({ x: 2 });
+  });
+
+  test('digits, punctuation and spaces keep their own keys', () => {
+    expect(errorKeyFor('5')).toBe('5');
+    expect(errorKeyFor(';')).toBe(';');
+    expect(errorKeyFor(' ')).toBe(' ');
+    let state = stateFor('a b', 'stop');
+    state = typingReducer(state, { type: 'typeChar', char: '5' });
+    state = typingReducer(state, { type: 'typeChar', char: '5' });
+    state = typingReducer(state, { type: 'typeChar', char: ';' });
+    expect(state.keyErrors).toEqual({ 5: 2, ';': 1 });
+  });
+
+  test('backspace and correct keystrokes never touch the map', () => {
+    let state = stateFor('ab', 'accumulate');
+    state = typingReducer(state, { type: 'typeChar', char: 'x' }); // wrong
+    state = typingReducer(state, { type: 'backspace' }); // vacate the error
+    state = typingReducer(state, { type: 'typeChar', char: 'a' }); // correct
+    expect(state.keyErrors).toEqual({ x: 1 }); // the historical error stays
+    expect(state.correctKeystrokes).toBe(1);
+  });
+
+  test('the map is immutable: the previous state is never mutated', () => {
+    const before = stateFor('ab', 'stop');
+    const beforeSnapshot = { ...before.keyErrors };
+    const after = typingReducer(before, { type: 'typeChar', char: 'z' });
+    expect(before.keyErrors).toEqual({});
+    expect(beforeSnapshot).toEqual({});
+    expect(after.keyErrors).toEqual({ z: 1 });
+  });
+
+  test('a fresh state and a resume start with an empty map', () => {
+    expect(stateFor('abc').keyErrors).toEqual({});
+    expect(
+      createTypingState({
+        text: 'abc',
+        errorMode: 'accumulate',
+        initialProgress: { validatedChars: 2, correctKeystrokes: 2, totalKeystrokes: 4 },
+      }).keyErrors,
+    ).toEqual({});
   });
 });
 

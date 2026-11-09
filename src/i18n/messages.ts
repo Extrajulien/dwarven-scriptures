@@ -525,60 +525,33 @@ export interface Messages {
   'account.stats.tile.bestWpm': string;
   'account.stats.tile.avgWpm': string;
   'account.stats.tile.totalWords': string;
+  'account.stats.tile.wins': string;
+  'account.stats.tile.avgAccuracy': string;
   'account.stats.expeditionsCaption': string;
   'account.stats.wpmUnit': string;
   'account.stats.runesEngravedCaption': string;
+  'account.stats.winsCaption': string;
+  'account.stats.accuracyCaption': string;
   'account.stats.coinsLabel': string;
   'account.stats.gemsLabel': string;
   'account.chart.wpm.title': string;
   'account.chart.wpm.apex': string;
   'account.chart.wpm.low': string;
   'account.chart.wpm.current': string;
-  'account.chart.wpm.tick1': string;
-  'account.chart.wpm.tick2': string;
-  'account.chart.wpm.tick3': string;
-  'account.chart.wpm.tick4': string;
-  'account.chart.wpm.tick5': string;
-  'account.chart.wpm.tick6': string;
   'account.chart.races.title': string;
   'account.chart.races.total': string;
   'account.chart.races.streaks': string;
   'account.chart.races.daily': string;
-  'account.chart.races.tickDay9': string;
-  'account.chart.races.tickDay7': string;
-  'account.chart.races.tickDay5': string;
-  'account.chart.races.tickDay3': string;
-  'account.chart.races.tickYesterday': string;
-  'account.chart.races.tickToday': string;
-  'account.chart.last10Races': string;
-  'account.chart.allTime': string;
+  'account.chart.empty': string;
   'account.history.title': string;
   'account.history.caption': string;
-  'account.history.filterLabel': string;
   'account.history.colDate': string;
   'account.history.colWpm': string;
   'account.history.colAccuracy': string;
   'account.history.colPlace': string;
   'account.history.colLanguage': string;
   'account.history.colDuration': string;
-  'account.history.filterAll': string;
-  'account.history.filterRecent': string;
-  'account.history.filterBest': string;
-  'account.history.exp84.wpm': string;
-  'account.history.exp84.place': string;
-  'account.history.exp84.language': string;
-  'account.history.exp83.wpm': string;
-  'account.history.exp83.place': string;
-  'account.history.exp83.language': string;
-  'account.history.exp82.wpm': string;
-  'account.history.exp82.place': string;
-  'account.history.exp82.language': string;
-  'account.history.exp81.wpm': string;
-  'account.history.exp81.place': string;
-  'account.history.exp81.language': string;
-  'account.history.exp80.wpm': string;
-  'account.history.exp80.place': string;
-  'account.history.exp80.language': string;
+  'account.history.empty': string;
   'account.history.footerShowing': string;
   'account.history.footerPrev': string;
   'account.history.footerPage': string;
@@ -679,12 +652,50 @@ export interface Messages {
   'race.spectatorViewHint': string;
   'race.quitButton': string;
   'race.confirmQuitBody': string;
-  'race.resultsTitle': string;
-  'race.resultsProvisional': string;
-  'race.resultsYourRace': string;
   'race.results.status.finished': string;
   'race.results.status.timeout': string;
   'race.results.status.quit': string;
+  // ------------------------------------------------------------ race results screen (RES-01..04, COURSE-11)
+  'results.title': string;
+  'results.podium.title': string;
+  'results.table.caption': string;
+  'results.table.rank': string;
+  'results.table.participant': string;
+  'results.table.wpm': string;
+  'results.table.rawWpm': string;
+  'results.table.accuracy': string;
+  'results.table.errors': string;
+  'results.table.time': string;
+  'results.table.status': string;
+  'results.table.bonuses': string;
+  'results.botTag': string;
+  'results.chart.title': string;
+  'results.chart.caption': string;
+  'results.heatmap.title': string;
+  'results.heatmap.caption': string;
+  'results.heatmap.legendLabel': string;
+  'results.heatmap.legend.zero': string;
+  'results.heatmap.legend.few': string;
+  'results.heatmap.legend.many': string;
+  'results.heatmap.legend.top': string;
+  'results.heatmap.weakestLabel': string;
+  'results.heatmap.noErrors': string;
+  'results.heatmap.unavailable': string;
+  'results.record.beaten': string;
+  'results.record.previousBest': string;
+  'results.unavailable': string;
+  'results.unavailableHint': string;
+  // ------------------------------------------------------------ race replay page (HIST-02)
+  'pageTitle.raceReplay': string;
+  'raceReplay.date': string;
+  'raceReplay.duration': string;
+  'raceReplay.language': string;
+  'raceReplay.textLabel': string;
+  'raceReplay.back': string;
+  'results.relaunch': string;
+  'results.closeRoom': string;
+  'results.stay': string;
+  'results.leave': string;
   // ------------------------------------------------------------ mobile race gate (DES-06)
   'mobile.raceTitle': string;
   'mobile.raceBody': string;
@@ -1181,63 +1192,36 @@ export const MESSAGES: Record<Locale, Messages> = {
     'account.stats.tile.bestWpm': '[MEILLEUR MPM]',
     'account.stats.tile.avgWpm': '[MPM MOYEN]',
     'account.stats.tile.totalWords': '[TOTAL DE MOTS FRAPPÉS]',
+    'account.stats.tile.wins': '[VICTOIRES]',
+    'account.stats.tile.avgAccuracy': '[PRÉCISION MOYENNE]',
     'account.stats.expeditionsCaption': '[EXPÉDITIONS]',
     'account.stats.wpmUnit': 'MPM',
     'account.stats.runesEngravedCaption': '[RUNES GRAVÉES]',
+    'account.stats.winsCaption': 'Courses terminées au rang 1',
+    'account.stats.accuracyCaption': 'Frappes correctes sur frappes totales',
     'account.stats.coinsLabel': '[PIÈCES]',
     'account.stats.gemsLabel': '[GEMMES]',
     'account.chart.wpm.title': '[MPM AU FIL DU TEMPS]',
-    'account.chart.wpm.apex': '[MAX : 112 MPM]',
-    'account.chart.wpm.low': '[MIN : 76 MPM]',
-    'account.chart.wpm.current': '[ACTUEL : 108 MPM]',
-    'account.chart.wpm.tick1': '[EXP-75]',
-    'account.chart.wpm.tick2': '[EXP-77]',
-    'account.chart.wpm.tick3': '[EXP-79]',
-    'account.chart.wpm.tick4': '[EXP-81]',
-    'account.chart.wpm.tick5': '[EXP-83 (MAX)]',
-    'account.chart.wpm.tick6': '[EXP-84]',
+    'account.chart.wpm.apex': '[MEILLEUR]',
+    'account.chart.wpm.low': '[LE PLUS BAS]',
+    'account.chart.wpm.current': '[DERNIÈRE COURSE]',
     'account.chart.races.title': '[COURSES AU FIL DU TEMPS]',
-    'account.chart.races.total': '[TOTAL ENREGISTRÉ : 412]',
-    'account.chart.races.streaks': '[SÉRIES SANS FAUTE : 22]',
-    'account.chart.races.daily': '[VOLUME QUOTIDIEN : 28]',
-    'account.chart.races.tickDay9': '[J-9]',
-    'account.chart.races.tickDay7': '[J-7]',
-    'account.chart.races.tickDay5': '[J-5]',
-    'account.chart.races.tickDay3': '[J-3]',
-    'account.chart.races.tickYesterday': '[HIER]',
-    'account.chart.races.tickToday': '[AUJOURD’HUI]',
-    'account.chart.last10Races': '[10 DERNIÈRES COURSES]',
-    'account.chart.allTime': '[TOUT L’HISTORIQUE]',
+    'account.chart.races.total': '[TOTAL]',
+    'account.chart.races.streaks': '[JOURS DE SUITE]',
+    'account.chart.races.daily': '[AUJOURD’HUI]',
+    'account.chart.empty': 'Aucune course enregistrée — lancez votre première expédition pour peupler ces graphiques.',
     'account.history.title': '[HISTORIQUE DES COURSES]',
     'account.history.caption': '[EXPÉDITIONS ENREGISTRÉES]',
-    'account.history.filterLabel': '[FILTRE]',
     'account.history.colDate': '[DATE]',
     'account.history.colWpm': '[MPM]',
     'account.history.colAccuracy': '[PRÉCISION]',
     'account.history.colPlace': '[RANG]',
     'account.history.colLanguage': '[LANGUE]',
     'account.history.colDuration': '[DURÉE]',
-    'account.history.filterAll': '[TOUT]',
-    'account.history.filterRecent': '[RÉCENT]',
-    'account.history.filterBest': '[MEILLEUR]',
-    'account.history.exp84.wpm': '108 MPM',
-    'account.history.exp84.place': '[1ER 🥇]',
-    'account.history.exp84.language': '[ANG / RUNIQUE]',
-    'account.history.exp83.wpm': '112 MPM 🔥',
-    'account.history.exp83.place': '[1ER 👑]',
-    'account.history.exp83.language': '[LITURGIE LATINE]',
-    'account.history.exp82.wpm': '94 MPM',
-    'account.history.exp82.place': '[2E 🥈]',
-    'account.history.exp82.language': '[ANG / CODE]',
-    'account.history.exp81.wpm': '88 MPM',
-    'account.history.exp81.place': '[2E 🥈]',
-    'account.history.exp81.language': '[FRANÇAIS / CONTE]',
-    'account.history.exp80.wpm': '82 MPM',
-    'account.history.exp80.place': '[3E 🥉]',
-    'account.history.exp80.language': '[ANG / BASALTE]',
-    'account.history.footerShowing': '[5 AFFICHÉES SUR 412]',
+    'account.history.empty': 'Aucune course enregistrée pour l’instant — vos courses terminées apparaîtront ici.',
+    'account.history.footerShowing': '[COURSES AFFICHÉES]',
     'account.history.footerPrev': '[PRÉC]',
-    'account.history.footerPage': '[PAGE 1 / 83]',
+    'account.history.footerPage': '[PAGE]',
     'account.history.footerNext': '[SUIV]',
     'account.heatmap.title': '[CARTE DE CHALEUR DU CLAVIER]',
     'account.heatmap.caption': '[FRÉQUENCE D’ERREUR PAR TOUCHE]',
@@ -1338,13 +1322,53 @@ export const MESSAGES: Record<Locale, Messages> = {
     'race.spectatorViewHint': 'Vous suivez la course en spectateur.',
     'race.quitButton': 'Abandonner la course',
     'race.confirmQuitBody': 'Abandonner la course ? Vous deviendrez spectateur de la course en cours.',
-    'race.resultsTitle': 'RÉSULTATS (APERÇU)',
-    'race.resultsProvisional':
-      'Aperçu provisoire — l’écran de résultats complet arrive en phase 3.',
-    'race.resultsYourRace': 'VOTRE COURSE',
     'race.results.status.finished': 'Terminé',
     'race.results.status.timeout': 'Temps écoulé',
     'race.results.status.quit': 'Abandon',
+    // ------------------------------------------------------------ écran de résultats (RES-01..04, COURSE-11)
+    'results.title': 'RÉSULTATS DE LA COURSE',
+    'results.podium.title': 'PODIUM',
+    'results.table.caption': 'Classement final de la course',
+    'results.table.rank': 'Rang',
+    'results.table.participant': 'Participant',
+    'results.table.wpm': 'MPM',
+    'results.table.rawWpm': 'MPM brut',
+    'results.table.accuracy': 'Précision',
+    'results.table.errors': 'Erreurs',
+    'results.table.time': 'Temps',
+    'results.table.status': 'Statut',
+    'results.table.bonuses': 'Bonus reçus',
+    'results.botTag': 'BOT',
+    'results.chart.title': 'MPM AU FIL DU TEMPS',
+    'results.chart.caption': 'MPM net de chaque participant pendant la course',
+    'results.heatmap.title': 'TOUCHES LES PLUS MANQUÉES',
+    'results.heatmap.caption': 'erreurs de VOTRE clavier sur cette course',
+    'results.heatmap.legendLabel': 'Erreurs',
+    'results.heatmap.legend.zero': '0',
+    'results.heatmap.legend.few': '1–2',
+    'results.heatmap.legend.many': '3–5',
+    'results.heatmap.legend.top': '6+',
+    'results.heatmap.weakestLabel': 'Touche la plus manquée',
+    'results.heatmap.noErrors':
+      'Aucune erreur sur cette course — un clavier digne d’une légende naine.',
+    'results.heatmap.unavailable':
+      'Carte de clavier indisponible : seules les frappes locales sont enregistrées (spectateur ou arrivée en cours de route).',
+    'results.record.beaten': 'NOUVEAU RECORD PERSONNEL',
+    'results.record.previousBest': 'Ancien record',
+    'results.unavailable': 'RÉSULTATS NON DISPONIBLES',
+    'results.unavailableHint':
+      'Vous avez rejoint la salle après la fin de la course : le classement n’a pas été rediffusé. Il sera réaffichable une fois la persistance des courses en place.',
+    'results.relaunch': 'Relancer la course',
+    'results.closeRoom': 'Fermer la salle',
+    'results.stay': 'Rester',
+    'results.leave': 'Quitter la salle',
+    // ------------------------------------------------------------ page de relecture de course (HIST-02)
+    'pageTitle.raceReplay': 'Résultats de course',
+    'raceReplay.date': 'Course du',
+    'raceReplay.duration': 'Durée',
+    'raceReplay.language': 'Langue du texte',
+    'raceReplay.textLabel': 'Texte de la course',
+    'raceReplay.back': 'Retour au compte',
     // ------------------------------------------------------------ portail mobile (DES-06)
     'mobile.raceTitle': 'CLAVIER PHYSIQUE REQUIS',
     'mobile.raceBody':
@@ -1836,63 +1860,36 @@ export const MESSAGES: Record<Locale, Messages> = {
     'account.stats.tile.bestWpm': '[BEST WPM]',
     'account.stats.tile.avgWpm': '[AVERAGE WPM]',
     'account.stats.tile.totalWords': '[TOTAL WORDS TYPED]',
+    'account.stats.tile.wins': '[WINS]',
+    'account.stats.tile.avgAccuracy': '[AVERAGE ACCURACY]',
     'account.stats.expeditionsCaption': '[EXPEDITIONS]',
     'account.stats.wpmUnit': 'WPM',
     'account.stats.runesEngravedCaption': '[RUNES ENGRAVED]',
+    'account.stats.winsCaption': 'Races finished in rank 1',
+    'account.stats.accuracyCaption': 'Correct keystrokes over total keystrokes',
     'account.stats.coinsLabel': '[COINS]',
     'account.stats.gemsLabel': '[GEMS]',
     'account.chart.wpm.title': '[WPM OVER TIME]',
-    'account.chart.wpm.apex': '[APEX: 112 WPM]',
-    'account.chart.wpm.low': '[LOW: 76 WPM]',
-    'account.chart.wpm.current': '[CURRENT: 108 WPM]',
-    'account.chart.wpm.tick1': '[EXP-75]',
-    'account.chart.wpm.tick2': '[EXP-77]',
-    'account.chart.wpm.tick3': '[EXP-79]',
-    'account.chart.wpm.tick4': '[EXP-81]',
-    'account.chart.wpm.tick5': '[EXP-83 (APEX)]',
-    'account.chart.wpm.tick6': '[EXP-84]',
+    'account.chart.wpm.apex': '[BEST]',
+    'account.chart.wpm.low': '[LOWEST]',
+    'account.chart.wpm.current': '[LATEST RACE]',
     'account.chart.races.title': '[RACES OVER TIME]',
-    'account.chart.races.total': '[TOTAL LOGGED: 412]',
-    'account.chart.races.streaks': '[FAULTLESS STREAKS: 22]',
-    'account.chart.races.daily': '[DAILY VOLUME: 28]',
-    'account.chart.races.tickDay9': '[DAY -9]',
-    'account.chart.races.tickDay7': '[DAY -7]',
-    'account.chart.races.tickDay5': '[DAY -5]',
-    'account.chart.races.tickDay3': '[DAY -3]',
-    'account.chart.races.tickYesterday': '[YESTERDAY]',
-    'account.chart.races.tickToday': '[TODAY]',
-    'account.chart.last10Races': '[LAST 10 RACES]',
-    'account.chart.allTime': '[ALL TIME]',
+    'account.chart.races.total': '[TOTAL]',
+    'account.chart.races.streaks': '[DAYS IN A ROW]',
+    'account.chart.races.daily': '[TODAY]',
+    'account.chart.empty': 'No logged races yet — finish your first expedition to fill these charts.',
     'account.history.title': '[RACE HISTORY]',
     'account.history.caption': '[LOGGED EXPEDITIONS]',
-    'account.history.filterLabel': '[FILTER]',
     'account.history.colDate': '[DATE]',
     'account.history.colWpm': '[WPM]',
     'account.history.colAccuracy': '[ACCURACY]',
     'account.history.colPlace': '[PLACE]',
     'account.history.colLanguage': '[LANGUAGE]',
     'account.history.colDuration': '[DURATION]',
-    'account.history.filterAll': '[ALL]',
-    'account.history.filterRecent': '[RECENT]',
-    'account.history.filterBest': '[BEST]',
-    'account.history.exp84.wpm': '108 WPM',
-    'account.history.exp84.place': '[1ST 🥇]',
-    'account.history.exp84.language': '[ENG / RUNIC]',
-    'account.history.exp83.wpm': '112 WPM 🔥',
-    'account.history.exp83.place': '[1ST 👑]',
-    'account.history.exp83.language': '[LATIN LITURGY]',
-    'account.history.exp82.wpm': '94 WPM',
-    'account.history.exp82.place': '[2ND 🥈]',
-    'account.history.exp82.language': '[ENG / CODE]',
-    'account.history.exp81.wpm': '88 WPM',
-    'account.history.exp81.place': '[2ND 🥈]',
-    'account.history.exp81.language': '[FRENCH / TALE]',
-    'account.history.exp80.wpm': '82 WPM',
-    'account.history.exp80.place': '[3RD 🥉]',
-    'account.history.exp80.language': '[ENG / BASALT]',
-    'account.history.footerShowing': '[SHOWING 5 OF 412]',
+    'account.history.empty': 'No logged races yet — your finished races will appear here.',
+    'account.history.footerShowing': '[RACES SHOWN]',
     'account.history.footerPrev': '[PREV]',
-    'account.history.footerPage': '[PAGE 1 / 83]',
+    'account.history.footerPage': '[PAGE]',
     'account.history.footerNext': '[NEXT]',
     'account.heatmap.title': '[KEYBOARD HEATMAP]',
     'account.heatmap.caption': '[ERROR FREQUENCY BY KEYSTROKE]',
@@ -1993,12 +1990,52 @@ export const MESSAGES: Record<Locale, Messages> = {
     'race.spectatorViewHint': 'You are watching this race as a spectator.',
     'race.quitButton': 'Abandon the race',
     'race.confirmQuitBody': 'Abandon the race? You will become a spectator of the current race.',
-    'race.resultsTitle': 'RESULTS (PREVIEW)',
-    'race.resultsProvisional': 'Provisional preview — the full results screen arrives in phase 3.',
-    'race.resultsYourRace': 'YOUR RACE',
     'race.results.status.finished': 'Finished',
     'race.results.status.timeout': 'Timed out',
     'race.results.status.quit': 'Quit',
+    // ------------------------------------------------------------ race results screen (RES-01..04, COURSE-11)
+    'results.title': 'RACE RESULTS',
+    'results.podium.title': 'PODIUM',
+    'results.table.caption': 'Final race standings',
+    'results.table.rank': 'Rank',
+    'results.table.participant': 'Participant',
+    'results.table.wpm': 'WPM',
+    'results.table.rawWpm': 'Raw WPM',
+    'results.table.accuracy': 'Accuracy',
+    'results.table.errors': 'Errors',
+    'results.table.time': 'Time',
+    'results.table.status': 'Status',
+    'results.table.bonuses': 'Bonuses received',
+    'results.botTag': 'BOT',
+    'results.chart.title': 'WPM OVER TIME',
+    'results.chart.caption': 'Each participant’s net WPM during the race',
+    'results.heatmap.title': 'MOST MISSED KEYS',
+    'results.heatmap.caption': 'errors from YOUR keyboard during this race',
+    'results.heatmap.legendLabel': 'Errors',
+    'results.heatmap.legend.zero': '0',
+    'results.heatmap.legend.few': '1–2',
+    'results.heatmap.legend.many': '3–5',
+    'results.heatmap.legend.top': '6+',
+    'results.heatmap.weakestLabel': 'Most missed key',
+    'results.heatmap.noErrors': 'No errors this race — a keyboard worthy of a dwarven legend.',
+    'results.heatmap.unavailable':
+      'Keyboard map unavailable: only local keystrokes are recorded (spectator, or joined mid-race).',
+    'results.record.beaten': 'NEW PERSONAL RECORD',
+    'results.record.previousBest': 'Previous record',
+    'results.unavailable': 'RESULTS UNAVAILABLE',
+    'results.unavailableHint':
+      'You joined the room after the race ended: the standings were not re-broadcast. They will be re-displayable once race persistence lands.',
+    'results.relaunch': 'Relaunch the race',
+    'results.closeRoom': 'Close the room',
+    'results.stay': 'Stay',
+    'results.leave': 'Leave the room',
+    // ------------------------------------------------------------ race replay page (HIST-02)
+    'pageTitle.raceReplay': 'Race results',
+    'raceReplay.date': 'Race of',
+    'raceReplay.duration': 'Duration',
+    'raceReplay.language': 'Text language',
+    'raceReplay.textLabel': 'Race text',
+    'raceReplay.back': 'Back to account',
     // ------------------------------------------------------------ mobile race gate (DES-06)
     'mobile.raceTitle': 'PHYSICAL KEYBOARD REQUIRED',
     'mobile.raceBody':

@@ -42,7 +42,7 @@ are declared there rather than in a separate file.
 
 ## Schema
 
-Nine tables, all keyed so that no internal id ever reaches a client: the
+Eleven tables, all keyed so that no internal id ever reaches a client: the
 `users.id` `bigserial` is used only for foreign keys, while `publicId` (uuid)
 and `username` are the public identifiers. `username` holds the trimmed
 **display name** (it may contain spaces, is unique and ≤ 32 chars) rather than a
@@ -63,10 +63,14 @@ will only ever receive a passage's `title`/`body`, never a row id.
 | `rooms`           | `id` bigserial | see [Rooms](#rooms-salle-0110) below |
 | `room_members`    | `id` bigserial | see [Rooms](#rooms-salle-0110) below |
 | `invitation_links` | `id` bigserial | see [Rooms](#rooms-salle-0110) below |
+| `races`           | `id` bigserial | see [Race history](#race-history-res-05-hist-0102) below |
+| `race_participants` | `id` bigserial | see [Race history](#race-history-res-05-hist-0102) below |
 
 `totalWords`, `totalTimeMs`, `coins`, `correctKeystrokes` and `totalKeystrokes`
-are `bigint` (surfaced as JavaScript `bigint`); `bestWpm` is `numeric(6, 2)`
-(surfaced as a string so no precision is lost). Every counter carries a
+are `bigint` (surfaced as JavaScript `bigint`); `bestWpm` is `numeric(8, 2)`
+(surfaced as a string so no precision is lost — widened from `(6, 2)` by
+migration `0005_gorgeous_lady_ursula.sql` so a very short race's Annexe-A WPM
+fits, RES-05). Every counter carries a
 `CHECK (... >= 0)` constraint as a last line of defence behind the validation
 in `src/db/queries/users.ts`.
 
@@ -171,6 +175,61 @@ from a new IP); anyone else is refused. Kicking a member revokes their links,
 and closing a room revokes every remaining link, both inside the same
 transaction as the kick/close itself (`src/db/queries/rooms.ts`).
 
+### Race history (RES-05, HIST-01/02)
+
+The two race tables persist every **finished** race and feed the account
+history, the progression charts and the replay page. Internal ids never reach
+clients: races are addressed by `races.publicId` (uuid), participants by their
+wire identity (user `publicId` or guest token).
+
+**`races`** — one row per finished race, written exactly once at the
+`en_course → resultats` transition (PERF-02: one write per race):
+
+* `publicId` uuid unique — the `/races/[publicId]` replay route (HIST-02).
+* `roomId` FK → `rooms.id`, nullable with `ON DELETE SET NULL`: the room may
+  close, the history survives. `roomPublicId` is **denormalized** from
+  `rooms.publicId` (indexed) so replay routing keeps working after the room
+  row is gone.
+* `textBody` (the full typed text), `textLanguage` (`fr`/`en` CHECK) and
+  `config` jsonb — the Zod-validated `RoomConfig` snapshot taken at race
+  start (CONF-12); later config edits never rewrite a stored race.
+* `status` CHECK `finished | aborted`. **Only `finished` is written today**:
+  an aborted race (GAME-5) produces no ranking and no history — the decision
+  is documented in `doc/ARCHITECTURE.md`; the `aborted` value stays legal for
+  a future change of policy.
+* `durationMs` (`> 0` CHECK) from typing start to `resultats`, plus
+  `startedAt`/`finishedAt` timestamptz.
+
+**`race_participants`** — one row per ranked result line (bounded batch,
+≤ 30 racers while bots do not race yet): `kind` CHECK `user | guest | bot`,
+`userId` FK → `users.id` (`ON DELETE SET NULL` — history survives an account
+deletion) for users, `guestToken` for guests, nothing for bots, and a CHECK
+that ties the identity columns to `kind` (a user row can never carry a guest
+token — AUTH-03). `displayName` is the snapshot at finish; `wpm`/`rawWpm`
+(`numeric(8,2)`), `accuracy` (`numeric(5,2)`), `errors`, `status` CHECK
+`finished | timeout | quit`, `finishedAtMs`, `rank`, `bonusesReceived`
+(always 0 until Phase 4) and `wpmSeries` jsonb (array of
+`{elapsedMs, wpm}` — the RES-03/05 series the replay chart redraws).
+
+Indexes: `races_room_public_id_idx` (replay routing), 
+`race_participants_race_id_idx`, and the partial
+`race_participants_user_id_idx` (`WHERE userId IS NOT NULL`) that serves the
+per-user history listing (HIST-01).
+
+**Persistence flow (RES-05):** at the finish, `RaceEngine` builds the
+`RaceResultsPayload` (room routing id, text, config snapshot, per-participant
+identity + counters + series) and hands it to the `persistResults` seam —
+fire-and-forget with error logging, the in-memory state stays authoritative.
+`persistRaceResult` writes everything in **one transaction**: the `races`
+row, all `race_participants` rows, and for every human user participant a
+`user_stats` upsert whose counters move in SQL (`racesCompleted + 1`,
+`totalWords + floor(totalKeystrokes/5)`, `totalTimeMs + finishedAtMs`,
+`bestWpm = GREATEST(bestWpm, wpm)`, `wins + 1` when the participant ranked
+first and did not quit, keystroke counters for `avgAccuracy`). Guests and
+bots never touch `user_stats` (AUTH-03). The engine payload → row mapping is
+a pure function (`mapEngineResultsToPersistence`) with a defensive
+`clampPersistedWpm` bound at the column capacity.
+
 ### Rate limiting (SALLE-10)
 
 Room-code joins are rate-limited in memory by
@@ -186,8 +245,10 @@ instance assumption.
 `src/db/queries/users.ts` owns the core user tables (profiles, stats,
 resources), `src/db/queries/oauth-accounts.ts` owns `oauth_accounts` and the
 find-or-create entry point used by the OAuth callback, `src/db/queries/rooms.ts`
-owns `rooms`/`room_members` (creation, joins, host actions, presence) and
-`src/db/queries/invitations.ts` owns `invitation_links`.
+owns `rooms`/`room_members` (creation, joins, host actions, presence),
+`src/db/queries/invitations.ts` owns `invitation_links` and
+`src/db/queries/races.ts` owns the race history (persistence, listing,
+replay).
 
 | Function | Behaviour |
 | -------- | --------- |
@@ -202,6 +263,10 @@ owns `rooms`/`room_members` (creation, joins, host actions, presence) and
 | `kickMember` / `closeRoom` (rooms) | Host-verified (SEC-01) transactions that also revoke the member's / room's invitation links in the same statement batch (SALLE-04) |
 | `updateRoomConfig` (rooms) | Re-parses the config with the Zod schema and stores it, host-only |
 | `consumeInvitationToken` (invitations) | Locks the link, binds IP + membership on first use, allows reuse only for the bound member, refuses revoked links |
+| `persistRaceResult` (races) | One transaction: `races` row + all `race_participants` rows + SQL-side `user_stats` increments for every human user participant (RES-05); guests/bots skipped (AUTH-03) |
+| `listUserRaces` (races) | Paginated history of a user's finished races (HIST-01): LIMIT/OFFSET with a total count — the pagination choice is documented in the module header |
+| `listRecentUserRaces` / `countUserRacesPerDay` (races) | Feed the account progression charts (AUTH-06, STAT-3): the most recent races and the per-day aggregates |
+| `getRaceForReplay` (races) | Public replay view of a persisted race by its public id (HIST-02), `null` when absent |
 
 `avgWpm` is `totalWords / (totalTimeMs / 60000)` and is `0` when no time has been
 recorded, so an untouched profile never divides by zero. `avgAccuracy` is

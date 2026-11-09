@@ -392,12 +392,43 @@ describe('race messages reducer (GAME-1 groundwork, COURSE-08)', () => {
           status: 'finished',
           finishedAtMs: 41_000,
           rank: 1,
+          wpmSeries: [{ elapsedMs: 41_000, wpm: 60 }],
         },
       ],
     });
     expect(next.race?.phase).toBe('resultats');
     expect(next.race?.finished?.durationMs).toBe(45_321);
     expect(next.race?.finished?.results[0].rank).toBe(1);
+    expect(next.race?.finished?.results[0].wpmSeries).toEqual([{ elapsedMs: 41_000, wpm: 60 }]);
+  });
+
+  test('a replayed raceFinished builds the results view for a late joiner (COURSE-11)', () => {
+    // A late joiner has no race view: the fresh roomSnapshot reset it, then
+    // the server re-broadcast the last finished race to this connection.
+    const replayed = applyServerMessage(snapshotState, {
+      type: 'raceFinished',
+      roomPublicId: ROOM_PUBLIC_ID,
+      durationMs: 45_321,
+      results: [
+        {
+          participantId: ADA_ID,
+          displayName: 'ada',
+          kind: 'user',
+          wpm: 60,
+          rawWpm: 66,
+          accuracy: 95,
+          errors: 4,
+          status: 'finished',
+          finishedAtMs: 41_000,
+          rank: 1,
+          wpmSeries: [{ elapsedMs: 41_000, wpm: 60 }],
+        },
+      ],
+    });
+
+    expect(replayed.race?.phase).toBe('resultats');
+    expect(replayed.race?.finished?.durationMs).toBe(45_321);
+    expect(replayed.race?.finished?.results).toHaveLength(1);
   });
 
   test('raceAborted clears the race and puts the room back to en_attente', () => {

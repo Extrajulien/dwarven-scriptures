@@ -9,6 +9,12 @@ import Footer from '../../components/Footer';
 import Navbar from '../../components/Navbar/Navbar';
 import { ACCOUNT_BREADCRUMB } from '../../data/accountData';
 import { listLinkedProviders } from '../../db/queries/oauth-accounts';
+import {
+  countUserRacesPerDay,
+  HISTORY_PAGE_SIZE,
+  listRecentUserRaces,
+  listUserRaces,
+} from '../../db/queries/races';
 import { getUserFullProfile } from '../../db/queries/users';
 import { getLocale, pick } from '../../i18n/messages';
 import { getSession } from '../../lib/session';
@@ -19,7 +25,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: messages['pageTitle.account'] };
 }
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string | string[] }>;
+}) {
   const session = await getSession();
   if (!session) {
     redirect('/login');
@@ -36,6 +46,17 @@ export default async function AccountPage() {
   const account = toAccountProfile(profile, linkedProviders);
   const locale = await getLocale();
   const messages = pick(locale);
+
+  // HIST-01: real, paginated race history (LIMIT/OFFSET — see races.ts).
+  const rawSearch = await searchParams;
+  const rawPage = typeof rawSearch.page === 'string' ? rawSearch.page : '';
+  const parsedPage = Number.parseInt(rawPage, 10);
+  const page = Number.isInteger(parsedPage) && parsedPage >= 1 ? parsedPage : 1;
+  const history = await listUserRaces(profile.id, { page, pageSize: HISTORY_PAGE_SIZE });
+
+  // AUTH-06 / STAT-3: the progression charts are fed by the persisted races.
+  const recentRaces = await listRecentUserRaces(profile.id, 10);
+  const dailyCounts = await countUserRacesPerDay(profile.id, { days: 6 });
 
   return (
     <>
@@ -67,8 +88,17 @@ export default async function AccountPage() {
 
           <AccountIdentityCard profile={account} locale={locale} messages={messages} />
           <AccountStats profile={account} locale={locale} messages={messages} />
-          <ProgressionCharts messages={messages} />
-          <RaceHistory messages={messages} />
+          <ProgressionCharts
+            recentRaces={recentRaces}
+            dailyCounts={dailyCounts}
+            days={6}
+            messages={messages}
+            locale={locale}
+          />
+          <RaceHistory page={history} messages={messages} locale={locale} />
+          {/* STAT-2 note: the keyboard heatmap keeps its placeholder values —
+              aggregated per-key statistics are not persisted (RES-03 keeps the
+              per-race heatmap client-side). */}
           <KeyboardHeatmap messages={messages} />
         </div>
       </main>
