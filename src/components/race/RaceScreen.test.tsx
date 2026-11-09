@@ -167,13 +167,14 @@ describe('countdown overlay (decompte, COURSE-03)', () => {
 });
 
 describe('en_course views (GAME-1, COURSE-07)', () => {
-  const racingRace = () =>
+  const racingRace = (overrides: Partial<RaceView> = {}) =>
     makeRace({
       phase: 'en_course',
       startAt: new Date(T0 + 3_000).toISOString(),
       text: 'bonjour',
       totalLength: 7,
       ownProgress: { validatedChars: 0, correctKeystrokes: 0, totalKeystrokes: 0 },
+      ...overrides,
     });
 
   test('a racing participant gets the typing zone and the quit button', () => {
@@ -190,6 +191,63 @@ describe('en_course views (GAME-1, COURSE-07)', () => {
     expect(screen.getByTestId('race-text')).toHaveTextContent('bonjour');
     expect(screen.queryByTestId('typing-zone')).not.toBeInTheDocument();
     expect(screen.queryByTestId('typing-input')).not.toBeInTheDocument();
+  });
+
+  test('spectators keep the track and live top-3 without the typing zone (COURSE-05, GAME-2)', () => {
+    renderScreen({
+      roomStatus: 'en_course',
+      race: racingRace({
+        totalLength: 1_000,
+        lastTickAt: new Date(T0 + 500).toISOString(),
+        participants: [
+          {
+            participantId: '88888888-8888-4888-8888-888888888888',
+            kind: 'user',
+            displayName: 'bob',
+            position: 600,
+            wpm: 50,
+            finished: false,
+          },
+          { participantId: ADA, kind: 'user', displayName: 'ada', position: 300, wpm: 30, finished: false },
+        ],
+      }),
+      viewerRole: 'spectator',
+    });
+
+    expect(screen.getByTestId('progress-track')).toBeInTheDocument();
+    expect(screen.getByTestId('top3-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('spectator-badge')).toBeInTheDocument();
+    expect(screen.queryByTestId('typing-zone')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('typing-input')).not.toBeInTheDocument();
+  });
+
+  test('racing participants see the track above the typing zone (COURSE-05)', () => {
+    renderScreen({
+      roomStatus: 'en_course',
+      race: racingRace({
+        totalLength: 1_000,
+        lastTickAt: new Date(T0 + 500).toISOString(),
+        participants: [
+          { participantId: ADA, kind: 'user', displayName: 'ada', position: 300, wpm: 30, finished: false },
+          {
+            participantId: '88888888-8888-4888-8888-888888888888',
+            kind: 'user',
+            displayName: 'bob',
+            position: 600,
+            wpm: 50,
+            finished: false,
+          },
+        ],
+      }),
+      viewerRole: 'participant',
+    });
+
+    const track = screen.getByTestId('progress-track');
+    const typingZone = screen.getByTestId('typing-zone');
+    expect(track).toBeInTheDocument();
+    expect(typingZone).toBeInTheDocument();
+    // The track block sits above the typing zone in the flow.
+    expect(track.compareDocumentPosition(typingZone) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   test('quitting needs a confirmation, then switches to spectator instantly', () => {

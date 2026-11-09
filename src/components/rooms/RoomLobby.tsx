@@ -283,6 +283,13 @@ export default function RoomLobby({
   const viewerRole = ownMember?.role ?? 'spectator';
   const participantCount = snapshot.members.filter((member) => member.role === 'participant').length;
   const viewerParticipantId = viewer.kind === 'user' ? viewer.publicId : viewer.guestToken;
+  // participantId (public id) → profile picture for the track avatars; guests
+  // and bots have none and fall back to their generated markers.
+  const pfpUrls: Record<string, string | null> = Object.fromEntries(
+    snapshot.members
+      .filter((member): member is Extract<MemberInfo, { kind: 'user' }> => member.kind === 'user')
+      .map((member) => [member.publicId, member.pfpUrl]),
+  );
 
   const configRows: Array<{ label: string; value: string }> = [
     {
@@ -354,6 +361,7 @@ export default function RoomLobby({
         isHost={isHost}
         participantCount={participantCount}
         viewerParticipantId={viewerParticipantId}
+        pfpUrls={pfpUrls}
         messages={messages}
         onStartRace={startRace}
         onQuitRace={quitRace}

@@ -8,6 +8,9 @@ import type { RoomConfig } from '../../db/schema';
 import ButtonPrimary from '../ButtonPrimary';
 import ButtonSecondary from '../ButtonSecondary';
 import SectionHeader from '../SectionHeader';
+import OvertakeIndicator from './OvertakeIndicator';
+import ProgressTrack from './ProgressTrack';
+import Top3Panel from './Top3Panel';
 import TypingZone from './TypingZone';
 
 /**
@@ -176,6 +179,8 @@ export type RaceScreenProps = {
   participantCount: number;
   /** The viewer's public id (users) or guest token (guests), for the own results line. */
   viewerParticipantId: string;
+  /** participantId → profile picture URL for user participants (track avatars). */
+  pfpUrls?: Record<string, string | null>;
   messages: Messages;
   onStartRace: () => void;
   onQuitRace: () => void;
@@ -190,6 +195,7 @@ export default function RaceScreen({
   isHost,
   participantCount,
   viewerParticipantId,
+  pfpUrls = {},
   messages,
   onStartRace,
   onQuitRace,
@@ -262,10 +268,39 @@ export default function RaceScreen({
   }
 
   if (roomStatus === 'en_course') {
+    // COURSE-05 / GAME-2/3: the track block (overtake warning + live top-3 +
+    // the dwarf-cave progress track) rides above the typing work for every
+    // viewer — participants AND spectators — fed by the same `raceTick` data.
+    const trackBlock = (
+      <div className="flex w-full min-w-0 flex-col gap-space-md">
+        <OvertakeIndicator
+          participants={race.participants}
+          localParticipantId={viewerParticipantId}
+          finishRanks={race.finishRanks}
+          messages={messages}
+        />
+        <Top3Panel
+          participants={race.participants}
+          finishRanks={race.finishRanks}
+          localParticipantId={viewerParticipantId}
+          messages={messages}
+        />
+        <ProgressTrack
+          participants={race.participants}
+          lastTickAt={race.lastTickAt}
+          totalLength={race.totalLength}
+          localParticipantId={viewerParticipantId}
+          finishRanks={race.finishRanks}
+          pfpUrls={pfpUrls}
+          messages={messages}
+        />
+      </div>
+    );
     if (viewerRole === 'spectator') {
-      // Spectator: text visible, NO typing zone, a badge.
+      // Spectator: the track + top-3 stay visible, text visible, NO typing zone.
       return (
-        <section className="flex flex-col gap-space-md">
+        <section className="flex w-full min-w-0 flex-col gap-space-md">
+          {trackBlock}
           <div className="flex flex-wrap items-center gap-space-md rounded bg-surface-container-lowest p-space-md shadow-xl">
             <span
               data-testid="spectator-badge"
@@ -282,14 +317,17 @@ export default function RaceScreen({
       );
     }
     return (
-      <RacerView
-        key={race.startAt ?? 'racer'}
-        race={race}
-        config={config}
-        messages={messages}
-        onQuitRace={onQuitRace}
-        onSendProgress={onSendProgress}
-      />
+      <section className="flex w-full min-w-0 flex-col gap-space-md">
+        {trackBlock}
+        <RacerView
+          key={race.startAt ?? 'racer'}
+          race={race}
+          config={config}
+          messages={messages}
+          onQuitRace={onQuitRace}
+          onSendProgress={onSendProgress}
+        />
+      </section>
     );
   }
 
