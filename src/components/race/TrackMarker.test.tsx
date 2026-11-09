@@ -56,6 +56,39 @@ function renderMarker(participant: RankedTrackParticipant, messages: typeof fr, 
   );
 }
 
+describe('TrackMarker — bonus flash (BONUS-03)', () => {
+  test('the bonusFlash prop glows the marker with a distinct stone ring', () => {
+    const { rerender } = render(
+      <TrackMarker
+        participant={botParticipant()}
+        progress={0.35}
+        isLocal={false}
+        finishRank={null}
+        pfpUrl={null}
+        messages={fr}
+      />,
+    );
+    const marker = screen.getByTestId(`track-marker-${BOT_ID}`);
+    expect(marker).toHaveAttribute('data-bonus-flash', 'false');
+    expect(marker.querySelector('.ring-dwarf-rune-bright')).toBeNull();
+
+    rerender(
+      <TrackMarker
+        participant={botParticipant()}
+        progress={0.35}
+        isLocal={false}
+        finishRank={null}
+        pfpUrl={null}
+        bonusFlash
+        messages={fr}
+      />,
+    );
+    expect(marker).toHaveAttribute('data-bonus-flash', 'true');
+    expect(marker.querySelector('.ring-dwarf-rune-bright')).not.toBeNull();
+    expect(marker.querySelector('.shadow-gold-glow')).not.toBeNull();
+  });
+});
+
 describe('TrackMarker — bot identity (BOT-04)', () => {
   test('a bot rides a distinct stone rune, never a human avatar', () => {
     const { container } = renderMarker(botParticipant(), fr);

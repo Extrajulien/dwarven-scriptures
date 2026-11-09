@@ -2,10 +2,12 @@ import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MESSAGES } from '../../i18n/messages';
 import { defaultRoomConfig } from '../../lib/room-config';
-import type { RaceResultEntry } from '../../realtime/protocol';
+import type { BonusAppliedMessage, RaceResultEntry } from '../../realtime/protocol';
 import type { RaceView } from '../../realtime/client-types';
 import { installMatchMedia } from '../../testing/matchMediaMock';
+import { BONUS_BANNER_DISMISS_MS } from './BonusAnnouncer';
 import RaceScreen, {
+  BONUS_MARKER_FLASH_MS,
   countdownSecondsRemaining,
   type RaceScreenProps,
 } from './RaceScreen';
@@ -281,6 +283,113 @@ describe('en_course views (GAME-1, COURSE-07)', () => {
     expect(onQuitRace).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('spectator-badge')).toBeInTheDocument();
     expect(screen.queryByTestId('typing-zone')).not.toBeInTheDocument();
+  });
+});
+
+describe('bonus announcements and track flash (BONUS-03)', () => {
+  const BOB = '88888888-8888-4888-8888-888888888888';
+
+  function bonusEvent(
+    bonusType: BonusAppliedMessage['bonusType'],
+    targetParticipantId: string,
+    payload: Partial<BonusAppliedMessage['payload']> = {},
+  ): BonusAppliedMessage {
+    return {
+      type: 'bonusApplied',
+      roomPublicId: '8f9c2a55-3b4a-4c1e-8a2d-9e7f6a5b4c3d',
+      targetParticipantId,
+      bonusType,
+      payload: { totalLength: 7, at: '2026-11-08T18:00:10.000Z', ...payload },
+    };
+  }
+
+  const racingWithBonus = (bonusLog: BonusAppliedMessage[]) =>
+    makeRace({
+      phase: 'en_course',
+      startAt: new Date(T0 + 3_000).toISOString(),
+      text: 'bonjour',
+      totalLength: 7,
+      ownProgress: { validatedChars: 0, correctKeystrokes: 0, totalKeystrokes: 0 },
+      lastTickAt: new Date(T0 + 500).toISOString(),
+      participants: [
+        {
+          participantId: ADA,
+          kind: 'user',
+          displayName: 'ada',
+          position: 2,
+          wpm: 20,
+          finished: false,
+          totalLength: 7,
+        },
+        {
+          participantId: BOB,
+          kind: 'user',
+          displayName: 'bob',
+          position: 4,
+          wpm: 40,
+          finished: false,
+          totalLength: 7,
+        },
+      ],
+      bonusLog,
+    });
+
+  test('the targeted local player sees the banner and a glowing marker, both timer-cleared', () => {
+    jest.useFakeTimers({ now: T0 });
+    try {
+      renderScreen({
+        roomStatus: 'en_course',
+        race: racingWithBonus([bonusEvent('removeWords', ADA, { wordCount: 3, totalLength: 5 })]),
+        viewerRole: 'participant',
+      });
+
+      const banner = screen.getByTestId('bonus-banner');
+      expect(banner).toHaveAttribute('aria-live', 'polite');
+      expect(banner).toHaveTextContent('−3 mots');
+      expect(banner).toHaveTextContent(messages['bonus.banner.removeWords']);
+      expect(screen.getByTestId(`track-marker-${ADA}`)).toHaveAttribute(
+        'data-bonus-flash',
+        'true',
+      );
+      expect(screen.getByTestId(`track-marker-${BOB}`)).toHaveAttribute(
+        'data-bonus-flash',
+        'false',
+      );
+
+      // The marker glow clears after ~2 s; the banner outlives it.
+      act(() => {
+        jest.advanceTimersByTime(BONUS_MARKER_FLASH_MS);
+      });
+      expect(screen.getByTestId(`track-marker-${ADA}`)).toHaveAttribute(
+        'data-bonus-flash',
+        'false',
+      );
+      expect(screen.getByTestId('bonus-banner')).toBeInTheDocument();
+
+      act(() => {
+        jest.advanceTimersByTime(BONUS_BANNER_DISMISS_MS);
+      });
+      expect(screen.queryByTestId('bonus-banner')).not.toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('observers see the feed line for events targeting others, and no banner', () => {
+    renderScreen({
+      roomStatus: 'en_course',
+      race: racingWithBonus([bonusEvent('addWords', BOB, { words: ['nain'], totalLength: 9 })]),
+      viewerRole: 'spectator',
+    });
+
+    expect(screen.queryByTestId('bonus-banner')).not.toBeInTheDocument();
+    const line = screen.getByTestId('bonus-feed-line');
+    expect(line).toHaveTextContent('bob');
+    expect(line).toHaveTextContent('+1 mots');
+    expect(screen.getByTestId(`track-marker-${BOB}`)).toHaveAttribute(
+      'data-bonus-flash',
+      'true',
+    );
   });
 });
 

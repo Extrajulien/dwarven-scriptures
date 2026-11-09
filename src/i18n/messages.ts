@@ -715,6 +715,14 @@ export interface Messages {
   'overtake.overtakenBySuffix': string;
   'overtake.ariaUp': string;
   'overtake.ariaDown': string;
+  // ------------------------------------------------------------ comeback bonus announcements (BONUS-03)
+  'bonus.feedPrefix': string;
+  'bonus.feed.receives': string;
+  'bonus.wordsUnit': string;
+  'bonus.fogChip': string;
+  'bonus.banner.addWords': string;
+  'bonus.banner.removeWords': string;
+  'bonus.banner.fog': string;
   // ------------------------------------------------------------ chrome accessibility
   'chrome.guildEmblemAlt': string;
   'chrome.siteLogoAlt': string;
@@ -1394,6 +1402,14 @@ export const MESSAGES: Record<Locale, Messages> = {
     'overtake.overtakenBySuffix': 'vous double',
     'overtake.ariaUp': 'Vous avez doublé',
     'overtake.ariaDown': 'Vous avez été doublé par',
+    // ------------------------------------------------------------ annonces de bonus (BONUS-03)
+    'bonus.feedPrefix': 'Bonus :',
+    'bonus.feed.receives': 'reçoit',
+    'bonus.wordsUnit': 'mots',
+    'bonus.fogChip': 'Brouillard',
+    'bonus.banner.addWords': '— le texte s’allonge pour vous',
+    'bonus.banner.removeWords': '— l’expédition vous aide',
+    'bonus.banner.fog': 'Brouillard sur vos prochains mots —',
     // ------------------------------------------------------------ chrome accessibility
     'chrome.guildEmblemAlt': 'Emblème de la guilde Dwarf Fortress Delve',
     'chrome.siteLogoAlt': 'Logo de Dwarven Scriptures',
@@ -2066,6 +2082,14 @@ export const MESSAGES: Record<Locale, Messages> = {
     'overtake.overtakenBySuffix': 'overtakes you',
     'overtake.ariaUp': 'You overtook',
     'overtake.ariaDown': 'You were overtaken by',
+    // ------------------------------------------------------------ comeback bonus announcements (BONUS-03)
+    'bonus.feedPrefix': 'Bonus:',
+    'bonus.feed.receives': 'receives',
+    'bonus.wordsUnit': 'words',
+    'bonus.fogChip': 'Fog',
+    'bonus.banner.addWords': '— the text grows for you',
+    'bonus.banner.removeWords': '— the expedition lends a hand',
+    'bonus.banner.fog': 'Fog over your next words —',
     // ------------------------------------------------------------ chrome accessibility
     'chrome.guildEmblemAlt': 'Dwarf Fortress Delve Guild Emblem',
     'chrome.siteLogoAlt': 'Dwarven Scriptures logo',

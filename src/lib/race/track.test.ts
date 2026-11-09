@@ -74,55 +74,55 @@ describe('easeOutCubic', () => {
   });
 });
 
-describe('interpolatePosition (COURSE-05 smoothness)', () => {
+describe('interpolatePosition (COURSE-05 smoothness, BONUS-04 lengths)', () => {
   const ada = participant({ participantId: 'ada', position: 250, wpm: 40 });
   const adaNext = { ...ada, position: 500 };
   const prevTick = tick([ada], T0);
   const nextTick = tick([adaNext], T0 + 250);
 
   test('returns the next sample position when there is no previous tick', () => {
-    expect(interpolatePosition(adaNext, null, nextTick, T0 + 100, 1_000)).toBe(0.5);
+    expect(interpolatePosition(adaNext, null, nextTick, T0 + 100)).toBe(0.5);
   });
 
   test('returns the next sample position when the participant was absent from the previous tick', () => {
     const stranger = participant({ participantId: 'ghost', position: 400 });
-    expect(interpolatePosition(stranger, prevTick, tick([stranger], T0 + 250), T0 + 100, 1_000)).toBe(0.4);
+    expect(interpolatePosition(stranger, prevTick, tick([stranger], T0 + 250), T0 + 100)).toBe(0.4);
   });
 
   test('returns the next sample position for a degenerate clock pair (same or backwards timestamps)', () => {
-    expect(interpolatePosition(adaNext, prevTick, tick([adaNext], T0), T0 + 100, 1_000)).toBe(0.5);
+    expect(interpolatePosition(adaNext, prevTick, tick([adaNext], T0), T0 + 100)).toBe(0.5);
     expect(
-      interpolatePosition(adaNext, tick([ada], T0 + 500), tick([adaNext], T0), T0 + 100, 1_000),
+      interpolatePosition(adaNext, tick([ada], T0 + 500), tick([adaNext], T0), T0 + 100),
     ).toBe(0.5);
   });
 
   test('linear interpolation is exact at the window midpoint', () => {
     // prev 250/1000 = 0.25, next 500/1000 = 0.5, halfway = 0.375.
-    expect(interpolatePosition(adaNext, prevTick, nextTick, T0 + 125, 1_000, 'linear')).toBeCloseTo(0.375);
+    expect(interpolatePosition(adaNext, prevTick, nextTick, T0 + 125, 'linear')).toBeCloseTo(0.375);
   });
 
   test('ease-out interpolation reaches 0.875 of the delta at the midpoint', () => {
     // alpha = 0.5 → easeOutCubic = 0.875 → 0.25 + 0.25 * 0.875.
-    expect(interpolatePosition(adaNext, prevTick, nextTick, T0 + 125, 1_000, 'ease-out')).toBeCloseTo(
+    expect(interpolatePosition(adaNext, prevTick, nextTick, T0 + 125, 'ease-out')).toBeCloseTo(
       0.25 + 0.25 * 0.875,
     );
   });
 
   test('clamps at both boundaries of the tick window', () => {
-    expect(interpolatePosition(adaNext, prevTick, nextTick, T0 - 50, 1_000, 'linear')).toBe(0.25);
-    expect(interpolatePosition(adaNext, prevTick, nextTick, T0 + 999, 1_000, 'linear')).toBe(0.5);
+    expect(interpolatePosition(adaNext, prevTick, nextTick, T0 - 50, 'linear')).toBe(0.25);
+    expect(interpolatePosition(adaNext, prevTick, nextTick, T0 + 999, 'linear')).toBe(0.5);
   });
 
   test('the result stays monotonic as the client clock advances (both easings)', () => {
     const samples: number[] = [];
     for (let offset = 0; offset <= 250; offset += 10) {
-      samples.push(interpolatePosition(adaNext, prevTick, nextTick, T0 + offset, 1_000, 'linear'));
+      samples.push(interpolatePosition(adaNext, prevTick, nextTick, T0 + offset, 'linear'));
     }
     expect(samples).toEqual([...samples].sort((a, b) => a - b));
 
     const eased: number[] = [];
     for (let offset = 0; offset <= 250; offset += 10) {
-      eased.push(interpolatePosition(adaNext, prevTick, nextTick, T0 + offset, 1_000, 'ease-out'));
+      eased.push(interpolatePosition(adaNext, prevTick, nextTick, T0 + offset, 'ease-out'));
     }
     expect(eased).toEqual([...eased].sort((a, b) => a - b));
     expect(eased[eased.length - 1]).toBeCloseTo(0.5);
@@ -137,7 +137,6 @@ describe('interpolatePosition (COURSE-05 smoothness)', () => {
         tick([weird], T0),
         tick([weirdNext], T0 + 250),
         T0 + offset,
-        100,
       );
       expect(value).toBeGreaterThanOrEqual(0);
       expect(value).toBeLessThanOrEqual(1);
@@ -147,16 +146,31 @@ describe('interpolatePosition (COURSE-05 smoothness)', () => {
   test('trusts the latest sample when the previous one was ahead (defensive)', () => {
     const back = participant({ participantId: 'back', position: 900 });
     const backNext = { ...back, position: 100 };
-    expect(interpolatePosition(backNext, tick([back], T0), tick([backNext], T0 + 250), T0 + 125, 1_000)).toBe(0.1);
+    expect(interpolatePosition(backNext, tick([back], T0), tick([backNext], T0 + 250), T0 + 125)).toBe(0.1);
   });
 
-  test('is 0 without a known text length', () => {
-    expect(interpolatePosition(adaNext, prevTick, nextTick, T0 + 125, null)).toBe(0);
+  test('uses each participant own effective length, never a shared one (BONUS-04)', () => {
+    // Same shared text, different bonus-adjusted lengths: 400/400 is done,
+    // 400/1_000 is only at 40 % — the shared denominator would lie for one.
+    const done = participant({ participantId: 'done', position: 400, totalLength: 400 });
+    const ongoing = participant({ participantId: 'ongoing', position: 400, totalLength: 1_000 });
+    expect(interpolatePosition(done, null, tick([done, ongoing], T0 + 250), T0)).toBe(1);
+    expect(interpolatePosition(ongoing, null, tick([done, ongoing], T0 + 250), T0)).toBe(0.4);
+  });
+
+  test('recomputes each sample with its own length when a bonus changed it between ticks', () => {
+    // addWords on the target between the ticks: 11/43 ≈ 0.256 → 11/61 ≈ 0.180.
+    // The latest (lower) fraction is trusted instead of interpolating backwards.
+    const before = participant({ participantId: 'grown', position: 11, totalLength: 43 });
+    const after = { ...before, totalLength: 61 };
+    expect(interpolatePosition(after, tick([before], T0), tick([after], T0 + 250), T0 + 125)).toBeCloseTo(
+      11 / 61,
+    );
   });
 
   test('is deterministic for identical inputs', () => {
-    const first = interpolatePosition(adaNext, prevTick, nextTick, T0 + 90, 1_000, 'ease-out');
-    const second = interpolatePosition(adaNext, prevTick, nextTick, T0 + 90, 1_000, 'ease-out');
+    const first = interpolatePosition(adaNext, prevTick, nextTick, T0 + 90, 'ease-out');
+    const second = interpolatePosition(adaNext, prevTick, nextTick, T0 + 90, 'ease-out');
     expect(second).toBe(first);
   });
 });

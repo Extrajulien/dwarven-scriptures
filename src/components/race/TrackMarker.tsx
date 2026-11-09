@@ -72,6 +72,8 @@ export type TrackMarkerProps = {
   /** Finish rank (1 = first) when this participant has finished; else null. */
   finishRank: number | null;
   pfpUrl?: string | null;
+  /** BONUS-03: a bonus just hit this participant — brief glow, timer-cleared. */
+  bonusFlash?: boolean;
   messages: Messages;
 };
 
@@ -81,6 +83,7 @@ export default function TrackMarker({
   isLocal,
   finishRank,
   pfpUrl,
+  bonusFlash = false,
   messages,
 }: TrackMarkerProps) {
   const isTop3 = participant.rank <= 3;
@@ -104,6 +107,7 @@ export default function TrackMarker({
       data-local={isLocal ? 'true' : 'false'}
       data-top3={isTop3 ? 'true' : 'false'}
       data-finished={participant.finished ? 'true' : 'false'}
+      data-bonus-flash={bonusFlash ? 'true' : 'false'}
       data-progress={progress.toFixed(3)}
       role="group"
       aria-label={ariaLabel}
@@ -141,7 +145,15 @@ export default function TrackMarker({
         >
           {displayName}
         </span>
-        <span className={`relative rounded ${isLocal ? 'ring-2 ring-dwarf-gold shadow-gold-glow' : ''}`}>
+        <span
+          className={`relative rounded ${
+            isLocal
+              ? 'ring-2 ring-dwarf-gold shadow-gold-glow'
+              : bonusFlash
+                ? 'ring-2 ring-dwarf-rune-bright shadow-gold-glow animate-pulse'
+                : ''
+          }`}
+        >
           <MarkerAvatar participant={participant} pfpUrl={pfpUrl} />
           {isLocal && (
             <span
