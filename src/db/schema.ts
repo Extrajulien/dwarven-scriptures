@@ -478,7 +478,7 @@ export const raceParticipants = pgTable(
     finishedAtMs: integer().notNull(),
     /** Final rank (COURSE-10), 1-based. */
     rank: integer().notNull(),
-    /** Bonus count snapshot; always 0 until Phase 4 (BONUS-01..04). */
+    /** Comeback bonuses received during the race (BONUS-01, cap 3). */
     bonusesReceived: integer().default(0).notNull(),
     /** WPM-over-time series (RES-03/05), array of `{elapsedMs, wpm}`. */
     wpmSeries: jsonb().$type<Array<{ elapsedMs: number; wpm: number }>>().notNull(),

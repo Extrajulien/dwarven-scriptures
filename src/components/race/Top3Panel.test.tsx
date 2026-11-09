@@ -21,6 +21,7 @@ function participant(overrides: Partial<RaceTrackParticipant> = {}): RaceTrackPa
     position: 0,
     wpm: 0,
     finished: false,
+    totalLength: 1_000,
     ...overrides,
   };
 }

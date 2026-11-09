@@ -12,7 +12,7 @@ import { defaultRoomConfig } from '../lib/room-config';
 import { generateBotSchedule } from '../lib/bots/schedule';
 import type { RoomConfig } from '../db/schema';
 import type { RaceText } from '../lib/race/state';
-import { raceTickMessageSchema, type ServerMessage } from './protocol';
+import { raceTickMessageSchema, type RaceTickParticipant, type ServerMessage } from './protocol';
 import {
   RaceEngine,
   RACE_AFK_TIMEOUT_MS,
@@ -56,7 +56,7 @@ function member(overrides: Partial<RaceEngineMember> & { memberId: number }): Ra
 
 /** Host (user 7), racer user 8, racer guest, and a spectator. */
 function roomData(
-  config: RoomConfig = { ...defaultRoomConfig, timeLimitSeconds: null },
+  config: RoomConfig = { ...defaultRoomConfig, timeLimitSeconds: null, bonusesEnabled: false },
 ): RaceEngineRoomData {
   return {
     publicId: ROOM_PUBLIC_ID,
@@ -136,6 +136,14 @@ class FakeDeps implements RaceEngineDeps {
       complexity: config.textComplexity,
       wordCount: this.textBody.split(' ').length,
     };
+  }
+
+  bonusWordPool = ['forge', 'nain', 'rune', 'pierre', 'tunnel', 'filon'];
+  pickBonusWordPoolCalls: RoomConfig[] = [];
+
+  async pickBonusWordPool(config: RoomConfig): Promise<string[]> {
+    this.pickBonusWordPoolCalls.push(config);
+    return this.bonusWordPool;
   }
 
   async persistStatus(roomId: number, status: 'en_attente' | 'decompte' | 'en_course' | 'resultats' | 'fermee'): Promise<void> {
@@ -907,7 +915,7 @@ describe('WPM time series sampling (RES-03/05 groundwork)', () => {
 
   test('the series is bounded by RACE_WPM_SERIES_MAX_POINTS (defensive cap)', async () => {
     const { engine, deps } = makeEngine();
-    deps.room = roomData({ ...defaultRoomConfig, timeLimitSeconds: null });
+    deps.room = roomData({ ...defaultRoomConfig, timeLimitSeconds: null, bonusesEnabled: false });
     deps.textBody = LONG_BODY;
     await startAndCountdown(engine, deps);
     const totalLength = LONG_BODY.length;
@@ -974,6 +982,7 @@ describe('bots (BOT-01/04/05, ADR-011)', () => {
   const BOTS_NOOB_EXPERT: RoomConfig = {
     ...defaultRoomConfig,
     timeLimitSeconds: null,
+    bonusesEnabled: false,
     bots: [
       { level: 'noob', count: 1 },
       { level: 'expert', count: 1 },
@@ -1063,6 +1072,7 @@ describe('bots (BOT-01/04/05, ADR-011)', () => {
     deps.room = soloRoomData({
       ...defaultRoomConfig,
       timeLimitSeconds: null,
+      bonusesEnabled: false,
       bots: [{ level: 'noob', count: 1 }],
     });
     await engine.startRace(ROOM_ID, 'user:7');
@@ -1343,5 +1353,411 @@ describe('syntheticBotParticipantId (BOT-05)', () => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
     );
     expect(syntheticBotParticipantId(43)).not.toBe(syntheticBotParticipantId(44));
+  });
+});
+
+describe('comeback bonuses (BONUS-01/04, CONF-09)', () => {
+  type BonusMessage = ServerMessage & { type: 'bonusApplied' };
+
+  /** Characters appended by one addWords event: " tunnel forge nain" (18). */
+  const ADDED = ' tunnel forge nain'.length;
+  const GROWN = DEFAULT_BODY.length + ADDED;
+
+  /** Host (user 7) as the only human racer, plus one spectator. */
+  function soloRoomData(config: RoomConfig): RaceEngineRoomData {
+    return {
+      publicId: ROOM_PUBLIC_ID,
+      config,
+      hostUserId: 7,
+      members: [
+        member({
+          memberId: 1,
+          userId: 7,
+          publicId: ADA_PUBLIC_ID,
+          displayName: 'ada',
+          hubKey: 'user:7',
+        }),
+        member({
+          memberId: 4,
+          role: 'spectator',
+          userId: 9,
+          publicId: SPEC_PUBLIC_ID,
+          displayName: 'watcher',
+          hubKey: 'user:9',
+        }),
+      ],
+    };
+  }
+
+  const bonusesOf = (deps: FakeDeps): BonusMessage[] => deps.messagesOf(ROOM_ID, 'bonusApplied');
+
+  /** Advances the fake clock by `ms` and runs one engine tick. */
+  function tickAfter(deps: FakeDeps, engine: RaceEngine, ms: number): void {
+    deps.clock.advance(ms);
+    engine.tick();
+  }
+
+  /** The latest tick's entry for a participant, or null. */
+  function latestTickEntry(deps: FakeDeps, participantId: string): RaceTickParticipant | null {
+    const ticks = deps.messagesOf(ROOM_ID, 'raceTick');
+    for (let index = ticks.length - 1; index >= 0; index -= 1) {
+      const entry = ticks[index].participants.find(
+        (participant) => participant.participantId === participantId,
+      );
+      if (entry) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  /** Walks the engine until the race reached `resultats` (capped). */
+  function walkToFinish(deps: FakeDeps, engine: RaceEngine): void {
+    for (
+      let step = 0;
+      step < 400 && deps.messagesOf(ROOM_ID, 'raceFinished').length === 0;
+      step += 1
+    ) {
+      tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+    }
+  }
+
+  test('full race: exactly 3 checkpoints, leader hindered, laggard helped, lengths coherent (BONUS-01/04)', async () => {
+    const { engine, deps } = makeEngine();
+    // Seed 42 → type draws: addWords, removeWords, removeWords.
+    deps.room = roomData({
+      ...defaultRoomConfig,
+      timeLimitSeconds: null,
+      bonusesEnabled: true,
+      bots: [{ level: 'noob', count: 1 }],
+    });
+    await startAndCountdown(engine, deps);
+
+    // Bob leads the race; the host (ada) stays at 0 — the most-behind
+    // eligible participant, so every help lands on her.
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(11))).toEqual({ ok: true });
+    tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+
+    // 25 % crossing: addWords hinder on the leader (bob). His effective text
+    // grows by " tunnel forge nain" (18 chars): 43 → 61.
+    expect(bonusesOf(deps)).toHaveLength(1);
+    expect(bonusesOf(deps)[0]).toMatchObject({
+      targetParticipantId: BOB_PUBLIC_ID,
+      bonusType: 'addWords',
+      payload: { words: ['tunnel', 'forge', 'nain'], totalLength: GROWN },
+    });
+
+    // 50 % crossing (30/61 ≈ 49.2 % — still below; use 31): removeWords help
+    // on ada (43 → 30 chars).
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(31))).toEqual({ ok: true });
+    tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+    expect(bonusesOf(deps)).toHaveLength(2);
+    expect(bonusesOf(deps)[1]).toMatchObject({
+      targetParticipantId: ADA_PUBLIC_ID,
+      bonusType: 'removeWords',
+      payload: { wordCount: 3, totalLength: 30 },
+    });
+
+    // 75 % crossing (46/61 ≈ 75.4 %): removeWords help on ada (30 → 15 chars).
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(46))).toEqual({ ok: true });
+    tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+    expect(bonusesOf(deps)).toHaveLength(3);
+    expect(bonusesOf(deps)[2]).toMatchObject({
+      targetParticipantId: ADA_PUBLIC_ID,
+      bonusType: 'removeWords',
+      payload: { wordCount: 3, totalLength: 15 },
+    });
+
+    // Every bonusApplied message is protocol-shaped (timestamp included).
+    for (const message of bonusesOf(deps)) {
+      expect(Number.isFinite(Date.parse(message.payload.at))).toBe(true);
+      expect(message.roomPublicId).toBe(ROOM_PUBLIC_ID);
+    }
+
+    // The ticks carry the bonus-adjusted effective lengths (BONUS-04).
+    const bobTick = latestTickEntry(deps, BOB_PUBLIC_ID);
+    const adaTick = latestTickEntry(deps, ADA_PUBLIC_ID);
+    expect(bobTick?.totalLength).toBe(GROWN);
+    expect(adaTick?.totalLength).toBe(15);
+
+    // Progression stays coherent in every tick: positions never exceed the
+    // participant's own effective length.
+    for (const tick of deps.messagesOf(ROOM_ID, 'raceTick')) {
+      for (const participant of tick.participants) {
+        expect(participant.position).toBeGreaterThanOrEqual(0);
+        expect(participant.position).toBeLessThanOrEqual(participant.totalLength);
+      }
+    }
+
+    // Bob finishes against his extended 61-character text; ada finishes her
+    // shrunken 15-character text; the guest (untouched, 43 chars) and the
+    // noob bot complete on their own timelines.
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(GROWN))).toEqual({ ok: true });
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(15))).toEqual({ ok: true });
+    expect(
+      engine.handleRaceProgress(ROOM_ID, `guest:${GUEST_TOKEN}`, progress(DEFAULT_BODY.length)),
+    ).toEqual({ ok: true });
+    walkToFinish(deps, engine);
+
+    expect(bonusesOf(deps)).toHaveLength(3); // exactly 3, one per checkpoint
+    const finished = deps.messagesOf(ROOM_ID, 'raceFinished');
+    expect(finished).toHaveLength(1);
+    const bobResult = finished[0].results.find((entry) => entry.participantId === BOB_PUBLIC_ID);
+    const adaResult = finished[0].results.find((entry) => entry.participantId === ADA_PUBLIC_ID);
+    const guestResult = finished[0].results.find(
+      (entry) => entry.participantId === GUEST_TOKEN,
+    );
+    const botResult = finished[0].results.find((entry) => entry.kind === 'bot');
+    expect(bobResult?.status).toBe('finished');
+    expect(adaResult?.status).toBe('finished');
+    expect(guestResult?.status).toBe('finished');
+    expect(botResult?.status).toBe('finished');
+    expect(bobResult?.bonusesReceived).toBe(1);
+    expect(adaResult?.bonusesReceived).toBe(2);
+    expect(guestResult?.bonusesReceived).toBe(0);
+    expect(botResult?.bonusesReceived).toBe(0);
+
+    // The persisted payload maps the counters through (RES-05).
+    const persisted = deps.persistedResults[0].results;
+    expect(persisted.find((entry) => entry.participantId === BOB_PUBLIC_ID)?.bonusesReceived).toBe(1);
+    expect(persisted.find((entry) => entry.participantId === ADA_PUBLIC_ID)?.bonusesReceived).toBe(2);
+  });
+
+  test('a bot leader adapts: addWords extends its schedule, removeWords shrinks the human (ADR-011)', async () => {
+    const { engine, deps } = makeEngine();
+    const BOT_ID = syntheticBotParticipantId(43);
+    deps.room = soloRoomData({
+      ...defaultRoomConfig,
+      timeLimitSeconds: null,
+      bonusesEnabled: true,
+      bots: [{ level: 'expert', count: 1 }],
+    });
+    await engine.startRace(ROOM_ID, 'user:7');
+    tickAfter(deps, engine, 3_000);
+
+    // The expert bot leads from the start; seed 42 → addWords on the leader
+    // (the bot), then two removeWords helps on the only other racer (ada).
+    // Walk until all three checkpoint effects have fired.
+    for (let step = 0; step < 200 && bonusesOf(deps).length < 3; step += 1) {
+      tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+    }
+
+    const events = bonusesOf(deps);
+    expect(events).toHaveLength(3);
+    expect(events.map((event) => event.bonusType)).toEqual([
+      'addWords',
+      'removeWords',
+      'removeWords',
+    ]);
+    expect(events[0]).toMatchObject({
+      targetParticipantId: BOT_ID,
+      payload: { words: ['tunnel', 'forge', 'nain'], totalLength: GROWN },
+    });
+    expect(events[1].targetParticipantId).toBe(ADA_PUBLIC_ID);
+    expect(events[2].targetParticipantId).toBe(ADA_PUBLIC_ID);
+
+    // The bot's extended schedule is typed to the end: it finished with the
+    // grown effective length and its bonus counter persisted.
+    const botEntry = latestTickEntry(deps, BOT_ID);
+    expect(botEntry?.totalLength).toBe(GROWN);
+
+    // The human was helped twice (43 → 30 → 15 chars): she finishes her
+    // shrunken text, then the bot completes its extended schedule.
+    const adaTick = latestTickEntry(deps, ADA_PUBLIC_ID);
+    expect(adaTick?.totalLength).toBe(15);
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(15))).toEqual({ ok: true });
+    walkToFinish(deps, engine);
+
+    const finished = deps.messagesOf(ROOM_ID, 'raceFinished');
+    expect(finished).toHaveLength(1);
+    const botResult = finished[0].results.find((entry) => entry.participantId === BOT_ID);
+    expect(botResult?.status).toBe('finished');
+    expect(botResult?.bonusesReceived).toBe(1);
+    const botPersisted = deps.persistedResults[0].results.find(
+      (entry) => entry.participantId === BOT_ID,
+    );
+    expect(botPersisted?.bonusesReceived).toBe(1);
+    expect(botPersisted?.kind).toBe('bot');
+
+    const adaResult = finished[0].results.find((entry) => entry.participantId === ADA_PUBLIC_ID);
+    expect(adaResult?.status).toBe('finished');
+    expect(adaResult?.bonusesReceived).toBe(2);
+  });
+
+  test('fog never targets a bot leader: the event is skipped (documented rule)', async () => {
+    const { engine, deps } = makeEngine();
+    deps.nextSeed = 3; // type draws: fog, removeWords, removeWords
+    const BOT_ID = syntheticBotParticipantId(4);
+    deps.room = soloRoomData({
+      ...defaultRoomConfig,
+      timeLimitSeconds: null,
+      bonusesEnabled: true,
+      bots: [{ level: 'expert', count: 1 }],
+    });
+    await engine.startRace(ROOM_ID, 'user:7');
+    tickAfter(deps, engine, 3_000);
+    // The fog draw was consumed at the first checkpoint; walk until the two
+    // removeWords helps have landed on the human.
+    for (let step = 0; step < 200 && bonusesOf(deps).length < 2; step += 1) {
+      tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+    }
+
+    const events = bonusesOf(deps);
+    // The fog draw was consumed but applied to nobody: only the two
+    // removeWords helps were broadcast, both to the human.
+    expect(events).toHaveLength(2);
+    expect(events.every((event) => event.bonusType === 'removeWords')).toBe(true);
+    expect(events.every((event) => event.targetParticipantId === ADA_PUBLIC_ID)).toBe(true);
+
+    // Ada finishes her shrunken text; the bot then completes its schedule.
+    const adaTick = latestTickEntry(deps, ADA_PUBLIC_ID);
+    expect(adaTick?.totalLength).toBe(15);
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(15))).toEqual({ ok: true });
+    walkToFinish(deps, engine);
+
+    const finished = deps.messagesOf(ROOM_ID, 'raceFinished');
+    expect(finished).toHaveLength(1);
+    const botResult = finished[0].results.find((entry) => entry.participantId === BOT_ID);
+    expect(botResult?.bonusesReceived).toBe(0);
+    expect(botResult?.status).toBe('finished');
+  });
+
+  test('fog on a human leader applies with no text change (durationMs payload)', async () => {
+    const { engine, deps } = makeEngine();
+    deps.nextSeed = 5; // type draws: fog, addWords, fog
+    deps.room = roomData({
+      ...defaultRoomConfig,
+      timeLimitSeconds: null,
+      bonusesEnabled: true,
+    });
+    await startAndCountdown(engine, deps);
+
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(11))).toEqual({ ok: true });
+    tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+    expect(bonusesOf(deps)).toHaveLength(1);
+    expect(bonusesOf(deps)[0]).toMatchObject({
+      targetParticipantId: BOB_PUBLIC_ID,
+      bonusType: 'fog',
+      payload: { durationMs: 2_000, totalLength: DEFAULT_BODY.length },
+    });
+
+    // Seed 5, event 1: addWords with " nain nain forge" (16 chars): 43 → 59.
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(22))).toEqual({ ok: true });
+    tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+    expect(bonusesOf(deps)).toHaveLength(2);
+    expect(bonusesOf(deps)[1]).toMatchObject({
+      bonusType: 'addWords',
+      payload: { words: ['nain', 'nain', 'forge'], totalLength: DEFAULT_BODY.length + 16 },
+    });
+
+    // 75 % of the grown text (59 chars) needs >= 44.25 validated chars.
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(45))).toEqual({ ok: true });
+    tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+    expect(bonusesOf(deps)).toHaveLength(3);
+    expect(bonusesOf(deps)[2]).toMatchObject({
+      bonusType: 'fog',
+      payload: { totalLength: DEFAULT_BODY.length + 16 },
+    });
+
+    // The fog never moved the finish line; only the addWords did (43 → 59).
+    const bobTick = latestTickEntry(deps, BOB_PUBLIC_ID);
+    expect(bobTick?.totalLength).toBe(DEFAULT_BODY.length + 16);
+
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(DEFAULT_BODY.length + 16))).toEqual(
+      { ok: true },
+    );
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(43))).toEqual({ ok: true });
+    expect(
+      engine.handleRaceProgress(ROOM_ID, `guest:${GUEST_TOKEN}`, progress(DEFAULT_BODY.length)),
+    ).toEqual({ ok: true });
+    walkToFinish(deps, engine);
+    const finished = deps.messagesOf(ROOM_ID, 'raceFinished');
+    expect(finished).toHaveLength(1);
+    expect(
+      finished[0].results.find((entry) => entry.participantId === BOB_PUBLIC_ID)?.bonusesReceived,
+    ).toBe(3);
+  });
+
+  test('deterministic from the race seed: two engines replay identical bonus events (BOT-05)', async () => {
+    /** Runs the full scripted race against a fresh engine and returns it. */
+    const run = async () => {
+      const { engine, deps } = makeEngine();
+      deps.room = roomData({
+        ...defaultRoomConfig,
+        timeLimitSeconds: null,
+        bonusesEnabled: true,
+        bots: [{ level: 'noob', count: 1 }],
+      });
+      await startAndCountdown(engine, deps);
+      expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(11))).toEqual({ ok: true });
+      tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+      expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(31))).toEqual({ ok: true });
+      tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+      expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(46))).toEqual({ ok: true });
+      tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+      expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(GROWN))).toEqual({ ok: true });
+      expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(15))).toEqual({ ok: true });
+      expect(
+        engine.handleRaceProgress(ROOM_ID, `guest:${GUEST_TOKEN}`, progress(DEFAULT_BODY.length)),
+      ).toEqual({ ok: true });
+      walkToFinish(deps, engine);
+      return deps;
+    };
+
+    // Two engines run the same synchronous clock steps with the same seed:
+    // the wire events and the persisted payloads must replay byte for byte.
+    const first = await run();
+    const second = await run();
+
+    const eventsOf = (deps: FakeDeps) =>
+      deps
+        .messagesOf(ROOM_ID, 'bonusApplied')
+        .map((message) => ({
+          type: message.bonusType,
+          target: message.targetParticipantId,
+          payload: message.payload,
+        }));
+    expect(eventsOf(second)).toEqual(eventsOf(first));
+
+    const persistedOf = (deps: FakeDeps) =>
+      deps.persistedResults[0].results.map((result) => ({
+        participantId: result.participantId,
+        bonusesReceived: result.bonusesReceived,
+        status: result.status,
+        rank: result.rank,
+      }));
+    expect(persistedOf(second)).toEqual(persistedOf(first));
+  });
+
+  test('bonusesEnabled: false keeps the race on the base text (CONF-09)', async () => {
+    const { engine, deps } = makeEngine();
+    deps.room = roomData({ ...defaultRoomConfig, timeLimitSeconds: null, bonusesEnabled: false });
+    await startAndCountdown(engine, deps);
+
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(11))).toEqual({ ok: true });
+    tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(43))).toEqual({ ok: true });
+
+    expect(bonusesOf(deps)).toHaveLength(0);
+    const bobTick = latestTickEntry(deps, BOB_PUBLIC_ID);
+    expect(bobTick?.totalLength).toBe(DEFAULT_BODY.length);
+    expect(deps.pickBonusWordPoolCalls).toHaveLength(0);
+  });
+
+  test('the word pool is loaded exactly once at start and addWords uses it', async () => {
+    const { engine, deps } = makeEngine();
+    deps.room = roomData({
+      ...defaultRoomConfig,
+      timeLimitSeconds: null,
+      bonusesEnabled: true,
+    });
+    await startAndCountdown(engine, deps);
+    expect(deps.pickBonusWordPoolCalls).toHaveLength(1);
+    expect(deps.pickBonusWordPoolCalls[0].textLanguage).toBe('fr');
+
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(11))).toEqual({ ok: true });
+    tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+    expect(bonusesOf(deps)).toHaveLength(1);
+    expect(deps.pickBonusWordPoolCalls).toHaveLength(1); // never re-loaded mid-race
   });
 });

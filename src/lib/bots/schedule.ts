@@ -307,3 +307,63 @@ export function scheduleNetWpm(schedule: BotSchedule, textLength: number): numbe
   const last = schedule.steps[schedule.steps.length - 1];
   return netWpm({ correctChars: textLength, elapsedMs: last.atMs });
 }
+
+// ------------------------------------------------------------------ bonuses
+
+/**
+ * BONUS-02/04: truncates a bot schedule when a `removeWords` help shrinks the
+ * bot's text — every keystroke beyond the new text length is dropped, so the
+ * bot finishes sooner through the same shared race model (ADR-011). The
+ * removal never touches characters at or before the bot's caret (the bonus
+ * rules remove only from the remaining suffix), so already applied steps are
+ * never cut and `botStepCursor` stays consistent.
+ */
+export function truncateBotSchedule(schedule: BotSchedule, textLength: number): BotSchedule {
+  const length = Math.max(0, textLength);
+  if (schedule.steps.every((step) => step.index < length)) {
+    return schedule;
+  }
+  return { steps: schedule.steps.filter((step) => step.index < length) };
+}
+
+/**
+ * BONUS-02/04: extends a bot schedule when an `addWords` hinder grows the
+ * bot's text. The appended suffix (separator space included) is typed with a
+ * fresh deterministic schedule generated at the bot's level parameters
+ * (`generateBotSchedule`) from `seed`, then spliced after the current
+ * timeline: indices continue after the old text and timestamps continue 1 ms
+ * after the last existing keystroke. The suffix re-draws the level's typing
+ * speed from its seed, so its exact cadence may differ slightly from the
+ * original per-bot draw while staying inside the same level band —
+ * deterministic for the same seed (BOT-05).
+ */
+export function extendBotSchedule(params: {
+  schedule: BotSchedule;
+  /** The suffix appended to the bot's text (its leading separator included). */
+  appendedText: string;
+  level: BotLevel;
+  errorMode: BotErrorMode;
+  seed: number;
+}): BotSchedule {
+  let startIndex = 0;
+  let startAtMs = -1;
+  for (const step of params.schedule.steps) {
+    startIndex = Math.max(startIndex, step.index + 1);
+    startAtMs = Math.max(startAtMs, step.atMs);
+  }
+
+  const suffix = generateBotSchedule({
+    text: params.appendedText,
+    level: params.level,
+    seed: params.seed,
+    errorMode: params.errorMode,
+  });
+
+  const extended = suffix.steps.map((step) => ({
+    index: step.index + startIndex,
+    atMs: step.atMs + startAtMs + 1,
+    kind: step.kind,
+  }));
+
+  return { steps: [...params.schedule.steps, ...extended] };
+}

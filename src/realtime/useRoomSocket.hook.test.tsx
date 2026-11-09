@@ -175,6 +175,7 @@ describe('useRoomSocket (mocked WebSocket)', () => {
             position: 4,
             wpm: 12,
             finished: false,
+            totalLength: 19,
           },
         ],
       });
@@ -199,6 +200,7 @@ describe('useRoomSocket (mocked WebSocket)', () => {
             status: 'finished',
             finishedAtMs: 3_900,
             rank: 1,
+            bonusesReceived: 0,
             wpmSeries: [{ elapsedMs: 3_900, wpm: 50 }],
           },
         ],

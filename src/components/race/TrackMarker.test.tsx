@@ -23,6 +23,7 @@ function botParticipant(overrides: Partial<RankedTrackParticipant> = {}): Ranked
     position: 120,
     wpm: 84.5,
     finished: false,
+    totalLength: 200,
     rank: 1,
     ...overrides,
   };
@@ -36,6 +37,7 @@ function humanParticipant(overrides: Partial<RankedTrackParticipant> = {}): Rank
     position: 90,
     wpm: 62,
     finished: false,
+    totalLength: 200,
     rank: 2,
     ...overrides,
   };

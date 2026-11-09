@@ -301,6 +301,7 @@ describe('race messages reducer (GAME-1 groundwork, COURSE-08)', () => {
           position: 12,
           wpm: 40,
           finished: false,
+          totalLength: 34,
         },
       ],
     });
@@ -321,6 +322,7 @@ describe('race messages reducer (GAME-1 groundwork, COURSE-08)', () => {
           position: 5,
           wpm: 10,
           finished: false,
+          totalLength: 34,
         },
       ],
     });
@@ -346,6 +348,7 @@ describe('race messages reducer (GAME-1 groundwork, COURSE-08)', () => {
           position: 5,
           wpm: 10,
           finished: false,
+          totalLength: 34,
         },
       ],
     });
@@ -392,6 +395,7 @@ describe('race messages reducer (GAME-1 groundwork, COURSE-08)', () => {
           status: 'finished',
           finishedAtMs: 41_000,
           rank: 1,
+          bonusesReceived: 0,
           wpmSeries: [{ elapsedMs: 41_000, wpm: 60 }],
         },
       ],
@@ -421,6 +425,7 @@ describe('race messages reducer (GAME-1 groundwork, COURSE-08)', () => {
           status: 'finished',
           finishedAtMs: 41_000,
           rank: 1,
+          bonusesReceived: 0,
           wpmSeries: [{ elapsedMs: 41_000, wpm: 60 }],
         },
       ],
@@ -518,6 +523,7 @@ describe('race resume helpers', () => {
         position: 4,
         wpm: 5,
         finished: false,
+        totalLength: 34,
       },
       {
         participantId: BOB_ID,
@@ -526,6 +532,7 @@ describe('race resume helpers', () => {
         position: 8,
         wpm: 9,
         finished: false,
+        totalLength: 34,
       },
     ];
     const marked = markParticipantFinished(participants, BOB_ID);

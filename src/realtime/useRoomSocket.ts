@@ -310,6 +310,12 @@ export function applyServerMessage(
         },
       };
 
+    case 'bonusApplied':
+      // BONUS-01..04: wired in Unit 3 (SP-4B) — the message is protocol-valid
+      // here; the client state application (per-participant totalLength
+      // adjustment + the bonus log) lands with the reducer tests.
+      return previous;
+
     case 'pong':
       return previous;
   }

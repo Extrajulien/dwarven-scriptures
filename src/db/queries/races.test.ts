@@ -166,6 +166,7 @@ function payloadFixture(): RaceResultsPayload {
         endedAt: new Date('2026-01-01T12:00:45.000Z'),
         progressChars: 120,
         rank: 1,
+        bonusesReceived: 2,
         wpmSeries: [{ elapsedMs: 1_000, wpm: 80.12 }],
       },
       {
@@ -186,6 +187,7 @@ function payloadFixture(): RaceResultsPayload {
         endedAt: new Date('2026-01-01T12:00:50.000Z'),
         progressChars: 100,
         rank: 2,
+        bonusesReceived: 0,
         wpmSeries: [{ elapsedMs: 1_000, wpm: 70.0 }],
       },
     ],
@@ -242,7 +244,7 @@ describe('mapEngineResultsToPersistence', () => {
       status: 'finished',
       finishedAtMs: 45_000,
       rank: 1,
-      bonusesReceived: 0,
+      bonusesReceived: 2,
       wpmSeries: [{ elapsedMs: 1_000, wpm: 80.12 }],
     });
     expect(mapped.participants[1]).toMatchObject({

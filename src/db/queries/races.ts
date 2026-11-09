@@ -148,7 +148,7 @@ export function mapEngineResultsToPersistence(
       status: result.status,
       finishedAtMs: Math.trunc(result.endedAtMs),
       rank: result.rank,
-      bonusesReceived: 0, // BONUS-01..04 arrive in Phase 4.
+      bonusesReceived: Math.max(0, Math.trunc(result.bonusesReceived)),
       wpmSeries: result.wpmSeries.map((point) => ({
         elapsedMs: Math.trunc(point.elapsedMs),
         wpm: clampPersistedWpm(point.wpm),

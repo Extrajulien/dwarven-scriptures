@@ -53,6 +53,7 @@ export default async function RaceReplayPage({
     status: participant.status,
     finishedAtMs: participant.finishedAtMs,
     rank: participant.rank,
+    bonusesReceived: participant.bonusesReceived,
     wpmSeries: participant.wpmSeries,
   }));
   const pfpUrls: Record<string, string | null> = {};

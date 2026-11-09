@@ -52,6 +52,7 @@ function makeResult(overrides: Partial<RaceResultEntry> = {}): RaceResultEntry {
     status: 'finished',
     finishedAtMs: 20_000,
     rank: 1,
+    bonusesReceived: 0,
     wpmSeries: [],
     ...overrides,
   };
@@ -216,8 +217,9 @@ describe('en_course views (GAME-1, COURSE-07)', () => {
             position: 600,
             wpm: 50,
             finished: false,
+            totalLength: 1_000,
           },
-          { participantId: ADA, kind: 'user', displayName: 'ada', position: 300, wpm: 30, finished: false },
+          { participantId: ADA, kind: 'user', displayName: 'ada', position: 300, wpm: 30, finished: false, totalLength: 1_000 },
         ],
       }),
       viewerRole: 'spectator',
@@ -237,7 +239,7 @@ describe('en_course views (GAME-1, COURSE-07)', () => {
         totalLength: 1_000,
         lastTickAt: new Date(T0 + 500).toISOString(),
         participants: [
-          { participantId: ADA, kind: 'user', displayName: 'ada', position: 300, wpm: 30, finished: false },
+          { participantId: ADA, kind: 'user', displayName: 'ada', position: 300, wpm: 30, finished: false, totalLength: 1_000 },
           {
             participantId: '88888888-8888-4888-8888-888888888888',
             kind: 'user',
@@ -245,6 +247,7 @@ describe('en_course views (GAME-1, COURSE-07)', () => {
             position: 600,
             wpm: 50,
             finished: false,
+            totalLength: 1_000,
           },
         ],
       }),
@@ -450,7 +453,7 @@ describe('mobile race gate integration (DES-06)', () => {
         totalLength: 1_000,
         lastTickAt: new Date(T0 + 500).toISOString(),
         participants: [
-          { participantId: ADA, kind: 'user', displayName: 'ada', position: 300, wpm: 30, finished: false },
+          { participantId: ADA, kind: 'user', displayName: 'ada', position: 300, wpm: 30, finished: false, totalLength: 1_000 },
           {
             participantId: '88888888-8888-4888-8888-888888888888',
             kind: 'user',
@@ -458,6 +461,7 @@ describe('mobile race gate integration (DES-06)', () => {
             position: 600,
             wpm: 50,
             finished: false,
+            totalLength: 1_000,
           },
         ],
       }),

@@ -33,6 +33,7 @@ function entry(overrides: Partial<RaceResultEntry> = {}): RaceResultEntry {
     status: 'finished',
     finishedAtMs: 20_000,
     rank: 1,
+    bonusesReceived: 0,
     wpmSeries: [],
     ...overrides,
   };

@@ -14,8 +14,10 @@ import { BOT_LEVELS } from '../room-config';
 import {
   BOT_LEVEL_PARAMS,
   CHAR_JITTER_RANGE,
+  extendBotSchedule,
   generateBotSchedule,
   scheduleNetWpm,
+  truncateBotSchedule,
   type BotLevel,
 } from './schedule';
 
@@ -415,5 +417,92 @@ describe('BOT_LEVEL_PARAMS', () => {
       expect(CHAR_JITTER_RANGE[0]).toBeGreaterThan(0);
       expect(CHAR_JITTER_RANGE[1]).toBeGreaterThan(1);
     }
+  });
+});
+
+describe('bonus adaptation (BONUS-02/04, ADR-011)', () => {
+  const TEXT = 'the quick brown fox jumps over the lazy dog';
+
+  test('truncateBotSchedule drops every keystroke beyond the new text length', () => {
+    const schedule = generateBotSchedule({
+      text: TEXT,
+      level: 'expert',
+      seed: 7,
+      errorMode: 'accumulate',
+    });
+    const truncated = truncateBotSchedule(schedule, TEXT.length - 10);
+    expect(truncated.steps.length).toBeLessThan(schedule.steps.length);
+    expect(truncated.steps.every((step) => step.index < TEXT.length - 10)).toBe(true);
+    // The kept prefix is untouched, so the bot's already applied steps stay
+    // consistent with its cursor.
+    expect(truncated.steps).toEqual(
+      schedule.steps.filter((step) => step.index < TEXT.length - 10),
+    );
+  });
+
+  test('truncateBotSchedule returns the same reference when nothing is cut', () => {
+    const schedule = generateBotSchedule({
+      text: 'abc',
+      level: 'noob',
+      seed: 1,
+      errorMode: 'stop',
+    });
+    expect(truncateBotSchedule(schedule, 1_000)).toBe(schedule);
+  });
+
+  test('extendBotSchedule splices a deterministic suffix after the current timeline', () => {
+    const base = generateBotSchedule({
+      text: TEXT,
+      level: 'intermediaire',
+      seed: 11,
+      errorMode: 'accumulate',
+    });
+    const appended = ' forge nain rune';
+
+    const extended = extendBotSchedule({
+      schedule: base,
+      appendedText: appended,
+      level: 'intermediaire',
+      errorMode: 'accumulate',
+      seed: 99,
+    });
+    const replay = extendBotSchedule({
+      schedule: base,
+      appendedText: appended,
+      level: 'intermediaire',
+      errorMode: 'accumulate',
+      seed: 99,
+    });
+
+    // Deterministic from the same seed (BOT-05).
+    expect(extended).toEqual(replay);
+    expect(extended.steps.length).toBeGreaterThan(base.steps.length);
+
+    // Indices continue after the old text; timestamps after the last keystroke.
+    const baseLast = base.steps[base.steps.length - 1];
+    const suffix = extended.steps.slice(base.steps.length);
+    expect(suffix.every((step) => step.index >= TEXT.length)).toBe(true);
+    expect(suffix.every((step) => step.atMs > baseLast.atMs)).toBe(true);
+
+    // The suffix is typed at the level's cadence: its own net WPM over the
+    // appended characters sits inside the indicative band's neighbourhood
+    // (jitter/hesitations make the exact value text-dependent, BOT-02).
+    const suffixChars = Math.max(...suffix.map((step) => step.index)) + 1 - TEXT.length;
+    const suffixMs = suffix[suffix.length - 1].atMs - baseLast.atMs;
+    const suffixWpm = (suffixChars / 5) / (suffixMs / 60_000);
+    expect(suffixWpm).toBeGreaterThan(15);
+    expect(suffixWpm).toBeLessThan(120);
+  });
+
+  test('extendBotSchedule handles an empty base schedule (bot not started yet)', () => {
+    const extended = extendBotSchedule({
+      schedule: { steps: [] },
+      appendedText: ' forge nain',
+      level: 'noob',
+      errorMode: 'stop',
+      seed: 5,
+    });
+    expect(extended.steps.length).toBeGreaterThan(0);
+    expect(extended.steps.every((step) => step.index >= 0 && step.atMs >= 0)).toBe(true);
   });
 });
