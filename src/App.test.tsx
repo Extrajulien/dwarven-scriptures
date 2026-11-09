@@ -56,12 +56,10 @@ test('signed-in users see the create-room card (SALLE-01/05)', () => {
 
 test('renders the locale selector in the navbar (I18N-02)', () => {
   render(<App messages={MESSAGES.fr} locale="fr" />);
-  expect(screen.getByRole('button', { name: MESSAGES.fr['locale.switchToFr'] })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-  expect(screen.getByRole('button', { name: MESSAGES.fr['locale.switchToEn'] })).toHaveAttribute(
-    'aria-pressed',
-    'false',
-  );
+  expect(
+    screen.getByRole('button', { name: new RegExp(MESSAGES.fr['locale.switchToFr']) }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  expect(
+    screen.getByRole('button', { name: new RegExp(MESSAGES.fr['locale.switchToEn']) }),
+  ).toHaveAttribute('aria-pressed', 'false');
 });

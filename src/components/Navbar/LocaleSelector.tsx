@@ -48,7 +48,10 @@ export default function LocaleSelector({
             <button
               type="submit"
               aria-pressed={active}
-              aria-label={messages[option.ariaKey]}
+              // WCAG 2.5.3 (Label in Name): the visible text (FR/EN) leads
+              // the accessible name as a real token — parentheticals are
+              // stripped by the matching rule, so it cannot sit in "(…)".
+              aria-label={`${messages[option.labelKey]}: ${messages[option.ariaKey]}`}
               className={
                 active
                   ? 'rounded-[3px] bg-primary px-2 py-0.5 font-label-sm text-label-sm font-bold uppercase tracking-wider text-on-primary shadow-[0_0_6px_rgba(217,119,6,0.4)]'

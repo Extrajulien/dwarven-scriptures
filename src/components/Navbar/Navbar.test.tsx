@@ -22,11 +22,13 @@ describe('Navbar locale selector (I18N-02)', () => {
   test('renders FR and EN labels with the current locale pressed', () => {
     render(<Navbar locale="fr" messages={MESSAGES.fr} />);
 
+    // WCAG 2.5.3 (Label in Name): the aria-label carries the visible text
+    // too ("… (FR)"), so the assertions match against the full phrase.
     const frButton = screen.getByRole('button', {
-      name: MESSAGES.fr['locale.switchToFr'],
+      name: new RegExp(MESSAGES.fr['locale.switchToFr']),
     });
     const enButton = screen.getByRole('button', {
-      name: MESSAGES.fr['locale.switchToEn'],
+      name: new RegExp(MESSAGES.fr['locale.switchToEn']),
     });
 
     expect(frButton).toHaveTextContent('FR');
@@ -39,10 +41,10 @@ describe('Navbar locale selector (I18N-02)', () => {
     render(<Navbar locale="en" messages={MESSAGES.en} />);
 
     expect(
-      screen.getByRole('button', { name: MESSAGES.en['locale.switchToEn'] }),
+      screen.getByRole('button', { name: new RegExp(MESSAGES.en['locale.switchToEn']) }),
     ).toHaveAttribute('aria-pressed', 'true');
     expect(
-      screen.getByRole('button', { name: MESSAGES.en['locale.switchToFr'] }),
+      screen.getByRole('button', { name: new RegExp(MESSAGES.en['locale.switchToFr']) }),
     ).toHaveAttribute('aria-pressed', 'false');
   });
 
