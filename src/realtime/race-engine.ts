@@ -1247,6 +1247,10 @@ export class RaceEngine implements RaceEngineHooks {
    * The resume payload for a (re)joining member: current phase, the text
    * when the phase reveals it (COURSE-03) and the member's own cumulative
    * progress — `null` for spectators and for participants who already ended.
+   * BONUS-04: a racing member resumes with their own **bonus-adjusted**
+   * text (`runtime.text`) and its effective length, so the client's local
+   * text stays byte-identical to the server's and completion checks stay
+   * coherent; spectators keep the shared base text.
    * Returns `null` when the room has no live race snapshot to resume.
    */
   raceSnapshotFor(roomId: number, hubKey: string): RaceSnapshotMessage | null {
@@ -1271,7 +1275,11 @@ export class RaceEngine implements RaceEngineHooks {
       startedAt: state.startedAt?.toISOString() ?? null,
       startAt: state.startAt?.toISOString() ?? null,
       textId: visible ? (state.chosenText as NonNullable<RaceState['chosenText']>).id : null,
-      text: visible ? (state.chosenText as NonNullable<RaceState['chosenText']>).body : null,
+      text: visible
+        ? racing
+          ? runtime.text
+          : (state.chosenText as NonNullable<RaceState['chosenText']>).body
+        : null,
       // BONUS-04: a racing member resumes with their own effective length.
       totalLength: racing
         ? runtime.text.length

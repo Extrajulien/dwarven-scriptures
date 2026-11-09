@@ -1,3 +1,4 @@
+import { appendWordsToText, removeWordsFromRemaining } from './bonuses';
 import { accuracy, netWpm, rawWpm } from './stats';
 
 /**
@@ -91,7 +92,20 @@ export type TypingState = {
   keyErrors: Readonly<Record<string, number>>;
 };
 
-export type TypingAction = { type: 'typeChar'; char: string } | { type: 'backspace' };
+export type TypingAction =
+  | { type: 'typeChar'; char: string }
+  | { type: 'backspace' }
+  /** A comeback bonus changed the text (BONUS-04): apply it to the state. */
+  | { type: 'applyTextDelta'; delta: TextDelta };
+
+/**
+ * A bonus-driven text adjustment (BONUS-04), mirroring the `bonusApplied`
+ * payload fields: `words` appends the exact words after the current text
+ * (`addWords`); `wordCount` removes up to that many words from the end of the
+ * remaining text (`removeWords`). `fog` carries no text change and is handled
+ * by the UI, not by this reducer.
+ */
+export type TextDelta = { words: readonly string[] } | { wordCount: number };
 
 /** Cumulative counters the client sends to the server (COURSE-06 shape). */
 export type TypingProgressCounters = {
@@ -144,12 +158,50 @@ export function typingReducer(state: TypingState, action: TypingAction): TypingS
       return typeChar(state, action.char);
     case 'backspace':
       return backspace(state);
+    case 'applyTextDelta':
+      return applyTextDelta(state, action.delta);
     default: {
       // Exhaustiveness guard: a new action type must be handled here.
       const exhaustive: never = action;
       return exhaustive;
     }
   }
+}
+
+/**
+ * Applies a bonus text adjustment to the typing state (BONUS-04). The server
+ * rules of `src/lib/race/bonuses.ts` are mirrored exactly, so the local text
+ * stays byte-identical to the server's effective text for the same event
+ * sequence — completion (`validatedChars == text.length`) and the progress
+ * counters therefore stay coherent with the server's authoritative length.
+ *
+ * - `words`: appended verbatim after the current text via
+ *   {@link appendWordsToText} (single-space separated, leading separator when
+ *   the text does not end in whitespace). Every counter, the caret, the error
+ *   marks and the per-key heatmap are preserved — only the text grows.
+ * - `wordCount`: up to that many whitespace-separated words are removed from
+ *   the END of the text beyond the caret (never before `currentIndex`,
+ *   clamped to ≥ 1 remaining character via {@link removeWordsFromRemaining}).
+ *   Fewer removable words mean fewer removed; nothing removable leaves the
+ *   state untouched (same reference).
+ *
+ * Returns the SAME reference when the delta changes nothing.
+ */
+export function applyTextDelta(state: TypingState, delta: TextDelta): TypingState {
+  if ('words' in delta) {
+    const text = appendWordsToText(state.text, delta.words);
+    return text === state.text ? state : { ...state, text };
+  }
+
+  const remaining = state.text.slice(state.currentIndex);
+  const { removedWords, newRemainingText } = removeWordsFromRemaining({
+    remainingText: remaining,
+    wordCount: delta.wordCount,
+  });
+  if (removedWords === 0) {
+    return state;
+  }
+  return { ...state, text: state.text.slice(0, state.currentIndex) + newRemainingText };
 }
 
 function typeChar(state: TypingState, char: string): TypingState {

@@ -1760,4 +1760,28 @@ describe('comeback bonuses (BONUS-01/04, CONF-09)', () => {
     expect(bonusesOf(deps)).toHaveLength(1);
     expect(deps.pickBonusWordPoolCalls).toHaveLength(1); // never re-loaded mid-race
   });
+
+  test('a reconnecting member resumes with their own bonus-adjusted text (BONUS-04)', async () => {
+    const { engine, deps } = makeEngine();
+    deps.room = roomData({ ...defaultRoomConfig, timeLimitSeconds: null, bonusesEnabled: true });
+    await startAndCountdown(engine, deps);
+
+    // Seed 42, first checkpoint: addWords on the leader (bob), 43 → 61 chars.
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(11))).toEqual({ ok: true });
+    tickAfter(deps, engine, RACE_TICK_BROADCAST_INTERVAL_MS);
+    expect(bonusesOf(deps)).toHaveLength(1);
+
+    // The spectator resumes with the shared base text and length.
+    const spectator = engine.raceSnapshotFor(ROOM_ID, 'user:9');
+    expect(spectator?.text).toBe(DEFAULT_BODY);
+    expect(spectator?.totalLength).toBe(DEFAULT_BODY.length);
+
+    // The targeted racer resumes with his GROWN text: the local typing zone
+    // rebuilds from exactly this text, so its completion check stays coherent
+    // with the server's effective length after a mid-race reconnect.
+    expect(engine.rejoinRace(ROOM_ID, 'user:8')).toEqual({ ok: true });
+    const bob = engine.raceSnapshotFor(ROOM_ID, 'user:8');
+    expect(bob?.text).toBe(`${DEFAULT_BODY} tunnel forge nain`);
+    expect(bob?.totalLength).toBe(GROWN);
+  });
 });

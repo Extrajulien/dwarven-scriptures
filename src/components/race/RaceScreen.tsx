@@ -82,6 +82,8 @@ type RacerViewProps = {
   race: RaceView;
   config: RoomConfig;
   messages: Messages;
+  /** The viewer's wire identity, to filter the local player's bonus events (BONUS-04). */
+  localParticipantId: string;
   onQuitRace: () => void;
   onSendProgress: (progress: RaceProgress) => void;
   onKeyErrors: (errors: Readonly<Record<string, number>>) => void;
@@ -94,12 +96,26 @@ type RacerViewProps = {
  * naturally, without a reset effect), while a confirmed quit survives within
  * the race — the player stays a spectator until the next one (COURSE-07).
  */
-function RacerView({ race, config, messages, onQuitRace, onSendProgress, onKeyErrors }: RacerViewProps) {
+function RacerView({
+  race,
+  config,
+  messages,
+  localParticipantId,
+  onQuitRace,
+  onSendProgress,
+  onKeyErrors,
+}: RacerViewProps) {
   const [confirmQuit, setConfirmQuit] = useState(false);
   // Local "instant spectator" switch: confirming the quit dialog flips the
   // local view to spectator immediately (the server then announces
   // `participantQuit` and the authoritative state follows).
   const [quitLocal, setQuitLocal] = useState(false);
+
+  // BONUS-04: only the LOCAL participant's events adjust this zone's text
+  // (events for other participants are announcements, never text changes).
+  const localBonusEvents = race.bonusLog.filter(
+    (event) => event.targetParticipantId === localParticipantId,
+  );
 
   const handleQuit = () => {
     setConfirmQuit(false);
@@ -169,6 +185,7 @@ function RacerView({ race, config, messages, onQuitRace, onSendProgress, onKeyEr
           messages={messages}
           onProgress={onSendProgress}
           onKeyErrors={onKeyErrors}
+          bonusEvents={localBonusEvents}
         />
       </MobileRaceGate>
     </section>
@@ -384,6 +401,7 @@ export default function RaceScreen({
           race={race}
           config={config}
           messages={messages}
+          localParticipantId={viewerParticipantId}
           onQuitRace={onQuitRace}
           onSendProgress={onSendProgress}
           onKeyErrors={setKeyErrors}

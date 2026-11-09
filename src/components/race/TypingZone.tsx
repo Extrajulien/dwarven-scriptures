@@ -11,6 +11,7 @@ import {
 } from 'react';
 import type { Messages } from '../../i18n/messages';
 import type { RaceProgress } from '../../realtime/client-types';
+import type { BonusAppliedMessage } from '../../realtime/protocol';
 import {
   createTypingState,
   isComplete,
@@ -52,6 +53,14 @@ import {
  * (`sentTotalRef`) — documented deviation: the server-side accuracy may count
  * keystrokes the player removed with backspace, while the local readout uses
  * the local counters.
+ *
+ * Comeback bonuses (BONUS-04, SP-4C): `bonusEvents` carries the
+ * `bonusApplied` events that targeted the LOCAL participant. `addWords`
+ * appends the payload words and `removeWords` removes them beyond the caret
+ * through the pure {@link applyTextDelta} rules (same as the server, so the
+ * completion check always uses the new effective length and the sent
+ * counters stay server-valid); `fog` only blurs the upcoming region for
+ * `payload.durationMs` and lifts the blur when the timer elapses.
  */
 
 /** Progress throttle window: at most one message per 250 ms (PERF-02). */
@@ -83,6 +92,14 @@ type TypingZoneProps = {
    * screen's keyboard heatmap — client-side, no server round-trip.
    */
   onKeyErrors?: (errors: Readonly<Record<string, number>>) => void;
+  /**
+   * BONUS-04: the `bonusApplied` events that targeted the LOCAL participant,
+   * in order. `addWords`/`removeWords` events adjust the local text through
+   * the pure reducer (mirroring the server rules, so the completion check
+   * uses the new effective length); `fog` events blur the upcoming region
+   * for `payload.durationMs`. The parent filters the race `bonusLog`.
+   */
+  bonusEvents?: BonusAppliedMessage[];
 };
 
 export default function TypingZone({
@@ -93,6 +110,7 @@ export default function TypingZone({
   messages,
   onProgress,
   onKeyErrors,
+  bonusEvents = [],
 }: TypingZoneProps) {
   const [state, dispatch] = useReducer(
     typingReducer,
@@ -111,6 +129,51 @@ export default function TypingZone({
   const completedRef = useRef(false);
   const onProgressRef = useRef(onProgress);
   const onKeyErrorsRef = useRef(onKeyErrors);
+
+  // BONUS-04: adjust the local typing state when bonus events arrive.
+  // Text deltas are dispatched exactly once per event through the pure
+  // reducer (the applied count lives in a ref, read/written in effects only);
+  // fog events arm the blur *during render* with React's documented "adjust
+  // state when props change" pattern (same-value updates bail out, so the
+  // pattern is idempotent under StrictMode double-rendering).
+  const [processedBonusCount, setProcessedBonusCount] = useState(0);
+  const [fogEvent, setFogEvent] = useState<BonusAppliedMessage | null>(null);
+  const appliedTextDeltaCountRef = useRef(0);
+
+  if (processedBonusCount !== bonusEvents.length) {
+    setProcessedBonusCount(bonusEvents.length);
+    // Latest wins: only the newest fog event of the batch arms the blur.
+    const latestFog = [...bonusEvents]
+      .reverse()
+      .find(
+        (event) => event.bonusType === 'fog' && event.payload.durationMs !== undefined,
+      );
+    if (latestFog !== undefined) {
+      setFogEvent(latestFog);
+    }
+  }
+
+  useEffect(() => {
+    const applied = appliedTextDeltaCountRef.current;
+    const pending = bonusEvents.slice(applied);
+    appliedTextDeltaCountRef.current = bonusEvents.length;
+    for (const event of pending) {
+      if (event.bonusType === 'addWords' && event.payload.words !== undefined) {
+        dispatch({ type: 'applyTextDelta', delta: { words: event.payload.words } });
+      } else if (event.bonusType === 'removeWords' && event.payload.wordCount !== undefined) {
+        dispatch({ type: 'applyTextDelta', delta: { wordCount: event.payload.wordCount } });
+      }
+    }
+  }, [bonusEvents, dispatch]);
+
+  // Fog auto-clear (BONUS-02): the blur lifts when the duration elapsed.
+  useEffect(() => {
+    if (fogEvent === null) {
+      return;
+    }
+    const timer = setTimeout(() => setFogEvent(null), fogEvent.payload.durationMs ?? 0);
+    return () => clearTimeout(timer);
+  }, [fogEvent]);
 
   useEffect(() => {
     onProgressRef.current = onProgress;
@@ -264,6 +327,7 @@ export default function TypingZone({
       >
         <p
           aria-hidden="true"
+          data-fog={fogEvent === null ? 'false' : 'true'}
           className="font-mono text-lg leading-relaxed break-words whitespace-pre-wrap"
           data-testid="typing-text"
         >
@@ -274,6 +338,8 @@ export default function TypingZone({
             // a position un-types it, so it renders as upcoming again.
             const isTypedCorrect = !isErrored && index < state.currentIndex;
             const isCaret = index === state.currentIndex && enabled && !complete;
+            // BONUS-02: the fog blurs the UPCOMING region (nothing typed yet).
+            const fogged = fogEvent !== null && !isErrored && !isTypedCorrect;
             const className = isErrored
               ? 'text-error'
               : isTypedCorrect
@@ -285,7 +351,7 @@ export default function TypingZone({
                 data-char-index={index}
                 data-state={isErrored ? 'incorrect' : isTypedCorrect ? 'correct' : 'upcoming'}
                 data-caret={isCaret ? 'true' : undefined}
-                className={`${className}${isCaret ? ' border-b-2 border-primary animate-pulse' : ''}`}
+                className={`${className}${isCaret ? ' border-b-2 border-primary animate-pulse' : ''}${fogged ? ' blur-sm' : ''}`}
               >
                 {char}
               </span>
