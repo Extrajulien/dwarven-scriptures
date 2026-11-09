@@ -256,18 +256,20 @@ export function applyServerMessage(
         },
       };
 
-    case 'raceFinished':
-      if (!previous.race) {
-        return previous;
-      }
+    case 'raceFinished': {
+      // COURSE-11 replay (RES-05): a late joiner receives this message
+      // without any prior race view — the fresh `roomSnapshot` reset it.
+      // Build the view from scratch in that case instead of ignoring it.
+      const base = previous.race ?? emptyRace('resultats');
       return {
         ...previous,
         race: {
-          ...previous.race,
+          ...base,
           phase: 'resultats',
           finished: { durationMs: message.durationMs, results: message.results },
         },
       };
+    }
 
     case 'raceAborted':
       // GAME-5 / host closed: the race is gone and the room waits again.

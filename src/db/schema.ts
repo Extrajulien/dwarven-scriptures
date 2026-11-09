@@ -71,7 +71,9 @@ export const userStats = pgTable(
     racesCompleted: integer().default(0).notNull(),
     totalWords: bigint({ mode: 'bigint' }).default(sql`0`).notNull(),
     totalTimeMs: bigint({ mode: 'bigint' }).default(sql`0`).notNull(),
-    bestWpm: numeric({ precision: 6, scale: 2 }).default('0.00').notNull(),
+    // (8,2) matches `races.wpm`: a very short race legitimately yields a
+    // four/five-digit WPM under Annexe A, and the personal best must hold it.
+    bestWpm: numeric({ precision: 8, scale: 2 }).default('0.00').notNull(),
     /** Races won (AUTH-06). */
     wins: integer().default(0).notNull(),
     /**

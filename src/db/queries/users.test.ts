@@ -90,7 +90,7 @@ jest.mock('../index', () => ({
   },
 }));
 
-import { adjustUserCoins, createUserWithProfiles, getUserCredentialsByUsername, getUserFullProfile, recordCompletedRace, updateUserProfile, UsernameTakenError } from './users';
+import { adjustUserCoins, createUserWithProfiles, getUserCredentialsByUsername, getUserFullProfile, recordCompletedRace, updateUserProfile, UsernameTakenError, type RaceStatsExecutor } from './users';
 
 beforeEach(() => {
   calls.length = 0;
@@ -221,9 +221,11 @@ describe('recordCompletedRace', () => {
   });
 
   test('accepts the race executor so a caller can share its transaction', async () => {
+    // The stub only implements the `.insert` the function uses; the cast
+    // keeps the test independent of the full Drizzle builder surface.
     const executor = {
       insert: (...args: unknown[]) => chainable('insert', newCall('insert', args)),
-    };
+    } as unknown as RaceStatsExecutor;
 
     await recordCompletedRace(params, executor);
 

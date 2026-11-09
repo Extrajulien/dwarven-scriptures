@@ -85,6 +85,24 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+/** Column capacity of `numeric(8,2)` (`wpm`, `rawWpm`, `bestWpm`). */
+const MAX_PERSISTED_WPM = 999_999.99;
+
+/**
+ * Clamps a persisted WPM to the representable, meaningful range. A race that
+ * ends milliseconds after the typing start yields an astronomic Annexe-A WPM
+ * (or `Infinity` at 0 ms): rather than failing the whole race write, the
+ * value is bounded to the column capacity and non-finite values land at 0
+ * (`GREATEST` then keeps the previous personal best). Humans never hit this
+ * boundary — it is a storage-level defence behind the engine's rules.
+ */
+export function clampPersistedWpm(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.min(Math.max(round2(value), 0), MAX_PERSISTED_WPM);
+}
+
 /**
  * Maps the engine's in-memory results payload to the persistence input
  * (pure, unit-tested). Numeric fields are rounded to the column scale and
@@ -111,9 +129,9 @@ export function mapEngineResultsToPersistence(
       userId: result.userId,
       guestToken: result.guestToken,
       displayName: result.displayName,
-      wpm: round2(result.wpm),
-      rawWpm: round2(result.rawWpm),
-      accuracy: round2(result.accuracy),
+      wpm: clampPersistedWpm(result.wpm),
+      rawWpm: clampPersistedWpm(result.rawWpm),
+      accuracy: clampPersistedWpm(result.accuracy),
       errors: Math.trunc(result.errors),
       correctKeystrokes: Math.trunc(result.correctKeystrokes),
       totalKeystrokes: Math.trunc(result.totalKeystrokes),
@@ -123,7 +141,7 @@ export function mapEngineResultsToPersistence(
       bonusesReceived: 0, // BONUS-01..04 arrive in Phase 4.
       wpmSeries: result.wpmSeries.map((point) => ({
         elapsedMs: Math.trunc(point.elapsedMs),
-        wpm: round2(point.wpm),
+        wpm: clampPersistedWpm(point.wpm),
       })),
     })),
   };

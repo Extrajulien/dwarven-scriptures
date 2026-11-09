@@ -78,12 +78,18 @@ import type {
  *   progression, then quits by progression at the moment of quitting.
  *   Computed server-side at the `en_course → resultats` transition.
  *
- * ## Persistence seam (Phase 3)
+ * ## Persistence and replay (Phase 3)
  *
- * The engine keeps the final {@link RaceResultsPayload} in memory for the
- * room's lifetime ({@link takeResults}); persisting it to PostgreSQL
- * (`races`/race history, RES-05) is SP-3B's job — it consumes this payload
- * and the WPM series the tick loop already aggregates.
+ * At the `en_course → resultats` transition the engine keeps the final
+ * {@link RaceResultsPayload} in memory for the room's lifetime
+ * ({@link takeResults}) and hands it to the `persistResults` seam exactly
+ * once (PERF-02: one write per finished race, fire-and-forget with error
+ * logging — the in-memory state stays authoritative). **Aborted races
+ * (GAME-5) are NOT persisted**: they produce no ranking, and persisting an
+ * unranked race into the user's history would be dishonest — the choice is
+ * documented here and in `doc/ARCHITECTURE.md`. Late joiners arriving on a
+ * `resultats` room receive the payload re-broadcast as a `raceFinished`
+ * message ({@link raceFinishedReplay}).
  */
 
 /** Engine clock interval: how often the state machine is advanced. */
@@ -175,6 +181,12 @@ export type RaceEngineDeps = {
   pickText(config: RoomConfig, seed: number): Promise<RaceText | null>;
   /** Persists `rooms.status` on every phase change (COURSE-01). */
   persistStatus(roomId: number, status: RacePhase): Promise<void>;
+  /**
+   * Persists a finished race, its participants and the user-stats updates in
+   * one transaction (RES-05). Called exactly once per finished race; the
+   * engine logs failures and never lets them disturb the race flow.
+   */
+  persistResults(payload: RaceResultsPayload): Promise<void>;
   /** Broadcasts one message to every live connection of the room. */
   broadcast(roomId: number, message: ServerMessage): void;
   /** Random seed for random-mode texts (recorded in the race state, BOT-05-style). */
@@ -603,6 +615,10 @@ export class RaceEngine implements RaceEngineHooks {
         }
         entry.finalResults = this.computeResults(entry, next);
         this.persistStatusLogged(roomId, 'resultats');
+        // RES-05, PERF-02: persist exactly once per finished race, in the
+        // background — in-memory state stays authoritative. Aborted races
+        // never reach this branch (GAME-5 produces no ranking, no history).
+        this.persistResultsLogged(entry.finalResults);
         this.deps.broadcast(roomId, this.buildRaceFinished(entry));
       }
     }
@@ -773,12 +789,27 @@ export class RaceEngine implements RaceEngineHooks {
   }
 
   /**
-   * Phase-3 seam: the final ranking kept in memory for the room's lifetime.
-   * SP-3B persists this payload (RES-05); nothing here writes to the
-   * database. `null` before the race reached `resultats`.
+   * The final ranking kept in memory for the room's lifetime (RES-05). The
+   * wiring persists it through the `persistResults` seam; `null` before the
+   * race reached `resultats`.
    */
   takeResults(roomId: number): RaceResultsPayload | null {
     return this.rooms.get(roomId)?.finalResults ?? null;
+  }
+
+  /**
+   * COURSE-11 replay (RES-05): the last finished race, re-shaped as the
+   * `raceFinished` message a late joiner missed, or `null` when the room's
+   * current state is not `resultats` or the payload is not in memory (for
+   * example after a server restart — the persisted `/races/[publicId]` page
+   * remains available in that case, HIST-02).
+   */
+  raceFinishedReplay(roomId: number): RaceFinishedMessage | null {
+    const entry = this.rooms.get(roomId);
+    if (!entry || entry.state.phase !== 'resultats' || !entry.finalResults) {
+      return null;
+    }
+    return this.buildRaceFinished(entry);
   }
 
   // ---------------------------------------------------------------- helpers
@@ -990,6 +1021,17 @@ export class RaceEngine implements RaceEngineHooks {
   private persistStatusLogged(roomId: number, status: RacePhase): void {
     this.deps.persistStatus(roomId, status).catch((error: unknown) => {
       console.error(`race-engine: failed to persist rooms.status=${status} for room ${roomId}`, error);
+    });
+  }
+
+  /**
+   * Fire-and-forget result persistence (RES-05): one call per finished race.
+   * A failed write is logged and the in-memory state keeps serving the
+   * results screen — persistence must never break the live race flow.
+   */
+  private persistResultsLogged(payload: RaceResultsPayload): void {
+    this.deps.persistResults(payload).catch((error: unknown) => {
+      console.error(`race-engine: failed to persist results for room ${payload.roomId}`, error);
     });
   }
 }

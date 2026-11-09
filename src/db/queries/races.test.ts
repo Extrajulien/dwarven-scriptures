@@ -201,6 +201,20 @@ describe('mapEngineResultsToPersistence', () => {
     });
   });
 
+  test('clamps degenerate WPM values to the column capacity (numeric(8,2))', () => {
+    const payload = payloadFixture();
+    payload.results[0] = { ...payload.results[0], wpm: Infinity, rawWpm: 1_200_000 };
+    payload.results[1] = { ...payload.results[1], wpm: -5 };
+
+    const mapped = mapEngineResultsToPersistence(payload);
+
+    // Infinity (a 0 ms race) lands at 0 so GREATEST keeps the old best;
+    // an overflow and a negative value are bounded to the representable range.
+    expect(mapped.participants[0].wpm).toBe(0);
+    expect(mapped.participants[0].rawWpm).toBe(999_999.99);
+    expect(mapped.participants[1].wpm).toBe(0);
+  });
+
   test('maps participant rows with rounded numerics and the identity snapshot', () => {
     const mapped = mapEngineResultsToPersistence(payloadFixture());
 
