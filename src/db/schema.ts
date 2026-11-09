@@ -416,11 +416,11 @@ export const races = pgTable(
     /** The full text typed in this race (history replay renders it). */
     textBody: text().notNull(),
     /** ISO 639-1 code of the text (`fr` or `en`). */
-    textLanguage: varchar({ length: 2 }).notNull(),
+    textLanguage: varchar({ length: 2 }).$type<'fr' | 'en'>().notNull(),
     /** Race config snapshot taken at start (CONF-12). */
     config: jsonb().$type<RoomConfig>().notNull(),
     /** `finished` today; `aborted` reserved for a future change of policy. */
-    status: varchar({ length: 16 }).notNull(),
+    status: varchar({ length: 16 }).$type<'finished' | 'aborted'>().notNull(),
     /** Typing-start → `resultats` duration in milliseconds (Annexe A base). */
     durationMs: integer().notNull(),
     /** Typing start (countdown end). */
@@ -455,7 +455,7 @@ export const raceParticipants = pgTable(
       .notNull()
       .references(() => races.id, { onDelete: 'cascade' }),
     /** `user` | `guest` | `bot` (bots arrive in Phase 4). */
-    kind: varchar({ length: 16 }).notNull(),
+    kind: varchar({ length: 16 }).$type<'user' | 'guest' | 'bot'>().notNull(),
     /** Connected user; `SET NULL` so history survives an account deletion. */
     userId: bigint({ mode: 'number' }).references(() => users.id, {
       onDelete: 'set null',
@@ -473,7 +473,7 @@ export const raceParticipants = pgTable(
     /** totalKeystrokes − correctKeystrokes. */
     errors: integer().notNull(),
     /** `finished` | `timeout` | `quit` (COURSE-10). */
-    status: varchar({ length: 16 }).notNull(),
+    status: varchar({ length: 16 }).$type<'finished' | 'timeout' | 'quit'>().notNull(),
     /** Milliseconds after typing start at which the status was recorded. */
     finishedAtMs: integer().notNull(),
     /** Final rank (COURSE-10), 1-based. */

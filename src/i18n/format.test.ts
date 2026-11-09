@@ -8,6 +8,7 @@
 import {
   formatDate,
   formatDateTime,
+  formatDurationMmSs,
   formatGroupedDigits,
   formatNumber,
 } from './format';
@@ -73,5 +74,17 @@ describe('formatDateTime (I18N-03)', () => {
     expect(en).toContain('11/07/2026');
     // HH:mm with 2-digit hour exists in both.
     expect(fr).toMatch(/\d{2}:\d{2}/);
+  });
+});
+
+describe('formatDurationMmSs (HIST-01)', () => {
+  test('formats a race duration as M:SS with locale digits', () => {
+    expect(formatDurationMmSs(58_000, 'en')).toBe('0:58');
+    expect(formatDurationMmSs(74_000, 'fr')).toBe('1:14');
+    expect(formatDurationMmSs(600_000, 'fr')).toBe('10:00');
+  });
+
+  test('never goes negative', () => {
+    expect(formatDurationMmSs(-5_000, 'en')).toBe('0:00');
   });
 });

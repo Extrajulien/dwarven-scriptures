@@ -26,6 +26,8 @@ type RecordedCall = {
 const calls: RecordedCall[] = [];
 let insertRow: unknown = undefined;
 let transactionRuns = 0;
+/** One result set per `select`, consumed in query order. */
+let selectQueue: unknown[][] = [];
 
 /** Creates the chain for one operation and records it exactly once. */
 function newCall(operation: RecordedCall['operation'], args: unknown[] = []): RecordedCall {
@@ -50,6 +52,7 @@ function chainable(operation: RecordedCall['operation'], call: RecordedCall): Re
     'where',
     'from',
     'leftJoin',
+    'innerJoin',
     'onConflictDoUpdate',
     'limit',
     'offset',
@@ -67,7 +70,8 @@ function chainable(operation: RecordedCall['operation'], call: RecordedCall): Re
     return Promise.resolve([]);
   };
 
-  chain.then = (resolve: (value: unknown) => unknown) => Promise.resolve([]).then(resolve);
+  chain.then = (resolve: (value: unknown) => unknown) =>
+    Promise.resolve(selectQueue.shift() ?? []).then(resolve);
 
   return chain;
 }
@@ -90,8 +94,12 @@ jest.mock('../index', () => ({
 }));
 
 import {
+  countUserRacesPerDay,
+  getRaceForReplay,
   InvalidRacePersistenceError,
   KEYSTROKES_PER_WORD,
+  listRecentUserRaces,
+  listUserRaces,
   mapEngineResultsToPersistence,
   persistRaceResult,
   validateRacePersistence,
@@ -101,6 +109,7 @@ beforeEach(() => {
   calls.length = 0;
   insertRow = undefined;
   transactionRuns = 0;
+  selectQueue = [];
 });
 
 /** Argument group recorded for one chained method, or `null`. */
@@ -334,5 +343,175 @@ describe('persistRaceResult', () => {
     await persistRaceResult(payload);
 
     expect(insertsOf(userStats)).toHaveLength(0);
+  });
+});
+
+// ------------------------------------------------------------------ history
+
+function historyRow(publicId: string, wpm: string): Record<string, unknown> {
+  return {
+    publicId,
+    textLanguage: 'fr',
+    finishedAt: new Date('2026-01-01T12:00:00.000Z'),
+    durationMs: 5_000,
+    rank: 2,
+    wpm,
+    accuracy: '97.50',
+    status: 'finished',
+    finishedAtMs: 4_500,
+  };
+}
+
+describe('listUserRaces (HIST-01)', () => {
+  test('pages with LIMIT/OFFSET and maps the numeric columns', async () => {
+    selectQueue = [
+      [{ value: 25 }],
+      [historyRow('race-2', '120.00'), historyRow('race-1', '88.50')],
+    ];
+
+    const page = await listUserRaces(7, { page: 3, pageSize: 10 });
+
+    expect(page.totalCount).toBe(25);
+    expect(page.totalPages).toBe(3);
+    expect(page.page).toBe(3);
+    expect(page.entries).toHaveLength(2);
+    expect(page.entries[0]).toMatchObject({ publicId: 'race-2', wpm: 120, accuracy: 97.5, status: 'finished' });
+
+    const selects = calls.filter((call) => call.operation === 'select');
+    expect(selects).toHaveLength(2);
+    expect(selects[1].methods).toContain('limit');
+    expect(selects[1].methods).toContain('offset');
+    expect(selects[1].methods).toContain('orderBy');
+  });
+
+  test('clamps an out-of-range page to the last page', async () => {
+    selectQueue = [[{ value: 5 }], [historyRow('race-1', '100.00')]];
+
+    const page = await listUserRaces(7, { page: 99, pageSize: 10 });
+
+    expect(page.totalPages).toBe(1);
+    expect(page.page).toBe(1);
+  });
+
+  test('rejects a non-positive internal id', async () => {
+    await expect(listUserRaces(0)).rejects.toThrow(/positive integer/);
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe('listRecentUserRaces (AUTH-06 progression chart)', () => {
+  test('returns the most recent races oldest-first', async () => {
+    selectQueue = [[historyRow('race-2', '100.00'), historyRow('race-1', '90.00')]];
+
+    const entries = await listRecentUserRaces(7, 10);
+
+    expect(entries.map((entry) => entry.publicId)).toEqual(['race-1', 'race-2']);
+  });
+});
+
+describe('countUserRacesPerDay (STAT-3)', () => {
+  test('maps the SQL day buckets to counts', async () => {
+    selectQueue = [
+      [
+        { day: '2026-01-01', value: 2 },
+        { day: '2026-01-02', value: 1 },
+      ],
+    ];
+
+    const counts = await countUserRacesPerDay(7, { days: 6 });
+
+    expect(counts).toEqual([
+      { day: '2026-01-01', count: 2 },
+      { day: '2026-01-02', count: 1 },
+    ]);
+  });
+});
+
+// -------------------------------------------------------------------- replay
+
+function replayRaceRow(): Record<string, unknown> {
+  return {
+    id: 9,
+    publicId: '22222222-2222-4222-8222-222222222222',
+    roomId: null,
+    roomPublicId: ROOM_PUBLIC_ID,
+    textBody: 'hello world',
+    textLanguage: 'en',
+    config: {},
+    status: 'finished',
+    durationMs: 60_000,
+    startedAt: new Date('2026-01-01T12:00:00.000Z'),
+    finishedAt: new Date('2026-01-01T12:01:00.000Z'),
+  };
+}
+
+function replayParticipantRow(
+  kind: 'user' | 'guest',
+  userPublicId: string | null,
+  displayName: string,
+  pfpUrl: string | null,
+): Record<string, unknown> {
+  return {
+    kind,
+    userId: kind === 'user' ? 7 : null,
+    guestToken: kind === 'guest' ? GUEST_TOKEN : null,
+    displayName,
+    wpm: '100.25',
+    rawWpm: '110.99',
+    accuracy: '97.40',
+    errors: 3,
+    status: 'finished',
+    finishedAtMs: 45_000,
+    rank: 1,
+    bonusesReceived: 0,
+    wpmSeries: [{ elapsedMs: 1_000, wpm: 80.12 }],
+    userPublicId,
+    pfpUrl,
+  };
+}
+
+describe('getRaceForReplay (HIST-02)', () => {
+  test('maps the persisted race to the public replay view', async () => {
+    selectQueue = [
+      [replayRaceRow()],
+      [
+        replayParticipantRow('user', USER_PUBLIC_ID, 'ada', 'https://example.com/a.png'),
+        replayParticipantRow('guest', null, 'Gimli', null),
+      ],
+    ];
+
+    const view = await getRaceForReplay('22222222-2222-4222-8222-222222222222');
+
+    expect(view?.textBody).toBe('hello world');
+    expect(view?.textLanguage).toBe('en');
+    expect(view?.status).toBe('finished');
+    expect(view?.durationMs).toBe(60_000);
+    expect(view?.results).toHaveLength(2);
+    expect(view?.results[0]).toMatchObject({
+      participantId: USER_PUBLIC_ID,
+      displayName: 'ada',
+      kind: 'user',
+      pfpUrl: 'https://example.com/a.png',
+      wpm: 100.25,
+      accuracy: 97.4,
+      bonusesReceived: 0,
+    });
+    expect(view?.results[0].wpmSeries).toEqual([{ elapsedMs: 1_000, wpm: 80.12 }]);
+    expect(view?.results[1]).toMatchObject({
+      participantId: GUEST_TOKEN,
+      kind: 'guest',
+      pfpUrl: null,
+    });
+  });
+
+  test('returns null for a missing race', async () => {
+    selectQueue = [[]];
+
+    await expect(getRaceForReplay('22222222-2222-4222-8222-222222222222')).resolves.toBeNull();
+  });
+
+  test('returns null for a non-UUID publicId without touching the database', async () => {
+    await expect(getRaceForReplay('not-a-uuid')).resolves.toBeNull();
+    expect(calls).toHaveLength(0);
   });
 });

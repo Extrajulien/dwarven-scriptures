@@ -83,3 +83,17 @@ export function formatDateTime(
     },
   ).format(date);
 }
+
+/**
+ * Formats a race duration in milliseconds as `M:SS` (e.g. `0:58`, `1:14`)
+ * with locale-aware digits — the race-history duration column (HIST-01).
+ * The layout itself is data (minutes:seconds), only the digits are localized.
+ */
+export function formatDurationMmSs(ms: number, locale: Locale): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1_000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${formatNumber(minutes, locale)}:${formatNumber(seconds, locale, {
+    minimumIntegerDigits: 2,
+  })}`;
+}

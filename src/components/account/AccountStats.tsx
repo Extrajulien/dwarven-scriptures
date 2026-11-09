@@ -5,13 +5,21 @@ import type { Locale, Messages } from '../../i18n/messages';
 import Icon from '../Icon';
 import StatTile from '../StatTile';
 
-type StatTileId = 'racesCompleted' | 'bestWpm' | 'avgWpm' | 'totalWords';
+type StatTileId =
+  | 'racesCompleted'
+  | 'bestWpm'
+  | 'avgWpm'
+  | 'totalWords'
+  | 'wins'
+  | 'avgAccuracy';
 
 const CAPTION_KEYS: Record<StatTileId, keyof Messages> = {
   racesCompleted: 'account.stats.expeditionsCaption',
   bestWpm: 'account.stats.wpmUnit',
   avgWpm: 'account.stats.wpmUnit',
   totalWords: 'account.stats.runesEngravedCaption',
+  wins: 'account.stats.winsCaption',
+  avgAccuracy: 'account.stats.accuracyCaption',
 };
 
 export default function AccountStats({
@@ -36,6 +44,13 @@ export default function AccountStats({
       }),
     },
     totalWords: { value: formatGroupedDigits(profile.totalWords, locale) },
+    wins: { value: formatNumber(profile.wins, locale) },
+    avgAccuracy: {
+      value: formatNumber(profile.avgAccuracy, locale, {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }),
+    },
   };
 
   return (
@@ -47,7 +62,7 @@ export default function AccountStats({
         </span>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {ACCOUNT_STATS.tiles.map((tile) => (
           <StatTile
             key={tile.id}

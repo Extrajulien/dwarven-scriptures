@@ -257,7 +257,7 @@ export type RaceResultsPayload = {
   /** Full text body typed in this race (history replay). */
   textBody: string;
   /** ISO 639-1 language of the text (config snapshot). */
-  textLanguage: string;
+  textLanguage: RoomConfig['textLanguage'];
   /** Race config snapshot taken at start (CONF-12). */
   config: RoomConfig;
   /** Typing start (countdown end); `durationMs` is measured from it. */

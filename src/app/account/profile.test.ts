@@ -36,6 +36,8 @@ describe('toAccountProfile', () => {
       totalWords: '148920',
       bestWpm: 112,
       avgWpm: 84.6,
+      wins: 211,
+      avgAccuracy: 95,
       coins: '4820',
       gems: 12,
       linkedProviders: ['github'],

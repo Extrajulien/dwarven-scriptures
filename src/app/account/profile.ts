@@ -21,6 +21,10 @@ export type AccountProfile = {
   totalWords: string;
   bestWpm: number;
   avgWpm: number;
+  /** Races won (AUTH-06). */
+  wins: number;
+  /** Correct ÷ total keystrokes × 100, derived at read time (AUTH-06). */
+  avgAccuracy: number;
   /** Raw digit string (bigint-safe, no grouping), e.g. `4820`. */
   coins: string;
   gems: number;
@@ -39,6 +43,8 @@ export function toAccountProfile(
     totalWords: profile.totalWords.toString(),
     bestWpm: toFiniteNumber(profile.bestWpm),
     avgWpm: profile.avgWpm,
+    wins: profile.wins,
+    avgAccuracy: profile.avgAccuracy,
     coins: profile.coins.toString(),
     gems: profile.gems,
     linkedProviders,
