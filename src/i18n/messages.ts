@@ -669,7 +669,6 @@ export interface Messages {
   'track.rankLabel': string;
   'track.finishLabel': string;
   'top3.title': string;
-  'top3.waiting': string;
   'overtake.overtookPrefix': string;
   'overtake.overtakenBySuffix': string;
   'overtake.ariaUp': string;
@@ -1304,7 +1303,6 @@ export const MESSAGES: Record<Locale, Messages> = {
     'track.rankLabel': 'Rang',
     'track.finishLabel': 'Arrivée',
     'top3.title': 'TÊTE DE COURSE',
-    'top3.waiting': 'En attente des coureurs…',
     'overtake.overtookPrefix': 'Vous doublez',
     'overtake.overtakenBySuffix': 'vous double',
     'overtake.ariaUp': 'Vous avez doublé',
@@ -1932,7 +1930,6 @@ export const MESSAGES: Record<Locale, Messages> = {
     'track.rankLabel': 'Rank',
     'track.finishLabel': 'Finished',
     'top3.title': 'LEADERS',
-    'top3.waiting': 'Waiting for racers…',
     'overtake.overtookPrefix': 'You overtake',
     'overtake.overtakenBySuffix': 'overtakes you',
     'overtake.ariaUp': 'You overtook',

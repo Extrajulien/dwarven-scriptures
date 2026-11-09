@@ -96,12 +96,14 @@ export default function OvertakeIndicator({
           className={`flex w-full min-w-0 items-center justify-center gap-space-sm rounded border px-space-md py-space-sm shadow-stone-inner ${
             event.type === 'overtook'
               ? 'border-dwarf-rune-bright/60 bg-dwarf-rune-badge text-dwarf-rune-bright'
-              : 'border-dwarf-magma/60 bg-dwarf-basalt text-dwarf-magma'
+              : 'border-dwarf-magma/60 bg-dwarf-basalt text-dwarf-parchment'
           }`}
         >
           <span
             aria-hidden="true"
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-current font-mono"
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded border border-current font-mono ${
+              event.type === 'overtaken' ? 'text-dwarf-magma' : ''
+            }`}
           >
             <Icon name={event.type === 'overtook' ? 'arrow_upward' : 'arrow_downward'} />
           </span>

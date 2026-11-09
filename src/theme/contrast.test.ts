@@ -71,6 +71,17 @@ const PAIRS: readonly ContrastPair[] = [
   { name: 'race upcoming characters', foreground: 'on-surface-variant', background: 'dwarf-bg', minimum: 4.5 },
   { name: 'race live stats chip text', foreground: 'on-surface', background: 'dwarf-slate', minimum: 4.5 },
   { name: 'race progress chip text', foreground: 'on-surface-variant', background: 'dwarf-slate', minimum: 4.5 },
+  // Race progress track + top-3 + overtake strips (COURSE-05, GAME-2/3): the
+  // marker/top-3 names and WPM chips reuse the stone chips; the local/top-3
+  // names and the gold badges sit on the same surfaces. The overtake "down"
+  // strip is parchment on basalt with the magma reserved for the decorative
+  // chevron (dwarf-magma on dark basalt is ≈3.7:1, below AA for text).
+  { name: 'race track marker name', foreground: 'dwarf-parchment', background: 'surface-container-lowest', minimum: 4.5 },
+  { name: 'race track local/top3 name (gold)', foreground: 'dwarf-gold', background: 'surface-container-lowest', minimum: 4.5 },
+  { name: 'race top3 row name', foreground: 'dwarf-parchment', background: 'dwarf-slate', minimum: 4.5 },
+  { name: 'race top3 wpm text', foreground: 'dwarf-gold', background: 'dwarf-slate', minimum: 4.5 },
+  { name: 'race you tag / finish badge on gold', foreground: 'dwarf-abyss', background: 'dwarf-gold', minimum: 4.5 },
+  { name: 'race overtake down strip text', foreground: 'dwarf-parchment', background: 'dwarf-basalt', minimum: 4.5 },
 ];
 
 describe.each([

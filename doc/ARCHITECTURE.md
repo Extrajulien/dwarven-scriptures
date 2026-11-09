@@ -596,3 +596,51 @@ Rules the flow enforces:
 * The final results payload stays in memory for the room's lifetime
   (`RaceEngine.takeResults`); persistence (RES-05, Phase 3) consumes it —
   see the seam documented in `src/realtime/race-engine.ts`.
+
+### Client-side track pipeline: interpolation, ranking and overtakes (SP-2D)
+
+The track UI consumes the same aggregated `raceTick` stream and derives
+everything locally — the server remains authoritative for positions and
+final standings, the client only *presents* them:
+
+1. **Tick history** — `ProgressTrack` keeps the latest two ticks (the
+   previous one is adjusted during render, React's "adjust state when props
+   change" pattern, so no effect mirrors props into state). Each marker's
+   progress is `interpolatePosition(participant, prevTick, nextTick, nowMs,
+   totalLength)` from `src/lib/race/track.ts`: 0..1 progress clamped between
+   the two samples on the client clock, cubic **ease-out** by default
+   (smooths the ~250 ms server quantization without overshooting; `linear`
+   available). The component re-renders on a ~60 Hz interval
+   (`TRACK_CLOCK_INTERVAL_MS` = 16 ms) so the perceived rate stays ≥ ~4
+   updates/s between ticks (COURSE-05). An interval rather than
+   `requestAnimationFrame` keeps the interpolation deterministic under Jest
+   fake timers (the jsdom rAF shim recurses at 0 ms and would spin).
+
+2. **Live ranking** — `deriveRanking(participants, finishOrder)` sorts
+   finished participants first (by finish rank when known), then by position
+   desc, WPM desc, participantId; it feeds the top-3 panel (GAME-2) and the
+   marker badges.
+
+3. **Overtake detection** — `detectRankChanges(prevRanking, nextRanking,
+   localParticipantId)` compares two consecutive rankings and emits at most
+   one event per tick for the LOCAL participant only (`overtook`/`up` or
+   `overtaken`/`down` with the directly involved other participant and the
+   new rank). `OvertakeIndicator` shows a brief dwarf-styled strip
+   (auto-dismiss ~2.5 s, "latest wins" — no stacking) and announces it via
+   `aria-live="assertive"`; the track's `aria-live="polite"` region
+   announces the local rank on every tick (GAME-3).
+
+```mermaid
+sequenceDiagram
+    participant S as Server (RaceEngine, <=~4 ticks/s)
+    participant T as ProgressTrack (client)
+    participant O as OvertakeIndicator (client)
+    S-->>T: raceTick {tickAt, participants[]}
+    Note over T: keep prev+next tick, ~60 Hz clock pulses
+    T-->>T: interpolatePosition(...) → marker transform (COURSE-05)
+    Note over T,O: deriveRanking each tick
+    O-->>O: detectRankChanges(prev, next, local) → strip + assertive announce (GAME-3)
+```
+
+The track, top-3 and overtake strip render for participants **and**
+spectators alike; only the typing zone is role-gated (`RaceScreen.tsx`).
