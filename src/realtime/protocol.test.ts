@@ -701,6 +701,96 @@ describe('server → client messages', () => {
     const message: ServerMessage = { type: 'pong' };
     expect(message.type).toBe('pong');
   });
+
+  describe('bonusApplied (BONUS-03)', () => {
+    const base = {
+      type: 'bonusApplied',
+      roomPublicId: ROOM_PUBLIC_ID,
+      targetParticipantId: USER_PUBLIC_ID,
+      payload: { totalLength: 30, at: '2026-11-08T18:00:07.000Z' },
+    };
+
+    test('accepts the three bonus types with their per-type payloads', () => {
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'addWords',
+          payload: { ...base.payload, words: ['forge', 'nain', 'rune'] },
+        }).success,
+      ).toBe(true);
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'removeWords',
+          payload: { ...base.payload, wordCount: 3 },
+        }).success,
+      ).toBe(true);
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'fog',
+          payload: { ...base.payload, durationMs: 2_000 },
+        }).success,
+      ).toBe(true);
+    });
+
+    test('rejects events whose payload misses the per-type field', () => {
+      expect(serverMessageSchema.safeParse({ ...base, bonusType: 'addWords' }).success).toBe(
+        false,
+      );
+      expect(serverMessageSchema.safeParse({ ...base, bonusType: 'removeWords' }).success).toBe(
+        false,
+      );
+      expect(serverMessageSchema.safeParse({ ...base, bonusType: 'fog' }).success).toBe(false);
+    });
+
+    test('rejects unknown bonus types, bad targets and malformed payloads', () => {
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'freeze',
+          payload: { ...base.payload, durationMs: 2_000 },
+        }).success,
+      ).toBe(false);
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          targetParticipantId: 'not-a-uuid',
+          bonusType: 'fog',
+          payload: { ...base.payload, durationMs: 2_000 },
+        }).success,
+      ).toBe(false);
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'removeWords',
+          payload: { ...base.payload, wordCount: 0 },
+        }).success,
+      ).toBe(false);
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'addWords',
+          payload: { ...base.payload, words: [''] },
+        }).success,
+      ).toBe(false);
+      // Strict payload: unknown keys are rejected.
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'fog',
+          payload: { ...base.payload, durationMs: 2_000, extra: true },
+        }).success,
+      ).toBe(false);
+      expect(
+        serverMessageSchema.safeParse({
+          ...base,
+          bonusType: 'fog',
+          payload: { durationMs: 2_000, at: '2026-11-08T18:00:07.000Z' },
+        }).success,
+      ).toBe(false);
+    });
+  });
 });
 
 describe('error codes', () => {

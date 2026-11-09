@@ -126,6 +126,7 @@ function makeRace(overrides: Partial<RaceView> = {}): RaceView {
     lastTickAt: null,
     finishRanks: {},
     finished: null,
+    bonusLog: [],
     ...overrides,
   };
 }

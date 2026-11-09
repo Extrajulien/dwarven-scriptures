@@ -455,6 +455,7 @@ describe('race messages reducer (GAME-1 groundwork, COURSE-08)', () => {
         lastTickAt: null,
         finishRanks: {},
         finished: null,
+        bonusLog: [],
       },
     };
     const aborted = applyServerMessage(midRace, {
@@ -502,6 +503,104 @@ describe('race messages reducer (GAME-1 groundwork, COURSE-08)', () => {
       members: snapshotState.snapshot!.members,
     });
     expect(rejoined.race).toBeNull();
+  });
+
+  test('bonusApplied updates the target totalLength and appends to the bonus log (BONUS-03)', () => {
+    const racing = applyServerMessage(snapshotState, {
+      type: 'countdownStarted',
+      roomPublicId: ROOM_PUBLIC_ID,
+      startAt: '2026-11-08T18:00:03.000Z',
+      textId: null,
+      text: TEXT,
+      totalLength: TEXT.length,
+    });
+    const ticked = applyServerMessage(racing, {
+      type: 'raceTick',
+      roomPublicId: ROOM_PUBLIC_ID,
+      tickAt: '2026-11-08T18:00:06.000Z',
+      participants: [
+        {
+          participantId: ADA_ID,
+          kind: 'user',
+          displayName: 'ada',
+          position: 12,
+          wpm: 40,
+          finished: false,
+          totalLength: 34,
+        },
+        {
+          participantId: BOB_ID,
+          kind: 'user',
+          displayName: 'bob',
+          position: 4,
+          wpm: 10,
+          finished: false,
+          totalLength: 34,
+        },
+      ],
+    });
+
+    const helped = applyServerMessage(ticked, {
+      type: 'bonusApplied',
+      roomPublicId: ROOM_PUBLIC_ID,
+      targetParticipantId: BOB_ID,
+      bonusType: 'removeWords',
+      payload: { wordCount: 3, totalLength: 21, at: '2026-11-08T18:00:07.000Z' },
+    });
+    expect(helped.race?.bonusLog).toHaveLength(1);
+    expect(helped.race?.bonusLog[0]).toMatchObject({ bonusType: 'removeWords', targetParticipantId: BOB_ID });
+    expect(
+      helped.race?.participants.find((participant) => participant.participantId === BOB_ID)
+        ?.totalLength,
+    ).toBe(21);
+    expect(
+      helped.race?.participants.find((participant) => participant.participantId === ADA_ID)
+        ?.totalLength,
+    ).toBe(34);
+
+    // A second event appends in order and touches the other participant.
+    const hindered = applyServerMessage(helped, {
+      type: 'bonusApplied',
+      roomPublicId: ROOM_PUBLIC_ID,
+      targetParticipantId: ADA_ID,
+      bonusType: 'addWords',
+      payload: {
+        words: ['forge', 'nain', 'rune'],
+        totalLength: 52,
+        at: '2026-11-08T18:00:08.000Z',
+      },
+    });
+    expect(hindered.race?.bonusLog).toHaveLength(2);
+    expect(hindered.race?.bonusLog.map((event) => event.bonusType)).toEqual([
+      'removeWords',
+      'addWords',
+    ]);
+    expect(
+      hindered.race?.participants.find((participant) => participant.participantId === ADA_ID)
+        ?.totalLength,
+    ).toBe(52);
+  });
+
+  test('bonusApplied without a race view is ignored, and a fresh race starts with an empty log', () => {
+    expect(
+      applyServerMessage(snapshotState, {
+        type: 'bonusApplied',
+        roomPublicId: ROOM_PUBLIC_ID,
+        targetParticipantId: BOB_ID,
+        bonusType: 'fog',
+        payload: { durationMs: 2_000, totalLength: 34, at: '2026-11-08T18:00:07.000Z' },
+      }).race,
+    ).toBeNull();
+
+    const racing = applyServerMessage(snapshotState, {
+      type: 'countdownStarted',
+      roomPublicId: ROOM_PUBLIC_ID,
+      startAt: '2026-11-08T18:00:03.000Z',
+      textId: null,
+      text: TEXT,
+      totalLength: TEXT.length,
+    });
+    expect(racing.race?.bonusLog).toEqual([]);
   });
 });
 
