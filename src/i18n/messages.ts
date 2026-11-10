@@ -80,6 +80,12 @@ export interface Messages {
   'raceSection.createHint': string;
   'raceSection.guestEmpty': string;
   'raceSection.guestEmptyHint': string;
+  // ------------------------------------------------------------ race home page
+  'raceHome.racesTitle': string;
+  'raceHome.colCode': string;
+  'raceHome.empty': string;
+  'raceHome.createOne': string;
+  'raceHome.active': string;
   // ------------------------------------------------------------ join by code
   'joinCode.title': string;
   'joinCode.label': string;
@@ -506,6 +512,7 @@ export interface Messages {
   'pageTitle.rooms': string;
   'pageTitle.room': string;
   'pageTitle.invitation': string;
+  'pageTitle.race': string;
   // ------------------------------------------------------------ account screen
   'account.breadcrumb.left': string;
   'account.breadcrumb.node': string;
@@ -755,6 +762,12 @@ export const MESSAGES: Record<Locale, Messages> = {
     'raceSection.guestEmpty': 'Aucune salle publique n’attend de mineurs pour le moment.',
     'raceSection.guestEmptyHint':
       'Seuls les membres de la guilde peuvent fonder une salle — connectez-vous pour en créer une.',
+    // ------------------------------------------------------------ race home page
+    'raceHome.racesTitle': 'COURSES PUBLIQUES',
+    'raceHome.colCode': 'Code',
+    'raceHome.empty': 'Aucune course publique pour le moment.',
+    'raceHome.createOne': 'En fonder une',
+    'raceHome.active': 'expéditions actives',
     // ------------------------------------------------------------ join by code
     'joinCode.title': 'REJOINDRE PAR CODE',
     'joinCode.label': 'Code de la salle',
@@ -1199,6 +1212,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'pageTitle.rooms': 'Explorateur des salles',
     'pageTitle.room': 'Salle',
     'pageTitle.invitation': 'Invitation',
+    'pageTitle.race': 'Caverne de course',
     // ------------------------------------------------------------ account screen
     'account.breadcrumb.left': 'ᛞ [TERMINAL_DU_DOSSIER]',
     'account.breadcrumb.node': '[NŒUD : BASALT_CRAG_01]',
@@ -1452,6 +1466,12 @@ export const MESSAGES: Record<Locale, Messages> = {
     'raceSection.guestEmpty': 'No public room is waiting for miners right now.',
     'raceSection.guestEmptyHint':
       'Only guild members can forge a room — sign in to create one.',
+    // ------------------------------------------------------------ race home page
+    'raceHome.racesTitle': 'PUBLIC RACES',
+    'raceHome.colCode': 'Code',
+    'raceHome.empty': 'No public races right now.',
+    'raceHome.createOne': 'Create one',
+    'raceHome.active': 'active expeditions',
     // ------------------------------------------------------------ join by code
     'joinCode.title': 'JOIN BY CODE',
     'joinCode.label': 'Room code',
@@ -1892,6 +1912,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'pageTitle.rooms': 'Room explorer',
     'pageTitle.room': 'Room',
     'pageTitle.invitation': 'Invitation',
+    'pageTitle.race': 'Race cavern',
     // ------------------------------------------------------------ account screen
     'account.breadcrumb.left': 'ᛞ [DOSSIER_TERMINAL]',
     'account.breadcrumb.node': '[NODE: BASALT_CRAG_01]',
