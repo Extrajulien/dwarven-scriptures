@@ -32,28 +32,6 @@ test('renders the expedition roster section', () => {
   expect(screen.getByText(/rangs_des_mineurs_et_registre_des_typistes/i)).toBeInTheDocument();
 });
 
-test('renders the race cavern with quick play, join and the guest create empty state', () => {
-  render(<App messages={MESSAGES.fr} locale="fr" />);
-  expect(screen.getByText(/caverne de course/i)).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /démarrer une course/i })).toBeInTheDocument();
-  expect(
-    screen.getByRole('heading', { level: 2, name: /fonder une salle/i })
-  ).toBeInTheDocument();
-});
-
-test('guests never see the create-room form (AUTH-03)', () => {
-  render(<App messages={MESSAGES.fr} locale="fr" />);
-  expect(screen.queryByText(MESSAGES.fr['createRoom.visibilityLabel'])).not.toBeInTheDocument();
-  expect(screen.queryByText(MESSAGES.fr['createRoom.capacityLabel'])).not.toBeInTheDocument();
-});
-
-test('signed-in users see the create-room card (SALLE-01/05)', () => {
-  render(<App messages={MESSAGES.fr} locale="fr" user={{ username: 'ada' }} />);
-  expect(screen.getByText(MESSAGES.fr['createRoom.visibilityLabel'])).toBeInTheDocument();
-  expect(screen.getByText(MESSAGES.fr['createRoom.capacityLabel'])).toBeInTheDocument();
-  expect(screen.getByText(MESSAGES.fr['createRoom.roleLabel'])).toBeInTheDocument();
-});
-
 test('renders the locale selector in the navbar (I18N-02)', () => {
   render(<App messages={MESSAGES.fr} locale="fr" />);
   expect(

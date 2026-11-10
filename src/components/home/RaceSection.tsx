@@ -6,7 +6,6 @@ import type { Messages } from '../../i18n/messages';
 import ButtonPrimary from '../ButtonPrimary';
 import ButtonSecondary from '../ButtonSecondary';
 import Icon from '../Icon';
-import SectionHeader from '../SectionHeader';
 import CreateRoomCard from './CreateRoomCard';
 import JoinByCodeForm, { type JoinViewer } from './JoinByCodeForm';
 
@@ -19,10 +18,10 @@ const NOTICE_KEYS = {
 } as const satisfies Record<Exclude<HomeNotice, null>, keyof Messages>;
 
 /**
- * Home "race cavern" block (JOIN-01/03, SALLE-01): quick play, join by code,
- * the explorer link and the create-room card. Guests get the AUTH-03 empty
- * state instead of the create card; quick play is a server action that picks
- * the fullest joinable public room and redirects (JOIN-03).
+ * Race-home action block (JOIN-01/03, SALLE-01): quick play, join by code and
+ * the create-room card. Guests get the AUTH-03 empty state instead of the
+ * create card; quick play is a server action that picks the fullest joinable
+ * public room and redirects (JOIN-03). The page owns the "RACE CAVERN" title.
  */
 export default function RaceSection({
   viewer,
@@ -34,16 +33,7 @@ export default function RaceSection({
   messages: Messages;
 }) {
   return (
-    <section
-      id="race-cavern"
-      className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl"
-    >
-      <SectionHeader
-        title={messages['raceSection.title']}
-        subtitle={messages['raceSection.subtitle']}
-        right={<Icon name="sprint" className="text-primary text-headline-md" />}
-      />
-
+    <section className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl">
       {notice && (
         <div
           role="status"
