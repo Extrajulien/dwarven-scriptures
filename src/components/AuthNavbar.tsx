@@ -1,4 +1,5 @@
 import { SITE } from '../data/site';
+import Image from 'next/image';
 import type { Locale, Messages } from '../i18n/messages';
 import LocaleSelector from './Navbar/LocaleSelector';
 import ThemeSelector from './Navbar/ThemeSelector';
@@ -20,10 +21,13 @@ export default function AuthNavbar({
   return (
     <header className="sticky top-0 z-30 flex w-full items-center justify-between border-b border-dwarf-border bg-dwarf-bg/90 px-4 py-2.5 backdrop-blur-sm">
       <ButtonSecondary href="/" aria-label={SITE.name}>
-        <img
+        <Image
           alt={messages['chrome.siteLogoAlt']}
-          className="h-6 w-6 rounded-sm object-contain"
+          className="rounded-sm"
           src={SITE.logoUrl}
+          width={24}
+          height={24}
+          priority
         />
         <span className="font-display text-sm font-bold tracking-wider text-dwarf-gold">
           {SITE.name}

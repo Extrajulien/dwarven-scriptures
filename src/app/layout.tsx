@@ -62,8 +62,9 @@ export default async function RootLayout({
             applies the stored/system theme so the user never sees the wrong
             theme flash (DES-05). */}
         <script dangerouslySetInnerHTML={{ __html: buildInlineThemeScript() }} />
-      </head>
-      <body className="bg-surface text-on-surface font-body-md text-body-md min-h-screen selection:bg-secondary-container selection:text-on-secondary-container">
+        {/* Fonts live in <head> so the typefaces and the Material Symbols
+            icons resolve before the body paints — putting <link> in <body> is
+            invalid HTML and defers the stylesheet until after first paint. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
@@ -73,6 +74,8 @@ export default async function RootLayout({
         {FONT_STYLESHEETS.map((href) => (
           <link key={href} rel="stylesheet" href={href} />
         ))}
+      </head>
+      <body className="bg-surface text-on-surface font-body-md text-body-md min-h-screen selection:bg-secondary-container selection:text-on-secondary-container">
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

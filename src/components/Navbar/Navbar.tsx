@@ -1,5 +1,6 @@
 import { NAV_LINKS } from '../../data/homepageData';
 import { SITE } from '../../data/site';
+import Image from 'next/image';
 import type { Locale, Messages } from '../../i18n/messages';
 import LocaleSelector from './LocaleSelector';
 import ThemeSelector from './ThemeSelector';
@@ -21,10 +22,13 @@ export default function Navbar({
     <header className="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
       <div className="h-20 w-full px-margin-desktop flex items-center justify-between gap-gutter">
         <ButtonSecondary href="/" aria-label={SITE.name}>
-          <img
+          <Image
             alt={messages['chrome.siteLogoAlt']}
-            className="h-6 w-6 rounded-sm object-contain"
+            className="rounded-sm"
             src={SITE.logoUrl}
+            width={24}
+            height={24}
+            priority
           />
           <span className="font-display text-sm font-bold tracking-wider text-dwarf-gold">
             {SITE.name}
