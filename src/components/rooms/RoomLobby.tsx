@@ -128,7 +128,7 @@ export default function RoomLobby({
   // SALLE-07: the kicked member is told on the way out and sent home.
   useEffect(() => {
     if (error?.code === 'kicked') {
-      router.replace('/?notice=kicked');
+      router.replace('/race?notice=kicked');
     }
   }, [error, router]);
 

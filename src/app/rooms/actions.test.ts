@@ -827,7 +827,7 @@ describe('quickPlay (JOIN-03)', () => {
     listPublicRoomsMock.mockResolvedValue([]);
 
     await expect(quickPlay()).rejects.toMatchObject({
-      digest: expect.stringContaining('/?notice=noRooms'),
+      digest: expect.stringContaining('/race?notice=noRooms'),
     });
     expect(joinRoomQueryMock).not.toHaveBeenCalled();
   });
@@ -837,7 +837,7 @@ describe('quickPlay (JOIN-03)', () => {
     listPublicRoomsMock.mockResolvedValue([]);
 
     await expect(quickPlay()).rejects.toMatchObject({
-      digest: expect.stringContaining('/?notice=noRoomsGuest'),
+      digest: expect.stringContaining('/race?notice=noRoomsGuest'),
     });
   });
 

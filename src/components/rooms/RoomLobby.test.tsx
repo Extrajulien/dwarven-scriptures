@@ -305,7 +305,7 @@ describe('leave, kick notice and closed screen', () => {
       />,
     );
 
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/?notice=kicked'));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/race?notice=kicked'));
   });
 
   test('roomClosed shows the closed screen', () => {
