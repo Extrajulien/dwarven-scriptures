@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import App from './App';
 import { MESSAGES } from './i18n/messages';
 
@@ -34,6 +34,10 @@ test('renders the expedition roster section', () => {
 
 test('renders the locale selector in the navbar (I18N-02)', () => {
   render(<App messages={MESSAGES.fr} locale="fr" />);
+
+  // The FR/EN selector is collapsed behind the settings gear now.
+  fireEvent.click(screen.getByRole('button', { name: MESSAGES.fr['nav.settings'] }));
+
   expect(
     screen.getByRole('button', { name: new RegExp(MESSAGES.fr['locale.switchToFr']) }),
   ).toHaveAttribute('aria-pressed', 'true');

@@ -311,6 +311,9 @@ export interface Messages {
   'nav.runeworks': string;
   'nav.ledgers': string;
   'nav.login': string;
+  'nav.settings': string;
+  'nav.menu': string;
+  'nav.home': string;
   'footer.left': string;
   'footer.status': string;
   'footer.optimal': string;
@@ -995,6 +998,9 @@ export const MESSAGES: Record<Locale, Messages> = {
     'nav.runeworks': 'Atelier de runes',
     'nav.ledgers': 'Registres',
     'nav.login': '[Connexion]',
+    'nav.settings': 'Réglages',
+    'nav.menu': 'Menu',
+    'nav.home': 'Accueil',
     'footer.left':
       '▪ PROFONDEUR : NIVEAU Z -480 (PITON DE MAGMA) ▪ SALLE : N° EXP-84 (LANTERNE PUBLIQUE) ▪ PROTOCOLE : ASCII_SOCKET_v2',
     'footer.status': 'STATUT : [EXTRACTION SYNCHRONISÉE]',
@@ -1699,6 +1705,9 @@ export const MESSAGES: Record<Locale, Messages> = {
     'nav.runeworks': 'Runeworks',
     'nav.ledgers': 'Ledgers',
     'nav.login': '[Login]',
+    'nav.settings': 'Settings',
+    'nav.menu': 'Menu',
+    'nav.home': 'Home',
     'footer.left':
       '▪ DEPTH: -480 Z-LEVEL (MAGMA CRAG) ▪ ROOM: #EXP-84 (PUBLIC LANTERN) ▪ PROTOCOL: ASCII_SOCKET_v2',
     'footer.status': 'STATUS: [MINING SYNCHRONIZED]',

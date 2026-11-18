@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import Navbar from './Navbar';
-import { MESSAGES } from '../../i18n/messages';
+import { MESSAGES, type Messages } from '../../i18n/messages';
 import type { ThemePreference } from '../../theme/theme';
 
 // The selector's server action imports next/cache + next/headers (Node-only);
@@ -23,10 +23,15 @@ jest.mock('../../theme/ThemeProvider', () => ({
   useTheme: () => mockUseTheme(),
 }));
 
+/** Opens the settings gear so the collapsed theme selector renders. */
+function openSettings(messages: Messages = MESSAGES.fr): void {
+  fireEvent.click(screen.getByRole('button', { name: messages['nav.settings'] }));
+}
+
 /**
  * DES-05: the navbar renders the dwarf-styled Light / Dark / System selector
  * with real i18n labels, marks the active state and forwards clicks to the
- * theme context.
+ * theme context — reached through the settings dropdown.
  */
 describe('Navbar theme selector (DES-05)', () => {
   beforeEach(() => {
@@ -40,6 +45,7 @@ describe('Navbar theme selector (DES-05)', () => {
 
   test('renders the three states with icons and i18n labels, no emojis', () => {
     render(<Navbar locale="fr" messages={MESSAGES.fr} />);
+    openSettings(MESSAGES.fr);
 
     const group = screen.getByRole('group', { name: MESSAGES.fr['theme.group'] });
     expect(group).toBeInTheDocument();
@@ -65,6 +71,7 @@ describe('Navbar theme selector (DES-05)', () => {
       setPreference: mockSetPreference,
     });
     render(<Navbar locale="en" messages={MESSAGES.en} />);
+    openSettings(MESSAGES.en);
 
     expect(
       screen.getByRole('button', { name: MESSAGES.en['theme.switchToDark'] }),
@@ -76,6 +83,7 @@ describe('Navbar theme selector (DES-05)', () => {
 
   test('clicking a state forwards the preference to the theme context', () => {
     render(<Navbar locale="fr" messages={MESSAGES.fr} />);
+    openSettings(MESSAGES.fr);
 
     fireEvent.click(screen.getByRole('button', { name: MESSAGES.fr['theme.switchToLight'] }));
     expect(mockSetPreference).toHaveBeenCalledWith('light');

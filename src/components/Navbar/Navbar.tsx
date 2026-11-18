@@ -2,8 +2,8 @@ import { NAV_LINKS } from '../../data/homepageData';
 import { SITE } from '../../data/site';
 import Image from 'next/image';
 import type { Locale, Messages } from '../../i18n/messages';
-import LocaleSelector from './LocaleSelector';
-import ThemeSelector from './ThemeSelector';
+import SettingsMenu from './SettingsMenu';
+import MobileMenu from './MobileMenu';
 import PersonalAccount from './PersonalAccount';
 import ButtonSecondary from '../ButtonSecondary';
 
@@ -13,27 +13,42 @@ export default function Navbar({
   user = null,
   locale,
   messages,
+  sticky = true,
 }: {
   user?: NavUser | null;
   locale: Locale;
   messages: Messages;
+  /** Keep the bar pinned to the viewport top; `false` lets it scroll away. */
+  sticky?: boolean;
 }) {
+  const position = sticky
+    ? 'fixed top-0 left-0 right-0 z-50'
+    : 'relative z-50';
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
+    <header className={`${position} bg-surface-container-lowest shadow-[0_2px_12px_rgba(0,0,0,0.6)]`}>
       <div className="h-20 w-full px-margin-desktop flex items-center justify-between gap-gutter">
-        <ButtonSecondary href="/" aria-label={SITE.name}>
-          <Image
-            alt={messages['chrome.siteLogoAlt']}
-            className="rounded-sm"
-            src={SITE.logoUrl}
-            width={24}
-            height={24}
-            priority
-          />
-          <span className="font-display text-sm font-bold tracking-wider text-dwarf-gold">
-            {SITE.name}
-          </span>
-        </ButtonSecondary>
+        <div className="flex items-center gap-space-md">
+          {/* Brand "/" button: hidden below `sm`, where the hamburger consumes it. */}
+          <div className="hidden sm:block">
+            <ButtonSecondary href="/" aria-label={SITE.name}>
+              <Image
+                alt={messages['chrome.siteLogoAlt']}
+                className="rounded-sm"
+                src={SITE.logoUrl}
+                width={24}
+                height={24}
+                priority
+              />
+              <span className="font-display text-sm font-bold tracking-wider text-dwarf-gold">
+                {SITE.name}
+              </span>
+            </ButtonSecondary>
+          </div>
+
+          {/* Hamburger: sits beside the brand button, hidden at xl (links inline). */}
+          <MobileMenu messages={messages} />
+        </div>
 
         <nav className="hidden xl:flex items-center gap-space-sm">
           {NAV_LINKS.map((link) => (
@@ -48,10 +63,8 @@ export default function Navbar({
         </nav>
 
         <div className="flex items-center gap-space-md">
-          {/* I18N-02: visible on every breakpoint (desktop and mobile). */}
-          <LocaleSelector locale={locale} messages={messages} />
-          {/* DES-05: Light / Dark / System theme selector. */}
-          <ThemeSelector messages={messages} />
+          {/* Theme + locale collapse behind a single settings gear (DES-05 / I18N-02). */}
+          <SettingsMenu locale={locale} messages={messages} />
 
           <PersonalAccount user={user} messages={messages} />
         </div>
