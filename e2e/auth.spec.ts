@@ -7,7 +7,7 @@ import { DEMO_PASSWORD, freshUsername, loginAs } from './helpers';
  * account, the demo login, and the generic localized failure message.
  */
 
-test('registers a fresh account, signs in and sees the account page', async ({ page }) => {
+test('registers a fresh account and is signed in immediately', async ({ page }) => {
   const username = freshUsername();
 
   await page.goto('/register');
@@ -19,10 +19,10 @@ test('registers a fresh account, signs in and sees the account page', async ({ p
     .locator('form[data-purpose="scribe-registration-form"] button[type="submit"]')
     .click();
 
-  // Registration signs in through the login form (the register action itself
-  // redirects to /login), then the account page is reachable with the session.
-  await expect(page).toHaveURL(/\/login/);
-  await loginAs(page, username, DEMO_PASSWORD);
+  // Auto-connect: the register action writes the session cookie and lands on
+  // the home page already authenticated — no separate login step needed.
+  await expect(page).toHaveURL('/');
+  await expect(page.locator('header a[href="/account"]')).toBeVisible();
 
   await page.goto('/account');
   await expect(page.getByRole('heading', { level: 1, name: username })).toBeVisible();
