@@ -62,6 +62,7 @@ function roomData(
     publicId: ROOM_PUBLIC_ID,
     config,
     hostUserId: 7,
+    visibility: 'public',
     members: [
       member({
         memberId: 1,
@@ -996,6 +997,7 @@ describe('bots (BOT-01/04/05, ADR-011)', () => {
       publicId: ROOM_PUBLIC_ID,
       config,
       hostUserId: 7,
+      visibility: 'public',
       members: [
         member({
           memberId: 1,
@@ -1369,6 +1371,7 @@ describe('comeback bonuses (BONUS-01/04, CONF-09)', () => {
       publicId: ROOM_PUBLIC_ID,
       config,
       hostUserId: 7,
+      visibility: 'public',
       members: [
         member({
           memberId: 1,

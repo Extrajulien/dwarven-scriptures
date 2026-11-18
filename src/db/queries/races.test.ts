@@ -131,6 +131,7 @@ function payloadFixture(): RaceResultsPayload {
   return {
     roomId: 12,
     roomPublicId: ROOM_PUBLIC_ID,
+    visibility: 'public',
     textBody: 'hello world',
     textLanguage: 'en',
     config: {
@@ -202,6 +203,7 @@ describe('mapEngineResultsToPersistence', () => {
     expect(mapped.race).toEqual({
       roomId: 12,
       roomPublicId: ROOM_PUBLIC_ID,
+      visibility: 'public',
       textBody: 'hello world',
       textLanguage: 'en',
       config: payload.config,
@@ -291,6 +293,7 @@ describe('persistRaceResult', () => {
     expect(raceInserts).toHaveLength(1);
     const raceValues = methodArgOf(raceInserts[0], 'values')?.[0] as Record<string, unknown>;
     expect(raceValues.roomPublicId).toBe(ROOM_PUBLIC_ID);
+    expect(raceValues.visibility).toBe('public');
     expect(raceValues.status).toBe('finished');
     expect(raceValues.durationMs).toBe(60_000);
     expect(raceValues.textBody).toBe('hello world');

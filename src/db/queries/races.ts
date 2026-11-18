@@ -75,6 +75,8 @@ export type PersistRaceParticipant = {
 export type PersistRace = {
   roomId: number;
   roomPublicId: string;
+  /** Room visibility snapshot at finish (SALLE-03). */
+  visibility: 'public' | 'code' | 'private';
   textBody: string;
   textLanguage: 'fr' | 'en';
   config: RaceResultsPayload['config'];
@@ -126,6 +128,7 @@ export function mapEngineResultsToPersistence(
     race: {
       roomId: payload.roomId,
       roomPublicId: payload.roomPublicId,
+      visibility: payload.visibility,
       textBody: payload.textBody,
       textLanguage: payload.textLanguage,
       config: payload.config,
@@ -210,6 +213,7 @@ export async function persistRaceResult(payload: RaceResultsPayload): Promise<vo
       .values({
         roomId: mapped.race.roomId,
         roomPublicId: mapped.race.roomPublicId,
+        visibility: mapped.race.visibility,
         textBody: mapped.race.textBody,
         textLanguage: mapped.race.textLanguage,
         config: mapped.race.config,

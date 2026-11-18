@@ -213,6 +213,8 @@ export type RaceEngineRoomData = {
   publicId: string;
   config: RoomConfig;
   hostUserId: number;
+  /** Room visibility (SALLE-03), snapshotted onto the persisted race. */
+  visibility: 'public' | 'code' | 'private';
   members: RaceEngineMember[];
 };
 
@@ -318,6 +320,8 @@ export type RaceResultsPayload = {
   roomId: number;
   /** Room public id at finish — denormalized onto the persisted race row. */
   roomPublicId: string;
+  /** Room visibility snapshot at finish (SALLE-03) — survives room deletion. */
+  visibility: 'public' | 'code' | 'private';
   /** Full text body typed in this race (history replay). */
   textBody: string;
   /** ISO 639-1 language of the text (config snapshot). */
@@ -370,6 +374,8 @@ type ParticipantRuntime = {
 type RoomRace = {
   roomId: number;
   publicId: string;
+  /** Room visibility snapshot at start, persisted with the results (SALLE-03). */
+  visibility: 'public' | 'code' | 'private';
   state: RaceState;
   /** By participant memberId; built fresh on every start from the members. */
   runtimes: Map<string, ParticipantRuntime>;
@@ -734,6 +740,7 @@ export class RaceEngine implements RaceEngineHooks {
     const entry: RoomRace = {
       roomId,
       publicId: room.publicId,
+      visibility: room.visibility,
       state: started,
       runtimes,
       byHubKey,
@@ -1465,6 +1472,7 @@ export class RaceEngine implements RaceEngineHooks {
     return {
       roomId: entry.roomId,
       roomPublicId: entry.publicId,
+      visibility: entry.visibility,
       textBody: state.chosenText?.body ?? '',
       textLanguage: state.config.textLanguage,
       config: state.config,
