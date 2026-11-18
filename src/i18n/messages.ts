@@ -746,6 +746,58 @@ export interface Messages {
   'bonus.banner.addWords': string;
   'bonus.banner.removeWords': string;
   'bonus.banner.fog': string;
+  // ------------------------------------------------------------ previous races archive
+  'pageTitle.previousRaces': string;
+  'previousRaces.title': string;
+  'previousRaces.subtitle': string;
+  'previousRaces.breadcrumb': string;
+  'previousRaces.metrics.races': string;
+  'previousRaces.metrics.podiumRate': string;
+  'previousRaces.metrics.avgSpeed': string;
+  'previousRaces.metrics.wpmUnit': string;
+  'previousRaces.filter.label': string;
+  'previousRaces.filter.all': string;
+  'previousRaces.filter.mine': string;
+  'previousRaces.filter.private': string;
+  'previousRaces.filter.public': string;
+  'previousRaces.search.label': string;
+  'previousRaces.search.placeholder': string;
+  'previousRaces.col.chamber': string;
+  'previousRaces.col.type': string;
+  'previousRaces.col.champion': string;
+  'previousRaces.col.yourResult': string;
+  'previousRaces.col.scribes': string;
+  'previousRaces.col.scripture': string;
+  'previousRaces.col.finished': string;
+  'previousRaces.badge.private': string;
+  'previousRaces.badge.public': string;
+  'previousRaces.you': string;
+  'previousRaces.didNotJoin': string;
+  'previousRaces.wordsUnit': string;
+  'previousRaces.showingPrefix': string;
+  'previousRaces.showingInfix': string;
+  'previousRaces.showingSuffix': string;
+  'previousRaces.footerPrev': string;
+  'previousRaces.footerNext': string;
+  'previousRaces.empty': string;
+  'previousRaces.hover.podiumSuffix': string;
+  'previousRaces.hover.lastPlace': string;
+  'previousRaces.hover.hint': string;
+  'previousRaces.modal.completedOn': string;
+  'previousRaces.modal.yourPosition': string;
+  'previousRaces.modal.participantsLabel': string;
+  'previousRaces.modal.sortedBy': string;
+  'previousRaces.modal.colRank': string;
+  'previousRaces.modal.colScribe': string;
+  'previousRaces.modal.colSpeed': string;
+  'previousRaces.modal.colAccuracy': string;
+  'previousRaces.modal.colFaults': string;
+  'previousRaces.modal.colDuration': string;
+  'previousRaces.modal.textExtract': string;
+  'previousRaces.modal.close': string;
+  'previousRaces.modal.viewReplay': string;
+  'previousRaces.modal.rematch': string;
+  'previousRaces.modal.chamberId': string;
   // ------------------------------------------------------------ chrome accessibility
   'chrome.guildEmblemAlt': string;
   'chrome.siteLogoAlt': string;
@@ -1455,6 +1507,58 @@ export const MESSAGES: Record<Locale, Messages> = {
     'bonus.banner.addWords': '— le texte s’allonge pour vous',
     'bonus.banner.removeWords': '— l’expédition vous aide',
     'bonus.banner.fog': 'Brouillard sur vos prochains mots —',
+    // ------------------------------------------------------------ previous races archive
+    'pageTitle.previousRaces': 'Registres des courses',
+    'previousRaces.title': 'COURSES PRÉCÉDENTES',
+    'previousRaces.subtitle': 'Chronique des courses de frappe terminées.',
+    'previousRaces.breadcrumb': '// CHRONIQUES D’EXPÉDITION • ARCHIVES',
+    'previousRaces.metrics.races': 'Vos courses',
+    'previousRaces.metrics.podiumRate': 'Taux de podium',
+    'previousRaces.metrics.avgSpeed': 'Vitesse moyenne',
+    'previousRaces.metrics.wpmUnit': 'MPM',
+    'previousRaces.filter.label': '[FILTRE] :',
+    'previousRaces.filter.all': 'TOUTES LES COURSES',
+    'previousRaces.filter.mine': 'MES COURSES',
+    'previousRaces.filter.private': 'COURSES PRIVÉES',
+    'previousRaces.filter.public': 'EXPÉDITIONS PUBLIQUES',
+    'previousRaces.search.label': 'Rechercher dans l’archive',
+    'previousRaces.search.placeholder': 'RECHERCHER UN VAINQUEUR OU UN IDENTIFIANT…',
+    'previousRaces.col.chamber': 'CHAMBRE',
+    'previousRaces.col.type': 'TYPE',
+    'previousRaces.col.champion': 'CHAMPION',
+    'previousRaces.col.yourResult': 'VOTRE RÉSULTAT',
+    'previousRaces.col.scribes': 'SCRIBES',
+    'previousRaces.col.scripture': 'TEXTE',
+    'previousRaces.col.finished': 'TERMINÉE',
+    'previousRaces.badge.private': 'PRIVÉE',
+    'previousRaces.badge.public': 'PUBLIQUE',
+    'previousRaces.you': '(VOUS)',
+    'previousRaces.didNotJoin': 'N’A PAS PARTICIPÉ',
+    'previousRaces.wordsUnit': 'MOTS',
+    'previousRaces.showingPrefix': 'AFFICHAGE : ',
+    'previousRaces.showingInfix': 'SUR',
+    'previousRaces.showingSuffix': 'EXPÉDITIONS PRÉCÉDENTES',
+    'previousRaces.footerPrev': 'Précédent',
+    'previousRaces.footerNext': 'Suivant',
+    'previousRaces.empty': 'Aucune course terminée pour le moment.',
+    'previousRaces.hover.podiumSuffix': 'PODIUM',
+    'previousRaces.hover.lastPlace': 'DERNIÈRE PLACE',
+    'previousRaces.hover.hint': 'CLIQUEZ SUR UNE LIGNE POUR OUVRIR LE DOSSIER COMPLET',
+    'previousRaces.modal.completedOn': 'Terminée le',
+    'previousRaces.modal.yourPosition': 'VOTRE POSITION',
+    'previousRaces.modal.participantsLabel': 'SCRIBES ARRIVÉS',
+    'previousRaces.modal.sortedBy': 'TRIÉ PAR TEMPS DE FIN',
+    'previousRaces.modal.colRank': 'RANG',
+    'previousRaces.modal.colScribe': 'SCRIBE',
+    'previousRaces.modal.colSpeed': 'VITESSE',
+    'previousRaces.modal.colAccuracy': 'PRÉCISION',
+    'previousRaces.modal.colFaults': 'FAUTES',
+    'previousRaces.modal.colDuration': 'DURÉE',
+    'previousRaces.modal.textExtract': '[EXTRAIT DU TEXTE GRAVÉ]',
+    'previousRaces.modal.close': '[FERMER LE REGISTRE]',
+    'previousRaces.modal.viewReplay': 'VOIR LA COURSE COMPLÈTE',
+    'previousRaces.modal.rematch': '[RELANCER UNE COURSE]',
+    'previousRaces.modal.chamberId': 'IDENTIFIANT DE CHAMBRE',
     // ------------------------------------------------------------ chrome accessibility
     'chrome.guildEmblemAlt': 'Emblème de la guilde Dwarf Fortress Delve',
     'chrome.siteLogoAlt': 'Logo de Dwarven Scriptures',
@@ -2157,6 +2261,58 @@ export const MESSAGES: Record<Locale, Messages> = {
     'bonus.banner.addWords': '— the text grows for you',
     'bonus.banner.removeWords': '— the expedition lends a hand',
     'bonus.banner.fog': 'Fog over your next words —',
+    // ------------------------------------------------------------ previous races archive
+    'pageTitle.previousRaces': 'Race Ledgers',
+    'previousRaces.title': 'PREVIOUS RACES',
+    'previousRaces.subtitle': 'Chronicle of completed typing races.',
+    'previousRaces.breadcrumb': '// EXPEDITION CHRONICLES • ARCHIVE',
+    'previousRaces.metrics.races': 'Your races',
+    'previousRaces.metrics.podiumRate': 'Podium rate',
+    'previousRaces.metrics.avgSpeed': 'Average speed',
+    'previousRaces.metrics.wpmUnit': 'WPM',
+    'previousRaces.filter.label': '[FILTER]:',
+    'previousRaces.filter.all': 'ALL RACES',
+    'previousRaces.filter.mine': 'MY RACES',
+    'previousRaces.filter.private': 'PRIVATE RACES',
+    'previousRaces.filter.public': 'PUBLIC EXPEDITIONS',
+    'previousRaces.search.label': 'Search the archive',
+    'previousRaces.search.placeholder': 'SEARCH A WINNER OR AN IDENTIFIER…',
+    'previousRaces.col.chamber': 'CHAMBER',
+    'previousRaces.col.type': 'TYPE',
+    'previousRaces.col.champion': 'CHAMPION',
+    'previousRaces.col.yourResult': 'YOUR RESULT',
+    'previousRaces.col.scribes': 'SCRIBES',
+    'previousRaces.col.scripture': 'TEXT',
+    'previousRaces.col.finished': 'FINISHED',
+    'previousRaces.badge.private': 'PRIVATE',
+    'previousRaces.badge.public': 'PUBLIC',
+    'previousRaces.you': '(YOU)',
+    'previousRaces.didNotJoin': 'DID NOT JOIN',
+    'previousRaces.wordsUnit': 'WORDS',
+    'previousRaces.showingPrefix': 'SHOWING ',
+    'previousRaces.showingInfix': 'OF',
+    'previousRaces.showingSuffix': 'PREVIOUS EXPEDITIONS',
+    'previousRaces.footerPrev': 'Previous',
+    'previousRaces.footerNext': 'Next',
+    'previousRaces.empty': 'No completed races yet.',
+    'previousRaces.hover.podiumSuffix': 'PODIUM',
+    'previousRaces.hover.lastPlace': 'LAST PLACE',
+    'previousRaces.hover.hint': 'CLICK A ROW TO OPEN THE FULL DOSSIER',
+    'previousRaces.modal.completedOn': 'Completed on',
+    'previousRaces.modal.yourPosition': 'YOUR POSITION',
+    'previousRaces.modal.participantsLabel': 'FINISHED SCRIBES',
+    'previousRaces.modal.sortedBy': 'SORTED BY FINISH TIME',
+    'previousRaces.modal.colRank': 'RANK',
+    'previousRaces.modal.colScribe': 'SCRIBE',
+    'previousRaces.modal.colSpeed': 'SPEED',
+    'previousRaces.modal.colAccuracy': 'ACCURACY',
+    'previousRaces.modal.colFaults': 'FAULTS',
+    'previousRaces.modal.colDuration': 'DURATION',
+    'previousRaces.modal.textExtract': '[CARVED SCRIPTURE EXTRACT]',
+    'previousRaces.modal.close': '[CLOSE LEDGER]',
+    'previousRaces.modal.viewReplay': 'VIEW FULL REPLAY',
+    'previousRaces.modal.rematch': '[REMATCH]',
+    'previousRaces.modal.chamberId': 'CHAMBER IDENTIFIER',
     // ------------------------------------------------------------ chrome accessibility
     'chrome.guildEmblemAlt': 'Dwarf Fortress Delve Guild Emblem',
     'chrome.siteLogoAlt': 'Dwarven Scriptures logo',
