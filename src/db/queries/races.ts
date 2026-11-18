@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '..';
 import type { RaceResultsPayload } from '../../realtime/race-engine';
 import { raceParticipants, races, users } from '../schema';
@@ -566,5 +566,270 @@ export async function getRaceForReplay(publicId: string): Promise<RaceReplayView
       bonusesReceived: row.bonusesReceived,
       wpmSeries: row.wpmSeries,
     })),
+  };
+}
+
+// ------------------------------------------------------------------- archive
+
+/** Rows shown per archive page (the "previous races" ledger). */
+export const ARCHIVE_PAGE_SIZE = 10;
+
+/** Room visibility values a persisted race can snapshot (SALLE-03). */
+export type ArchiveVisibility = 'public' | 'code' | 'private';
+
+/** One ranked line of an archived race's standings (client-safe). */
+export type ArchiveStanding = {
+  rank: number;
+  displayName: string;
+  wpm: number;
+  accuracy: number;
+  errors: number;
+  /** Milliseconds after typing start at which the participant ended. */
+  durationMs: number;
+  status: 'finished' | 'timeout' | 'quit';
+  /** True for the viewing user's own line (highlighted in the modal). */
+  isViewer: boolean;
+};
+
+/** The viewer's own result in an archived race, or `null` when they did not join. */
+export type ArchiveViewerResult = {
+  rank: number;
+  wpm: number;
+  accuracy: number;
+  status: 'finished' | 'timeout' | 'quit';
+};
+
+/** One row of the "previous races" archive table. */
+export type ArchiveRaceEntry = {
+  /** Race public id — the replay link target (HIST-02). */
+  publicId: string;
+  visibility: ArchiveVisibility;
+  textLanguage: string;
+  /** `coherent` | `random` (from the race config snapshot). */
+  textType: string;
+  wordCount: number;
+  finishedAt: Date;
+  durationMs: number;
+  participantCount: number;
+  /** The rank-1 finisher; `null` defensively (a race always has one). */
+  champion: { displayName: string; wpm: number; accuracy: number } | null;
+  viewer: ArchiveViewerResult | null;
+  /** Ranked standings, ascending — feeds the hover card and detail modal. */
+  standings: ArchiveStanding[];
+  /** Truncated text excerpt for the detail modal (full text on the replay). */
+  textSnippet: string;
+};
+
+export type RaceArchivePage = {
+  entries: ArchiveRaceEntry[];
+  /** Total finished races matching the filters. */
+  totalCount: number;
+  /** 1-based page actually returned (clamped into range). */
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type ArchiveSummary = {
+  racesCount: number;
+  /** Top-3 finishes ÷ races, 0–100. */
+  podiumRate: number;
+  avgWpm: number;
+};
+
+export type ListArchiveOptions = {
+  /**
+   * Internal viewer id; `null`/omitted = anonymous, which can only see public
+   * races. Never leaves this module.
+   */
+  viewerUserId?: number | null;
+  /** `'public'` only; `'private'` = `code`/`private` the viewer raced in; default = all visible. */
+  visibility?: 'public' | 'private';
+  /** Restrict to the viewer's own races (ignored for anonymous viewers). */
+  participatedOnly?: boolean;
+  /** Free-text search over the winner's name and the room public id. */
+  query?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+const ARCHIVE_SEARCH_MAX_LENGTH = 80;
+
+/**
+ * Paginated "previous races" archive (newest first), backed by the persisted
+ * `races`/`race_participants` rows. Authorization is enforced here: public
+ * races are visible to everyone, while `code`/`private` races are only listed
+ * for a viewer who participated in them (guests never see them). Standings are
+ * loaded in one follow-up query for the listed page so the hover card and the
+ * detail modal render without extra round-trips.
+ */
+export async function listFinishedRacesArchive(
+  options: ListArchiveOptions = {},
+): Promise<RaceArchivePage> {
+  const viewerUserId = options.viewerUserId ?? null;
+  const pageSize = Math.min(Math.max(1, options.pageSize ?? ARCHIVE_PAGE_SIZE), 50);
+  const page = Math.max(1, options.page ?? 1);
+
+  const conditions: (SQL | undefined)[] = [eq(races.status, 'finished')];
+  const isPrivate = or(eq(races.visibility, 'code'), eq(races.visibility, 'private'));
+
+  /** Correlated EXISTS: the viewer has a participant row in this race. */
+  const viewerParticipated = (uid: number): SQL =>
+    sql`exists (select 1 from ${raceParticipants} where ${raceParticipants.raceId} = ${races.id} and ${raceParticipants.userId} = ${uid})`;
+
+  if (viewerUserId === null) {
+    // Guests browse public races only.
+    conditions.push(eq(races.visibility, 'public'));
+  } else if (options.visibility === 'public') {
+    conditions.push(eq(races.visibility, 'public'));
+  } else if (options.visibility === 'private') {
+    conditions.push(isPrivate, viewerParticipated(viewerUserId));
+  } else {
+    // Default "all": public races plus the viewer's own code/private races.
+    conditions.push(or(eq(races.visibility, 'public'), and(isPrivate, viewerParticipated(viewerUserId))));
+  }
+
+  if (options.participatedOnly && viewerUserId !== null) {
+    conditions.push(viewerParticipated(viewerUserId));
+  }
+
+  const rawQuery = options.query?.trim() ?? '';
+  if (rawQuery !== '') {
+    const pattern = `%${rawQuery.slice(0, ARCHIVE_SEARCH_MAX_LENGTH)}%`;
+    conditions.push(
+      or(
+        ilike(races.roomPublicId, pattern),
+        sql`exists (select 1 from ${raceParticipants} where ${raceParticipants.raceId} = ${races.id} and ${raceParticipants.rank} = 1 and ${raceParticipants.displayName} ilike ${pattern})`,
+      ),
+    );
+  }
+
+  const [total] = await db
+    .select({ value: count() })
+    .from(races)
+    .where(and(...conditions));
+  const totalCount = total?.value ?? 0;
+  const totalPages = Math.max(0, Math.ceil(totalCount / pageSize));
+  const safePage = Math.min(page, Math.max(1, totalPages));
+
+  const raceRows = await db
+    .select({
+      id: races.id,
+      publicId: races.publicId,
+      visibility: races.visibility,
+      textLanguage: races.textLanguage,
+      config: races.config,
+      finishedAt: races.finishedAt,
+      durationMs: races.durationMs,
+      snippet: sql<string>`left(${races.textBody}, 160)`,
+    })
+    .from(races)
+    .where(and(...conditions))
+    .orderBy(desc(races.finishedAt))
+    .limit(pageSize)
+    .offset((safePage - 1) * pageSize);
+
+  const raceIds = raceRows.map((row) => row.id);
+  const participantRows =
+    raceIds.length === 0
+      ? []
+      : await db
+          .select({
+            raceId: raceParticipants.raceId,
+            userId: raceParticipants.userId,
+            displayName: raceParticipants.displayName,
+            wpm: raceParticipants.wpm,
+            accuracy: raceParticipants.accuracy,
+            errors: raceParticipants.errors,
+            status: raceParticipants.status,
+            finishedAtMs: raceParticipants.finishedAtMs,
+            rank: raceParticipants.rank,
+          })
+          .from(raceParticipants)
+          .where(inArray(raceParticipants.raceId, raceIds))
+          .orderBy(asc(raceParticipants.raceId), asc(raceParticipants.rank));
+
+  const standingsByRace = new Map<number, typeof participantRows>();
+  for (const participant of participantRows) {
+    const list = standingsByRace.get(participant.raceId) ?? [];
+    list.push(participant);
+    standingsByRace.set(participant.raceId, list);
+  }
+
+  const entries: ArchiveRaceEntry[] = raceRows.map((row) => {
+    const participants = standingsByRace.get(row.id) ?? [];
+    const championRow = participants.find((participant) => participant.rank === 1);
+    const viewerRow =
+      viewerUserId === null
+        ? undefined
+        : participants.find((participant) => participant.userId === viewerUserId);
+
+    return {
+      publicId: row.publicId,
+      visibility: row.visibility,
+      textLanguage: row.textLanguage,
+      textType: row.config.textType,
+      wordCount: row.config.wordCount,
+      finishedAt: row.finishedAt,
+      durationMs: row.durationMs,
+      participantCount: participants.length,
+      champion: championRow
+        ? {
+            displayName: championRow.displayName,
+            wpm: toFiniteNumber(championRow.wpm),
+            accuracy: toFiniteNumber(championRow.accuracy),
+          }
+        : null,
+      viewer: viewerRow
+        ? {
+            rank: viewerRow.rank,
+            wpm: toFiniteNumber(viewerRow.wpm),
+            accuracy: toFiniteNumber(viewerRow.accuracy),
+            status: viewerRow.status,
+          }
+        : null,
+      standings: participants.map((participant) => ({
+        rank: participant.rank,
+        displayName: participant.displayName,
+        wpm: toFiniteNumber(participant.wpm),
+        accuracy: toFiniteNumber(participant.accuracy),
+        errors: participant.errors,
+        durationMs: participant.finishedAtMs,
+        status: participant.status,
+        isViewer: viewerUserId !== null && participant.userId === viewerUserId,
+      })),
+      textSnippet: row.snippet,
+    };
+  });
+
+  return { entries, totalCount, page: safePage, pageSize, totalPages };
+}
+
+/**
+ * Summary metrics for the archive header ("your races", podium rate, average
+ * WPM). Derived from the viewer's own participant rows; returns zeros for an
+ * anonymous user or one with no finished races.
+ */
+export async function getArchiveSummary(internalUserId: number): Promise<ArchiveSummary> {
+  if (!Number.isSafeInteger(internalUserId) || internalUserId <= 0) {
+    throw new InvalidRacePersistenceError('internalUserId must be a positive integer');
+  }
+
+  const rows = await db
+    .select({ wpm: raceParticipants.wpm, rank: raceParticipants.rank })
+    .from(raceParticipants)
+    .where(eq(raceParticipants.userId, internalUserId));
+
+  if (rows.length === 0) {
+    return { racesCount: 0, podiumRate: 0, avgWpm: 0 };
+  }
+
+  const podiumCount = rows.filter((row) => row.rank <= 3).length;
+  const totalWpm = rows.reduce((sum, row) => sum + toFiniteNumber(row.wpm), 0);
+
+  return {
+    racesCount: rows.length,
+    podiumRate: (podiumCount / rows.length) * 100,
+    avgWpm: totalWpm / rows.length,
   };
 }
