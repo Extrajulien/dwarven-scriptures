@@ -1,0 +1,1159 @@
+<!DOCTYPE html><html lang="en" class="dark"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Previous Races Archive - Dwarven Scriptures</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Space Mono & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet">
+  <!-- Material Symbols Outlined -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            surface: '#131313',
+            'surface-dim': '#131313',
+            'surface-bright': '#393939',
+            'surface-container-lowest': '#0e0e0e',
+            'surface-container-low': '#1c1b1b',
+            'surface-container': '#201f1f',
+            'surface-container-high': '#2a2a2a',
+            'surface-container-highest': '#353534',
+            'on-surface': '#e5e2e1',
+            'on-surface-variant': '#d1c5af',
+            outline: '#9a907c',
+            'outline-variant': '#4e4635',
+            primary: '#eec14b', // Chiseled Gold
+            secondary: '#ffb77b', // Forge Amber
+            tertiary: '#a4d393', // Emerald Rune
+            error: '#ffb4ab', // Magma Red
+          },
+          fontFamily: {
+            mono: ['"JetBrains Mono"', 'monospace'],
+            display: ['"Space Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #131313;
+      color: #e5e2e1;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .stone-border {
+      border: 1px solid #4e4635;
+      box-shadow: inset 0 0 0 1px rgba(14, 14, 14, 0.7);
+    }
+    .stone-card {
+      background-color: #1c1b1b;
+      border: 1px solid #4e4635;
+    }
+    .rune-corner {
+      position: relative;
+    }
+    .rune-corner::before {
+      content: "✦";
+      position: absolute;
+      top: -6px;
+      left: -6px;
+      font-size: 10px;
+      color: #9a907c;
+    }
+    .rune-corner::after {
+      content: "✦";
+      position: absolute;
+      bottom: -6px;
+      right: -6px;
+      font-size: 10px;
+      color: #9a907c;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0e0e0e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #4e4635;
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #9a907c;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#131313] text-[#e5e2e1] selection:bg-[#eec14b]/30 selection:text-[#eec14b] p-4 md:p-8 lg:p-12">
+
+  <!-- Fixed Top HUD bar (citadel terminal context) -->
+  
+
+  <main class="max-w-[85rem] mx-auto">
+    <!-- Header Title Banner -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 border-b border-[#353534] pb-6">
+      <div>
+        <div class="flex items-center gap-2 text-xs font-mono text-[#9a907c] uppercase tracking-widest mb-1">
+          <span>// EXPEDITION CHRONICLES</span>
+          <span>•</span>
+          <span class="text-[#eec14b]">HISTORICAL VAULT</span>
+        </div>
+        <h1 class="text-3xl md:text-4xl font-display font-bold tracking-tight text-[#e5e2e1] flex items-center gap-3">
+          PREVIOUS RACES
+          
+        </h1>
+        <p class="text-sm text-[#d1c5af] font-mono mt-2 max-w-2xl">Chronicle of known scribe races.`</p>
+      </div>
+
+      <!-- Quick Metrics Ribbon for Urist -->
+      <div class="flex items-center gap-3 bg-[#1c1b1b] border border-[#4e4635] p-3 rounded-lg">
+        <div class="px-3 border-r border-[#353534]">
+          <div class="text-[10px] text-[#9a907c] uppercase">Your Races</div>
+          <div class="text-lg font-bold font-display text-[#eec14b]">412</div>
+        </div>
+        <div class="px-3 border-r border-[#353534]">
+          <div class="text-[10px] text-[#9a907c] uppercase">Podium Rate</div>
+          <div class="text-lg font-bold font-display text-emerald-400">74.2%</div>
+        </div>
+        <div class="px-3">
+          <div class="text-[10px] text-[#9a907c] uppercase">Avg Speed</div>
+          <div class="text-lg font-bold font-display text-amber-300">84.6 <span class="text-[10px] text-zinc-400">WPM</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters & Search Toolbar -->
+    <div class="stone-card rounded-lg p-4 mb-6 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+      <!-- Search input -->
+      <div class="relative flex-1">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-lg">search</span>
+        <input id="raceSearchInput" type="text" placeholder="SEARCH CHAMBER CODE, HOST, OR WINNER..." class="w-full bg-[#0e0e0e] border border-[#4e4635] focus:border-[#eec14b] rounded pl-10 pr-4 py-2 text-xs font-mono text-[#e5e2e1] placeholder-zinc-600 focus:outline-none transition">
+      </div>
+
+      <!-- Scope Filter Tabs -->
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs text-[#9a907c] uppercase mr-1">[FILTER]:</span>
+        <button onclick="setFilter('all')" id="btn-filter-all" class="filter-btn active px-3 py-1.5 text-xs font-mono font-medium rounded border transition bg-[#eec14b] text-black border-[#eec14b]">
+          ALL RACES (24)
+        </button>
+        <button onclick="setFilter('participated')" id="btn-filter-participated" class="filter-btn px-3 py-1.5 text-xs font-mono font-medium rounded border hover:border-[#eec14b] hover:text-[#eec14b] transition flex items-center gap-1.5 bg-[#201f1f] text-[#d1c5af] border-[#4e4635]">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          MY RACES ONLY (14)
+        </button>
+        <button onclick="setFilter('private')" id="btn-filter-private" class="filter-btn px-3 py-1.5 text-xs font-mono font-medium rounded border hover:border-[#eec14b] hover:text-[#eec14b] transition flex items-center gap-1.5 bg-[#201f1f] text-[#d1c5af] border-[#4e4635]">
+          <span class="material-symbols-outlined text-[13px] text-amber-400">lock</span>
+          PRIVATE RACES (8)
+        </button>
+        <button onclick="setFilter('public')" id="btn-filter-public" class="filter-btn px-3 py-1.5 text-xs font-mono font-medium rounded border hover:border-[#eec14b] hover:text-[#eec14b] transition flex items-center gap-1.5 bg-[#201f1f] text-[#d1c5af] border-[#4e4635]">
+          <span class="material-symbols-outlined text-[13px] text-zinc-400">public</span>
+          PUBLIC EXPEDITIONS (16)
+        </button>
+      </div>
+
+      <!-- Quick Action / Export -->
+      <div class="flex items-center gap-2 border-t lg:border-t-0 pt-3 lg:pt-0 border-[#353534]">
+        <button class="px-3 py-1.5 text-xs font-mono rounded bg-[#201f1f] border border-[#4e4635] hover:border-[#9a907c] text-[#d1c5af] flex items-center gap-1 transition">
+          <span class="material-symbols-outlined text-[14px]">tune</span>
+          SORT: RECENT
+        </button>
+        
+      </div>
+    </div>
+
+    <!-- Table Container with Relative Positioning for Hover Card Anchor -->
+    <div class="relative bg-[#1c1b1b] border border-[#4e4635] rounded-lg shadow-2xl overflow-visible">
+      <!-- Ledger Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-xs font-mono" id="raceLedgerTable">
+          <thead>
+            <tr class="bg-[#0e0e0e] border-b border-[#4e4635] text-[#9a907c] uppercase tracking-wider text-[11px]">
+              <th class="py-3.5 px-4 font-normal">CHAMBER / CODE</th>
+              <th class="py-3.5 px-3 font-normal">TYPE</th>
+              <th class="py-3.5 px-4 font-normal">CHAMPION (WINNER)</th>
+              <th class="py-3.5 px-4 font-normal">YOUR RESULT</th>
+              <th class="py-3.5 px-3 font-normal">MINERS</th>
+              <th class="py-3.5 px-3 font-normal">SCRIPTURE</th>
+              <th class="py-3.5 px-3 font-normal">FINISHED</th>
+              
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#2a2a2a]" id="raceTableBody">
+
+            <!-- ROW 1 (Private race, participated, 1st place) -->
+            <tr class="race-row group hover:bg-[#252424] cursor-pointer transition relative" data-type="private" data-participated="true" onclick="openRaceModal('8849')" onmouseenter="showHoverCard(event, '8849')" onmouseleave="hideHoverCard()">
+              <td class="py-4 px-4">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-2 h-2 rounded-full bg-[#eec14b] shadow-[0_0_8px_rgba(238,193,75,0.6)]"></div>
+                  <div>
+                    <div class="font-display font-bold text-[#e5e2e1] group-hover:text-[#eec14b] transition flex items-center gap-1.5">
+                      #8849 ADAMANTINE-VEIN
+                      <span class="text-[9px] px-1.5 py-0.2 bg-[#eec14b]/15 text-[#eec14b] border border-[#eec14b]/40 rounded font-normal">CLAN</span>
+                    </div>
+                    <div class="text-[10px] text-zinc-500">VAULT_HASH: 0x9AF2 • 120 WORDS</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-3">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-950/40 text-amber-300 border border-amber-800/60">
+                  <span class="material-symbols-outlined text-[11px]">lock</span>
+                  PRIVATE
+                </span>
+              </td>
+              <td class="py-4 px-4">
+                <div class="flex items-center gap-2">
+                  <span class="w-5 h-5 rounded bg-[#eec14b]/20 border border-[#eec14b] text-[#eec14b] flex items-center justify-center text-[10px] font-bold">1</span>
+                  <div>
+                    <div class="text-[#eec14b] font-bold flex items-center gap-1">
+                      Urist McTypist
+                      <span class="text-[10px] text-[#9a907c] font-normal">(YOU)</span>
+                    </div>
+                    <div class="text-[10px] text-zinc-400">112 WPM • 100% ACC</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-4">
+                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-[#0e0e0e] border border-[#eec14b]/50">
+                  <span class="text-[#eec14b] font-bold flex items-center gap-1 text-[11px]">
+                    🥇 1ST PLACE
+                  </span>
+                  <span class="text-zinc-400">|</span>
+                  <span class="text-emerald-400 font-bold">112 WPM</span>
+                </div>
+              </td>
+              <td class="py-4 px-3 text-zinc-300">
+                <span class="text-white font-medium">8</span> / 8 Scribes
+              </td>
+              <td class="py-4 px-3">
+                <span class="text-zinc-300 bg-[#0e0e0e] px-2 py-0.5 rounded border border-[#353534] text-[10px]">
+                  ENG / RUNIC
+                </span>
+              </td>
+              <td class="py-4 px-3 text-zinc-400 text-[11px]">
+                12m ago
+              </td>
+              
+            </tr>
+
+            <!-- ROW 2 (Public race, participated, 2nd place) -->
+            <tr class="race-row group hover:bg-[#252424] cursor-pointer transition relative" data-type="public" data-participated="true" onclick="openRaceModal('9102')" onmouseenter="showHoverCard(event, '9102')" onmouseleave="hideHoverCard()">
+              <td class="py-4 px-4">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-2 h-2 rounded-full bg-zinc-500"></div>
+                  <div>
+                    <div class="font-display font-bold text-[#e5e2e1] group-hover:text-[#eec14b] transition">
+                      #9102 MAGMA-FORGE
+                    </div>
+                    <div class="text-[10px] text-zinc-500">VAULT_HASH: 0x48CC • 95 WORDS</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-3">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-800/80 text-zinc-300 border border-zinc-700">
+                  <span class="material-symbols-outlined text-[11px]">public</span>
+                  PUBLIC
+                </span>
+              </td>
+              <td class="py-4 px-4">
+                <div class="flex items-center gap-2">
+                  <span class="w-5 h-5 rounded bg-zinc-700/60 border border-zinc-500 text-zinc-200 flex items-center justify-center text-[10px] font-bold">1</span>
+                  <div>
+                    <div class="text-zinc-200 font-bold">Darin Coppervein</div>
+                    <div class="text-[10px] text-zinc-400">118 WPM • 99.1% ACC</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-4">
+                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-[#0e0e0e] border border-[#4e4635]">
+                  <span class="text-zinc-300 font-bold flex items-center gap-1 text-[11px]">
+                    🥈 2ND PLACE
+                  </span>
+                  <span class="text-zinc-500">|</span>
+                  <span class="text-[#eec14b] font-bold">108 WPM</span>
+                </div>
+              </td>
+              <td class="py-4 px-3 text-zinc-300">
+                <span class="text-white font-medium">6</span> / 6 Scribes
+              </td>
+              <td class="py-4 px-3">
+                <span class="text-zinc-300 bg-[#0e0e0e] px-2 py-0.5 rounded border border-[#353534] text-[10px]">
+                  LATIN LITURGY
+                </span>
+              </td>
+              <td class="py-4 px-3 text-zinc-400 text-[11px]">
+                1h ago
+              </td>
+              
+            </tr>
+
+            <!-- ROW 3 (Public race, NOT in race, observer) -->
+            <tr class="race-row group hover:bg-[#252424] cursor-pointer transition relative" data-type="public" data-participated="false" onclick="openRaceModal('4411')" onmouseenter="showHoverCard(event, '4411')" onmouseleave="hideHoverCard()">
+              <td class="py-4 px-4">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-2 h-2 rounded-full bg-zinc-600"></div>
+                  <div>
+                    <div class="font-display font-bold text-[#e5e2e1] group-hover:text-[#eec14b] transition flex items-center gap-1.5">
+                      #4411 BASALT-CHASM
+                      <span class="text-[9px] px-1.5 py-0.2 bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 rounded font-normal">SYNTAX</span>
+                    </div>
+                    <div class="text-[10px] text-zinc-500">VAULT_HASH: 0xEE12 • 140 WORDS</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-3">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-800/80 text-zinc-300 border border-zinc-700">
+                  <span class="material-symbols-outlined text-[11px]">public</span>
+                  PUBLIC
+                </span>
+              </td>
+              <td class="py-4 px-4">
+                <div class="flex items-center gap-2">
+                  <span class="w-5 h-5 rounded bg-zinc-700/60 border border-zinc-500 text-zinc-200 flex items-center justify-center text-[10px] font-bold">1</span>
+                  <div>
+                    <div class="text-zinc-200 font-bold">Thrum Stonebreaker</div>
+                    <div class="text-[10px] text-zinc-400">96 WPM • 97.4% ACC</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-4">
+                <span class="text-zinc-500 italic text-[11px] flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[13px]">visibility</span>
+                  DID NOT JOIN
+                </span>
+              </td>
+              <td class="py-4 px-3 text-zinc-300">
+                <span class="text-white font-medium">8</span> / 8 Scribes
+              </td>
+              <td class="py-4 px-3">
+                <span class="text-emerald-400 bg-[#0e0e0e] px-2 py-0.5 rounded border border-emerald-900/60 text-[10px]">
+                  PYTHON / CODE
+                </span>
+              </td>
+              <td class="py-4 px-3 text-zinc-400 text-[11px]">
+                3h ago
+              </td>
+              
+            </tr>
+
+            <!-- ROW 4 (Private race, participated, 3rd place) -->
+            <tr class="race-row group hover:bg-[#252424] cursor-pointer transition relative" data-type="private" data-participated="true" onclick="openRaceModal('7723')" onmouseenter="showHoverCard(event, '7723')" onmouseleave="hideHoverCard()">
+              <td class="py-4 px-4">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-2 h-2 rounded-full bg-amber-500"></div>
+                  <div>
+                    <div class="font-display font-bold text-[#e5e2e1] group-hover:text-[#eec14b] transition flex items-center gap-1.5">
+                      #7723 RUNIC-ARCHIVES
+                      <span class="text-[9px] px-1.5 py-0.2 bg-amber-950/60 text-amber-400 border border-amber-800/60 rounded font-normal">SEALED</span>
+                    </div>
+                    <div class="text-[10px] text-zinc-500">VAULT_HASH: 0x33A0 • 110 WORDS</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-3">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-950/40 text-amber-300 border border-amber-800/60">
+                  <span class="material-symbols-outlined text-[11px]">lock</span>
+                  PRIVATE
+                </span>
+              </td>
+              <td class="py-4 px-4">
+                <div class="flex items-center gap-2">
+                  <span class="w-5 h-5 rounded bg-amber-600/30 border border-amber-500 text-amber-300 flex items-center justify-center text-[10px] font-bold">1</span>
+                  <div>
+                    <div class="text-zinc-200 font-bold">Hulda Deepdelver</div>
+                    <div class="text-[10px] text-zinc-400">104 WPM • 99.8% ACC</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-4">
+                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-[#0e0e0e] border border-amber-900/50">
+                  <span class="text-amber-500 font-bold flex items-center gap-1 text-[11px]">
+                    🥉 3RD PLACE
+                  </span>
+                  <span class="text-zinc-500">|</span>
+                  <span class="text-zinc-300 font-bold">92 WPM</span>
+                </div>
+              </td>
+              <td class="py-4 px-3 text-zinc-300">
+                <span class="text-white font-medium">7</span> / 8 Scribes
+              </td>
+              <td class="py-4 px-3">
+                <span class="text-zinc-300 bg-[#0e0e0e] px-2 py-0.5 rounded border border-[#353534] text-[10px]">
+                  ENGLISH BASALT
+                </span>
+              </td>
+              <td class="py-4 px-3 text-zinc-400 text-[11px]">
+                5h ago
+              </td>
+              
+            </tr>
+
+            <!-- ROW 5 (Public race, participated, 5th place) -->
+            <tr class="race-row group hover:bg-[#252424] cursor-pointer transition relative" data-type="public" data-participated="true" onclick="openRaceModal('3309')" onmouseenter="showHoverCard(event, '3309')" onmouseleave="hideHoverCard()">
+              <td class="py-4 px-4">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-2 h-2 rounded-full bg-zinc-600"></div>
+                  <div>
+                    <div class="font-display font-bold text-[#e5e2e1] group-hover:text-[#eec14b] transition">
+                      #3309 CRYSTAL-CAVERN
+                    </div>
+                    <div class="text-[10px] text-zinc-500">VAULT_HASH: 0x77DD • 80 WORDS</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-3">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-800/80 text-zinc-300 border border-zinc-700">
+                  <span class="material-symbols-outlined text-[11px]">public</span>
+                  PUBLIC
+                </span>
+              </td>
+              <td class="py-4 px-4">
+                <div class="flex items-center gap-2">
+                  <span class="w-5 h-5 rounded bg-zinc-700/60 border border-zinc-500 text-zinc-200 flex items-center justify-center text-[10px] font-bold">1</span>
+                  <div>
+                    <div class="text-zinc-200 font-bold">Brokk Ironbreaker</div>
+                    <div class="text-[10px] text-zinc-400">125 WPM • 98.7% ACC</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-4">
+                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-[#0e0e0e] border border-[#4e4635]">
+                  <span class="text-zinc-400 font-medium text-[11px]">
+                    5TH PLACE
+                  </span>
+                  <span class="text-zinc-600">|</span>
+                  <span class="text-zinc-300 font-bold">88 WPM</span>
+                </div>
+              </td>
+              <td class="py-4 px-3 text-zinc-300">
+                <span class="text-white font-medium">8</span> / 8 Scribes
+              </td>
+              <td class="py-4 px-3">
+                <span class="text-zinc-300 bg-[#0e0e0e] px-2 py-0.5 rounded border border-[#353534] text-[10px]">
+                  FRENCH / TALE
+                </span>
+              </td>
+              <td class="py-4 px-3 text-zinc-400 text-[11px]">
+                Yesterday
+              </td>
+              
+            </tr>
+
+            <!-- ROW 6 (Public race, NOT participated) -->
+            <tr class="race-row group hover:bg-[#252424] cursor-pointer transition relative" data-type="public" data-participated="false" onclick="openRaceModal('5512')" onmouseenter="showHoverCard(event, '5512')" onmouseleave="hideHoverCard()">
+              <td class="py-4 px-4">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-2 h-2 rounded-full bg-zinc-600"></div>
+                  <div>
+                    <div class="font-display font-bold text-[#e5e2e1] group-hover:text-[#eec14b] transition">
+                      #5512 OBSIDIAN-GATE
+                    </div>
+                    <div class="text-[10px] text-zinc-500">VAULT_HASH: 0x981C • 150 WORDS</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-3">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-800/80 text-zinc-300 border border-zinc-700">
+                  <span class="material-symbols-outlined text-[11px]">public</span>
+                  PUBLIC
+                </span>
+              </td>
+              <td class="py-4 px-4">
+                <div class="flex items-center gap-2">
+                  <span class="w-5 h-5 rounded bg-zinc-700/60 border border-zinc-500 text-zinc-200 flex items-center justify-center text-[10px] font-bold">1</span>
+                  <div>
+                    <div class="text-zinc-200 font-bold">Kogan AleLover</div>
+                    <div class="text-[10px] text-zinc-400">82 WPM • 96.0% ACC</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-4">
+                <span class="text-zinc-500 italic text-[11px] flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[13px]">visibility</span>
+                  DID NOT JOIN
+                </span>
+              </td>
+              <td class="py-4 px-3 text-zinc-300">
+                <span class="text-white font-medium">6</span> / 6 Scribes
+              </td>
+              <td class="py-4 px-3">
+                <span class="text-zinc-300 bg-[#0e0e0e] px-2 py-0.5 rounded border border-[#353534] text-[10px]">
+                  ENG / RUNIC
+                </span>
+              </td>
+              <td class="py-4 px-3 text-zinc-400 text-[11px]">
+                1d ago
+              </td>
+              
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination footer -->
+      <div class="p-4 bg-[#0e0e0e] border-t border-[#4e4635] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-[#9a907c]">
+        <div>
+          SHOWING <span class="text-[#eec14b] font-bold">6</span> OF <span class="text-zinc-300 font-bold">24</span> PREVIOUS EXPEDITIONS
+        </div>
+        <div class="flex items-center gap-1.5"><button class="w-8 h-8 flex items-center justify-center bg-[#1c1b1b] border border-[#4e4635] text-zinc-500 hover:text-white rounded disabled:opacity-40 transition cursor-pointer" disabled="" title="First Page"><span class="material-symbols-outlined text-[16px]">first_page</span></button><button class="w-8 h-8 flex items-center justify-center bg-[#1c1b1b] border border-[#4e4635] text-zinc-500 hover:text-white rounded disabled:opacity-40 transition cursor-pointer" disabled="" title="Previous Page"><span class="material-symbols-outlined text-[16px]">chevron_left</span></button><button class="w-8 h-8 flex items-center justify-center bg-[#eec14b] border border-[#eec14b] text-black font-bold rounded transition cursor-pointer" title="Page 1">1</button><button class="w-8 h-8 flex items-center justify-center bg-[#1c1b1b] border border-[#4e4635] text-zinc-300 hover:text-white hover:border-[#9a907c] rounded transition cursor-pointer" title="Page 2">2</button><button class="w-8 h-8 flex items-center justify-center bg-[#1c1b1b] border border-[#4e4635] text-zinc-300 hover:text-white hover:border-[#9a907c] rounded transition cursor-pointer" title="Page 3">3</button><button class="w-8 h-8 flex items-center justify-center bg-[#1c1b1b] border border-[#4e4635] text-zinc-300 hover:text-white hover:border-[#9a907c] rounded transition cursor-pointer" title="Next Page"><span class="material-symbols-outlined text-[16px]">chevron_right</span></button><button class="w-8 h-8 flex items-center justify-center bg-[#1c1b1b] border border-[#4e4635] text-zinc-300 hover:text-white hover:border-[#9a907c] rounded transition cursor-pointer" title="Last Page"><span class="material-symbols-outlined text-[16px]">last_page</span></button></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============================================================== -->
+  <!-- HOVER CARD: PODIUM (TOP 5 + 6TH ROW CELLAR FINISHER)            -->
+  <!-- ============================================================== -->
+  <div id="hoverCardContainer" class="fixed z-50 pointer-events-none transition-opacity duration-150 opacity-0 hidden" style="width: 380px; top: 371.5px; left: 811px;">
+    <div class="stone-border rune-corner bg-[#0e0e0e] text-[#e5e2e1] rounded-lg shadow-2xl p-4 font-mono text-xs border border-[#eec14b]/60">
+      
+      <!-- Hover Card Header -->
+      <div class="flex items-center justify-between border-b border-[#353534] pb-2 mb-3">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[#eec14b] text-base">military_tech</span>
+          <span class="font-display font-bold text-[#eec14b] tracking-wider" id="hc-chamber-name">#8849 ADAMANTINE-VEIN PODIUM</span>
+        </div>
+        <span class="text-[10px] text-amber-400 uppercase bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800" id="hc-chamber-type" style="animation-delay: 0ms;">PRIVATE</span>
+      </div>
+
+      <div class="flex items-center gap-1.5"><button class="w-8 h-8 flex items-center justify-center bg-[#1c1b1b] border border-[#4e4635] text-zinc-500 hover:text-white rounded disabled:opacity-40 transition cursor-pointer" disabled="" title="First Page"><span class="material-symbols-outlined text-[16px]">first_page</span></button><button class="w-8 h-8 flex items-center justify-center bg-[#1c1b1b] border border-[#4e4635] text-zinc-500 hover:text-white rounded disabled:opacity-40 transition cursor-pointer" disabled="" title="Previous Page"><span class="material-symbols-outlined text-[16px]">chevron_left</span></button><button class="w-8 h-8 flex items-center justify-center bg-[#eec14b] border border-[#eec14b] text-black font-bold rounded transition cursor-pointer" title="Page 1">1</button><button class="w-8 h-8 flex items-center justify-center bg-[#1c1b1b] border border-[#4e4635] text-zinc-300 hover:text-white hover:border-[#9a907c] rounded transition cursor-pointer" title="Page 2">2</button><button class="w-8 h-8 flex items-center justify-center bg-[#1c1b1b] border border-[#4e4635] text-zinc-300 hover:text-white hover:border-[#9a907c] rounded transition cursor-pointer" title="Page 3">3</button><button class="w-8 h-8 flex items-center justify-center bg-[#1c1b1b] border border-[#4e4635] text-zinc-300 hover:text-white hover:border-[#9a907c] rounded transition cursor-pointer" title="Next Page"><span class="material-symbols-outlined text-[16px]">chevron_right</span></button><button class="w-8 h-8 flex items-center justify-center bg-[#1c1b1b] border border-[#4e4635] text-zinc-300 hover:text-white hover:border-[#9a907c] rounded transition cursor-pointer" title="Last Page"><span class="material-symbols-outlined text-[16px]">last_page</span></button></div>
+
+      <!-- Top 5 Podium Roster -->
+      <div class="space-y-1 mb-3" id="hc-podium-list">
+          <div class="flex items-center justify-between px-2 py-1 rounded border bg-[#eec14b]/10 border-[#eec14b]/30">
+            <div class="flex items-center gap-2">
+              <span class="text-[#eec14b] font-bold w-4">1.</span>
+              <span class="text-[#eec14b] font-bold">Urist McTypist</span>
+              <span class="text-[9px] bg-[#eec14b] text-black font-bold px-1 rounded ml-1">YOU</span>
+            </div>
+            <div class="text-right">
+              <span class="text-[#eec14b] font-bold">112 WPM</span>
+              <span class="text-zinc-500 text-[10px] ml-1">100%</span>
+            </div>
+          </div>
+        
+          <div class="flex items-center justify-between px-2 py-1 rounded border bg-zinc-800/40 border-zinc-700/50">
+            <div class="flex items-center gap-2">
+              <span class="text-zinc-300 font-bold w-4">2.</span>
+              <span class="text-zinc-200">Darin Coppervein</span>
+              
+            </div>
+            <div class="text-right">
+              <span class="text-zinc-200 font-bold">105 WPM</span>
+              <span class="text-zinc-500 text-[10px] ml-1">98.5%</span>
+            </div>
+          </div>
+        
+          <div class="flex items-center justify-between px-2 py-1 rounded border bg-amber-900/20 border-amber-800/30">
+            <div class="flex items-center gap-2">
+              <span class="text-amber-500 font-bold w-4">3.</span>
+              <span class="text-amber-300">Thrum Stonebreaker</span>
+              
+            </div>
+            <div class="text-right">
+              <span class="text-amber-400 font-bold">98 WPM</span>
+              <span class="text-zinc-500 text-[10px] ml-1">97.2%</span>
+            </div>
+          </div>
+        
+          <div class="flex items-center justify-between px-2 py-1 rounded border bg-[#1c1b1b] border-transparent">
+            <div class="flex items-center gap-2">
+              <span class="text-zinc-400 w-4">4.</span>
+              <span class="text-zinc-300">Hulda Deepdelver</span>
+              
+            </div>
+            <div class="text-right">
+              <span class="text-zinc-300">89 WPM</span>
+              <span class="text-zinc-500 text-[10px] ml-1">96.8%</span>
+            </div>
+          </div>
+        
+          <div class="flex items-center justify-between px-2 py-1 rounded border bg-[#1c1b1b] border-transparent">
+            <div class="flex items-center gap-2">
+              <span class="text-zinc-400 w-4">5.</span>
+              <span class="text-zinc-300">Brokk Ironbreaker</span>
+              
+            </div>
+            <div class="text-right">
+              <span class="text-zinc-300">81 WPM</span>
+              <span class="text-zinc-500 text-[10px] ml-1">94.1%</span>
+            </div>
+          </div>
+        </div>
+
+      <!-- Divider / Cellar Callout -->
+      <div class="relative my-2 text-center">
+        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-[#4e4635]/60"></div></div>
+        <span class="relative bg-[#0e0e0e] px-2 text-[9px] uppercase tracking-wider text-rose-400 font-bold">
+          ▼ 6TH ROW : CELLAR FINISHER (WORST) ▼
+        </span>
+      </div>
+
+      <!-- 6th Row: Worst Player in the race -->
+      <div class="px-2.5 py-1.5 rounded bg-rose-950/30 border border-rose-900/50 flex items-center justify-between text-rose-200">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-rose-400 w-4" id="hc-cellar-rank">#8.</span>
+          <div>
+            <span class="font-bold text-rose-300" id="hc-cellar-name">Kogan AleLover</span>
+            <span class="text-[9px] text-rose-400/80 block">CAVE-IN / DRIFT</span>
+          </div>
+        </div>
+        <div class="text-right">
+          <span class="font-bold text-rose-300" id="hc-cellar-wpm">44 WPM</span>
+          <span class="text-rose-400 text-[10px] block" id="hc-cellar-acc">82.4% ACC</span>
+        </div>
+      </div>
+
+      <div class="mt-2.5 pt-2 border-t border-[#353534] text-[10px] text-zinc-500 text-center flex items-center justify-center gap-1">
+        <span class="material-symbols-outlined text-[12px] text-[#eec14b]">touch_app</span>
+        <span>CLICK ROW TO INSPECT FULL RACE DOSSIER</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- FULL RACE INFO MODAL DIALOGUE                                   -->
+  <!-- ============================================================== -->
+  <div id="raceModalOverlay" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="stone-border rune-corner bg-[#131313] w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg shadow-2xl border border-[#4e4635] p-6 text-xs font-mono relative">
+      
+      <!-- Close button, but should also close by clicking outside the modal -->
+      <button onclick="closeRaceModal()" class="absolute top-5 right-5 text-zinc-400 hover:text-[#eec14b] p-1.5 rounded hover:bg-[#201f1f] transition">
+        <span class="material-symbols-outlined text-xl">close</span>
+      </button>
+
+      <!-- Modal Sub-Header Bar -->
+      <div class="text-[10px] text-[#9a907c] tracking-widest uppercase mb-1 flex items-center gap-2">
+        <span>// EXPEDITION DETAILS</span>
+      </div>
+
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#4e4635] pb-4 mb-6">
+        <div>
+          <h2 class="text-2xl font-display font-bold text-[#e5e2e1] flex items-center gap-2" id="modal-chamber-title">#5512 OBSIDIAN-GATE</h2>
+          <p class="text-zinc-400 text-xs mt-1" id="modal-chamber-desc">Excavation Chamber completed on 16 Jan 1054 at 09:14:30.</p>
+        </div>
+
+        <div class="flex items-center gap-2" id="modal-badge-container">
+          <span class="px-2.5 py-1 rounded text-xs font-bold flex items-center bg-zinc-800 text-zinc-300 border-zinc-700" id="modal-type-badge"><span class="material-symbols-outlined text-sm mr-1">public</span> PUBLIC VAULT</span>
+          <span class="px-2.5 py-1 rounded bg-[#201f1f] text-zinc-300 border border-[#4e4635] text-xs">
+            MODE: <strong class="text-[#eec14b]" id="modal-scripture-mode">ENG / Events</strong>
+          </span>
+        </div>
+      </div>
+
+      <!-- Key Chamber Telemetry Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div class="bg-[#1c1b1b] border border-[#4e4635] p-3 rounded">
+          <div class="text-[10px] text-[#9a907c] uppercase">Host</div>
+          <div class="text-sm font-bold text-white mt-1" id="modal-host">Kogan AleLover</div>
+          <div class="text-[10px] text-zinc-500">LVL 48 Guildmaster</div>
+        </div>
+
+        <div class="bg-[#1c1b1b] border border-[#4e4635] p-3 rounded">
+          <div class="text-[10px] text-[#9a907c] uppercase">Highest WPM</div>
+          <div class="text-sm font-bold text-[#eec14b] mt-1" id="modal-win-wpm">82 WPM</div>
+          <div class="text-[10px] text-zinc-500" id="modal-winner-name">By Kogan AleLover</div>
+        </div>
+
+        <div class="bg-[#1c1b1b] border border-[#4e4635] p-3 rounded">
+          <div class="text-[10px] text-[#9a907c] uppercase">Your Position</div>
+          <div class="text-sm font-bold text-emerald-400 mt-1" id="modal-user-place">DID NOT PARTICIPATE (OBSERVER)</div>
+          <div class="text-[10px] text-zinc-500" id="modal-user-wpm">--</div>
+        </div>
+
+        <!-- message for deepseek: Expedition depth is not curenty implemented but will be a way to represent the difficulty of a race (by a timer, by adding Events, by adding players / bots that have high WPM together) -->
+        <div class="bg-[#1c1b1b] border border-[#4e4635] p-3 rounded">
+          <div class="text-[10px] text-[#9a907c] uppercase">Expedition Depth</div>
+          <div class="text-sm font-bold text-zinc-300 mt-1">-512 Meters</div>
+          <div class="text-[10px] text-emerald-500">+420 Gems Awarded</div>
+        </div>
+      </div>
+
+      <!-- Full Standings Table in this Race -->
+      <div class="mb-6">
+        <div class="flex items-center justify-between text-xs font-bold text-[#e5e2e1] uppercase mb-2">
+          <span class="flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[#eec14b] text-base">format_list_numbered</span>
+            FINISHED DWARVES 8 / 8 
+          </span>
+          <span class="text-zinc-400 font-normal text-[11px]">SORTED BY FINISH TIME</span>
+        </div>
+
+        <div class="bg-[#0e0e0e] border border-[#4e4635] rounded-lg overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs font-mono">
+            <thead>
+              <tr class="border-b border-[#353534] text-[#9a907c] uppercase text-[10px] bg-[#161515]">
+                <th class="py-2.5 px-3">RANK</th>
+                <th class="py-2.5 px-3"><div>DWARF</div></th>
+                <th class="py-2.5 px-3">SPEED</th>
+                <th class="py-2.5 px-3">ACCURACY</th>
+                <th class="py-2.5 px-3">FAULTS</th>
+                <th class="py-2.5 px-3">DURATION</th>
+                <th class="py-2.5 px-3 text-right">Prize</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#201f1f]" id="modalStandingsBody">
+          <tr class="hover:bg-[#201f1f]  transition">
+            <td class="py-2.5 px-3 text-[#eec14b] font-bold">🥇 1</td>
+            <td class="py-2.5 px-3 flex items-center gap-1">
+              <span class="text-[#e5e2e1]">Kogan AleLover</span>
+              
+            </td>
+            <td class="py-2.5 px-3 font-bold text-[#eec14b]">82 WPM</td>
+            <td class="py-2.5 px-3 text-emerald-400">96.0%</td>
+            <td class="py-2.5 px-3 text-rose-400">3 faults</td>
+            <td class="py-2.5 px-3 text-zinc-400">01:24</td>
+            <td class="py-2.5 px-3 text-right text-emerald-300 font-medium">+420 Gems</td>
+          </tr>
+        
+          <tr class="hover:bg-[#201f1f]  transition">
+            <td class="py-2.5 px-3 text-[#eec14b] font-bold">🥈 2</td>
+            <td class="py-2.5 px-3 flex items-center gap-1">
+              <span class="text-[#e5e2e1]">Iden Scribe</span>
+              
+            </td>
+            <td class="py-2.5 px-3 font-bold text-zinc-200">78 WPM</td>
+            <td class="py-2.5 px-3 text-emerald-400">94.5%</td>
+            <td class="py-2.5 px-3 text-rose-400">5 faults</td>
+            <td class="py-2.5 px-3 text-zinc-400">01:30</td>
+            <td class="py-2.5 px-3 text-right text-emerald-300 font-medium">+200 Gems</td>
+          </tr>
+        
+          <tr class="hover:bg-[#201f1f]  transition">
+            <td class="py-2.5 px-3 text-[#eec14b] font-bold">🥉 3</td>
+            <td class="py-2.5 px-3 flex items-center gap-1">
+              <span class="text-[#e5e2e1]">Stodir Flint</span>
+              
+            </td>
+            <td class="py-2.5 px-3 font-bold text-zinc-200">72 WPM</td>
+            <td class="py-2.5 px-3 text-emerald-400">93.0%</td>
+            <td class="py-2.5 px-3 text-rose-400">6 faults</td>
+            <td class="py-2.5 px-3 text-zinc-400">01:38</td>
+            <td class="py-2.5 px-3 text-right text-emerald-300 font-medium">+140 Gems</td>
+          </tr>
+        
+          <tr class="hover:bg-[#201f1f]  transition">
+            <td class="py-2.5 px-3 text-[#eec14b] font-bold">4</td>
+            <td class="py-2.5 px-3 flex items-center gap-1">
+              <span class="text-[#e5e2e1]">Vabok Stone</span>
+              
+            </td>
+            <td class="py-2.5 px-3 font-bold text-zinc-200">67 WPM</td>
+            <td class="py-2.5 px-3 text-emerald-400">91.2%</td>
+            <td class="py-2.5 px-3 text-rose-400">8 faults</td>
+            <td class="py-2.5 px-3 text-zinc-400">01:46</td>
+            <td class="py-2.5 px-3 text-right text-amber-300 font-medium">+290 Gold</td>
+          </tr>
+        
+          <tr class="hover:bg-[#201f1f]  transition">
+            <td class="py-2.5 px-3 text-[#eec14b] font-bold">5</td>
+            <td class="py-2.5 px-3 flex items-center gap-1">
+              <span class="text-[#e5e2e1]">Zon Rookie</span>
+              
+            </td>
+            <td class="py-2.5 px-3 font-bold text-zinc-200">60 WPM</td>
+            <td class="py-2.5 px-3 text-emerald-400">88.5%</td>
+            <td class="py-2.5 px-3 text-rose-400">11 faults</td>
+            <td class="py-2.5 px-3 text-zinc-400">01:58</td>
+            <td class="py-2.5 px-3 text-right text-amber-300 font-medium">+150 Gold</td>
+          </tr>
+        
+          <tr class="hover:bg-[#201f1f]  transition">
+            <td class="py-2.5 px-3 text-[#eec14b] font-bold">6</td>
+            <td class="py-2.5 px-3 flex items-center gap-1">
+              <span class="text-[#e5e2e1]">Mebzuth Lost</span>
+              
+            </td>
+            <td class="py-2.5 px-3 font-bold text-zinc-200">35 WPM</td>
+            <td class="py-2.5 px-3 text-emerald-400">77.0%</td>
+            <td class="py-2.5 px-3 text-rose-400">24 faults</td>
+            <td class="py-2.5 px-3 text-zinc-400">02:50</td>
+            <td class="py-2.5 px-3 text-right text-amber-300 font-medium">+50 Gold</td>
+          </tr>
+        </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Inscribed Text Snippet Sample -->
+      <div class="bg-[#1c1b1b] border border-[#4e4635] p-4 rounded-lg mb-6">
+        <div class="text-[10px] text-[#9a907c] uppercase tracking-wider mb-1 flex items-center justify-between">
+          <span>[CARVED SCRIPTURE EXTRACT]</span>
+          <span class="text-zinc-500">120 TOTAL GLYPHS</span>
+        </div>
+        <p class="text-sm font-mono text-[#d1c5af] leading-relaxed italic bg-[#0e0e0e] p-3 rounded border border-[#353534]">
+          "Strike the granite true, young scribes. A cracked glyph at five hundred cubits down brings not merely shame, but two thousand tons of ceiling upon the clan. Keep the pick sharp, the ink warm, and the magma canals flowing."
+        </p>
+      </div>
+
+      <!-- Modal Action Footer -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-[#4e4635]">
+        <div class="text-[11px] text-zinc-500">
+          CHAMBER IDENTIFIER: <span class="text-zinc-300 font-mono">0x9AF2B4019</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <button onclick="closeRaceModal()" class="px-4 py-2 bg-[#201f1f] hover:bg-[#2a2a2a] text-[#d1c5af] border border-[#4e4635] rounded font-medium transition">
+            [ CLOSE LEDGER ]
+          </button>
+          <button class="px-4 py-2 bg-[#eec14b] hover:bg-[#d8ae3e] text-black font-bold rounded flex items-center gap-1.5 transition">
+            <span class="material-symbols-outlined text-[15px]">refresh</span>
+            [ REMATCH WITH SQUAD ]
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- JAVASCRIPT: DATA & INTERACTIVITY                               -->
+  <!-- ============================================================== -->
+  <script>
+    // Race details data repository
+    const raceData = {
+      '8849': {
+        chamber: '#8849 ADAMANTINE-VEIN',
+        type: 'PRIVATE',
+        badgeClass: 'bg-amber-950/60 text-amber-300 border-amber-800',
+        scripture: 'ENG / RUNIC TALES',
+        host: 'Overseer Urist',
+        hostLevel: 'LVL 48 Guildmaster',
+        winWpm: '112 WPM',
+        winner: 'Urist McTypist (YOU)',
+        userPlace: '1ST PLACE (GOLD)',
+        userWpm: '112 WPM • 100% ACC',
+        date: '19 Jan 1054 at 14:02:11',
+        podium: [
+          { rank: 1, name: 'Urist McTypist', isUser: true, wpm: 112, acc: '100%', faults: 0, time: '00:58', ore: '+420 Basalt' },
+          { rank: 2, name: 'Darin Coppervein', isUser: false, wpm: 105, acc: '98.5%', faults: 2, time: '01:04', ore: '+280 Basalt' },
+          { rank: 3, name: 'Thrum Stonebreaker', isUser: false, wpm: 98, acc: '97.2%', faults: 3, time: '01:09', ore: '+190 Basalt' },
+          { rank: 4, name: 'Hulda Deepdelver', isUser: false, wpm: 89, acc: '96.8%', faults: 4, time: '01:15', ore: '+120 Basalt' },
+          { rank: 5, name: 'Brokk Ironbreaker', isUser: false, wpm: 81, acc: '94.1%', faults: 6, time: '01:21', ore: '+90 Basalt' },
+          { rank: 6, name: 'Dorna Granitehand', isUser: false, wpm: 76, acc: '92.0%', faults: 8, time: '01:29', ore: '+60 Basalt' },
+          { rank: 7, name: 'Fikod Scribe', isUser: false, wpm: 65, acc: '89.5%', faults: 11, time: '01:40', ore: '+40 Basalt' },
+          { rank: 8, name: 'Kogan AleLover', isUser: false, wpm: 44, acc: '82.4%', faults: 19, time: '02:15', ore: '+10 Basalt' }
+        ]
+      },
+      '9102': {
+        chamber: '#9102 MAGMA-FORGE',
+        type: 'PUBLIC',
+        badgeClass: 'bg-zinc-800 text-zinc-300 border-zinc-700',
+        scripture: 'LATIN LITURGY',
+        host: 'Darin Coppervein',
+        hostLevel: 'LVL 24 Prospector',
+        winWpm: '118 WPM',
+        winner: 'Darin Coppervein',
+        userPlace: '2ND PLACE (SILVER)',
+        userWpm: '108 WPM • 99.2% ACC',
+        date: '19 Jan 1054 at 13:10:45',
+        podium: [
+          { rank: 1, name: 'Darin Coppervein', isUser: false, wpm: 118, acc: '99.1%', faults: 1, time: '00:52', ore: '+500 Basalt' },
+          { rank: 2, name: 'Urist McTypist', isUser: true, wpm: 108, acc: '99.2%', faults: 1, time: '00:57', ore: '+340 Basalt' },
+          { rank: 3, name: 'Thrum Stonebreaker', isUser: false, wpm: 94, acc: '97.8%', faults: 3, time: '01:06', ore: '+210 Basalt' },
+          { rank: 4, name: 'Vabok Stonemason', isUser: false, wpm: 86, acc: '95.0%', faults: 5, time: '01:14', ore: '+140 Basalt' },
+          { rank: 5, name: 'Morul Chisel', isUser: false, wpm: 79, acc: '94.2%', faults: 7, time: '01:22', ore: '+85 Basalt' },
+          { rank: 6, name: 'Urdim Apprentice', isUser: false, wpm: 52, acc: '85.0%', faults: 15, time: '01:54', ore: '+25 Basalt' }
+        ]
+      },
+      '4411': {
+        chamber: '#4411 BASALT-CHASM',
+        type: 'PUBLIC',
+        badgeClass: 'bg-zinc-800 text-zinc-300 border-zinc-700',
+        scripture: 'PYTHON / CODE',
+        host: 'Thrum Stonebreaker',
+        hostLevel: 'LVL 31 Runecrafter',
+        winWpm: '96 WPM',
+        winner: 'Thrum Stonebreaker',
+        userPlace: 'DID NOT PARTICIPATE (OBSERVER)',
+        userWpm: '--',
+        date: '18 Jan 1054 at 21:44:02',
+        podium: [
+          { rank: 1, name: 'Thrum Stonebreaker', isUser: false, wpm: 96, acc: '97.4%', faults: 2, time: '01:12', ore: '+380 Basalt' },
+          { rank: 2, name: 'Hulda Deepdelver', isUser: false, wpm: 91, acc: '98.0%', faults: 2, time: '01:16', ore: '+260 Basalt' },
+          { rank: 3, name: 'Darin Coppervein', isUser: false, wpm: 85, acc: '96.5%', faults: 4, time: '01:22', ore: '+180 Basalt' },
+          { rank: 4, name: 'Rakoth Quench', isUser: false, wpm: 80, acc: '95.1%', faults: 5, time: '01:29', ore: '+110 Basalt' },
+          { rank: 5, name: 'Zon Anvil', isUser: false, wpm: 73, acc: '93.0%', faults: 8, time: '01:38', ore: '+70 Basalt' },
+          { rank: 8, name: 'Gisling Noob', isUser: false, wpm: 38, acc: '79.2%', faults: 22, time: '02:40', ore: '+5 Basalt' }
+        ]
+      },
+      '7723': {
+        chamber: '#7723 RUNIC-ARCHIVES',
+        type: 'PRIVATE',
+        badgeClass: 'bg-amber-950/60 text-amber-300 border-amber-800',
+        scripture: 'ENGLISH BASALT',
+        host: 'Hulda Deepdelver',
+        hostLevel: 'LVL 55 High Scribe',
+        winWpm: '104 WPM',
+        winner: 'Hulda Deepdelver',
+        userPlace: '3RD PLACE (BRONZE)',
+        userWpm: '92 WPM • 98.5% ACC',
+        date: '18 Jan 1054 at 18:05:19',
+        podium: [
+          { rank: 1, name: 'Hulda Deepdelver', isUser: false, wpm: 104, acc: '99.8%', faults: 0, time: '01:02', ore: '+440 Basalt' },
+          { rank: 2, name: 'Brokk Ironbreaker', isUser: false, wpm: 99, acc: '98.0%', faults: 2, time: '01:07', ore: '+310 Basalt' },
+          { rank: 3, name: 'Urist McTypist', isUser: true, wpm: 92, acc: '98.5%', faults: 2, time: '01:13', ore: '+220 Basalt' },
+          { rank: 4, name: 'Darin Coppervein', isUser: false, wpm: 88, acc: '97.0%', faults: 4, time: '01:18', ore: '+140 Basalt' },
+          { rank: 5, name: 'Thrum Stonebreaker', isUser: false, wpm: 82, acc: '95.5%', faults: 5, time: '01:25', ore: '+90 Basalt' },
+          { rank: 7, name: 'Kogan AleLover', isUser: false, wpm: 49, acc: '84.0%', faults: 17, time: '02:08', ore: '+15 Basalt' }
+        ]
+      },
+      '3309': {
+        chamber: '#3309 CRYSTAL-CAVERN',
+        type: 'PUBLIC',
+        badgeClass: 'bg-zinc-800 text-zinc-300 border-zinc-700',
+        scripture: 'FRENCH / TALE',
+        host: 'Brokk Ironbreaker',
+        hostLevel: 'LVL 40 Veteran',
+        winWpm: '125 WPM',
+        winner: 'Brokk Ironbreaker',
+        userPlace: '5TH PLACE',
+        userWpm: '88 WPM • 97.5% ACC',
+        date: '17 Jan 1054 at 11:20:00',
+        podium: [
+          { rank: 1, name: 'Brokk Ironbreaker', isUser: false, wpm: 125, acc: '98.7%', faults: 1, time: '00:49', ore: '+520 Basalt' },
+          { rank: 2, name: 'Darin Coppervein', isUser: false, wpm: 110, acc: '98.0%', faults: 2, time: '00:58', ore: '+350 Basalt' },
+          { rank: 3, name: 'Hulda Deepdelver', isUser: false, wpm: 101, acc: '99.0%', faults: 1, time: '01:04', ore: '+240 Basalt' },
+          { rank: 4, name: 'Thrum Stonebreaker', isUser: false, wpm: 94, acc: '96.2%', faults: 4, time: '01:10', ore: '+150 Basalt' },
+          { rank: 5, name: 'Urist McTypist', isUser: true, wpm: 88, acc: '97.5%', faults: 3, time: '01:16', ore: '+100 Basalt' },
+          { rank: 8, name: 'Shorast Pick', isUser: false, wpm: 46, acc: '83.1%', faults: 18, time: '02:18', ore: '+10 Basalt' }
+        ]
+      },
+      '5512': {
+        chamber: '#5512 OBSIDIAN-GATE',
+        type: 'PUBLIC',
+        badgeClass: 'bg-zinc-800 text-zinc-300 border-zinc-700',
+        scripture: 'ENG / RUNIC',
+        host: 'Kogan AleLover',
+        hostLevel: 'LVL 12 Apprentice',
+        winWpm: '82 WPM',
+        winner: 'Kogan AleLover',
+        userPlace: 'DID NOT PARTICIPATE (OBSERVER)',
+        userWpm: '--',
+        date: '16 Jan 1054 at 09:14:30',
+        podium: [
+          { rank: 1, name: 'Kogan AleLover', isUser: false, wpm: 82, acc: '96.0%', faults: 3, time: '01:24', ore: '+310 Basalt' },
+          { rank: 2, name: 'Iden Scribe', isUser: false, wpm: 78, acc: '94.5%', faults: 5, time: '01:30', ore: '+200 Basalt' },
+          { rank: 3, name: 'Stodir Flint', isUser: false, wpm: 72, acc: '93.0%', faults: 6, time: '01:38', ore: '+140 Basalt' },
+          { rank: 4, name: 'Vabok Stone', isUser: false, wpm: 67, acc: '91.2%', faults: 8, time: '01:46', ore: '+90 Basalt' },
+          { rank: 5, name: 'Zon Rookie', isUser: false, wpm: 60, acc: '88.5%', faults: 11, time: '01:58', ore: '+50 Basalt' },
+          { rank: 6, name: 'Mebzuth Lost', isUser: false, wpm: 35, acc: '77.0%', faults: 24, time: '02:50', ore: '+5 Basalt' }
+        ]
+      }
+    };
+
+    // Filter Logic
+    function setFilter(type) {
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('bg-[#eec14b]', 'text-black', 'border-[#eec14b]');
+        b.classList.add('bg-[#201f1f]', 'text-[#d1c5af]', 'border-[#4e4635]');
+      });
+
+      const activeBtn = document.getElementById(`btn-filter-${type}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('bg-[#201f1f]', 'text-[#d1c5af]', 'border-[#4e4635]');
+        activeBtn.classList.add('bg-[#eec14b]', 'text-black', 'border-[#eec14b]');
+      }
+
+      const rows = document.querySelectorAll('.race-row');
+      rows.forEach(row => {
+        const rowType = row.getAttribute('data-type');
+        const participated = row.getAttribute('data-participated') === 'true';
+
+        if (type === 'all') {
+          row.style.display = '';
+        } else if (type === 'participated') {
+          row.style.display = participated ? '' : 'none';
+        } else if (type === 'private') {
+          row.style.display = rowType === 'private' ? '' : 'none';
+        } else if (type === 'public') {
+          row.style.display = rowType === 'public' ? '' : 'none';
+        }
+      });
+    }
+
+    // Search bar filter
+    const searchInput = document.getElementById('raceSearchInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        document.querySelectorAll('.race-row').forEach(row => {
+          const text = row.innerText.toLowerCase();
+          row.style.display = text.includes(query) ? '' : 'none';
+        });
+      });
+    }
+
+    // Hover Card Logic
+    const hoverCard = document.getElementById('hoverCardContainer');
+
+    function showHoverCard(event, raceId) {
+      const data = raceData[raceId];
+      if (!data) return;
+
+      // Populate Header
+      document.getElementById('hc-chamber-name').innerText = data.chamber + ' PODIUM';
+      const typeBadge = document.getElementById('hc-chamber-type');
+      typeBadge.innerText = data.type;
+      if (data.type === 'PRIVATE') {
+        typeBadge.className = 'text-[10px] text-amber-400 uppercase bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800';
+      } else {
+        typeBadge.className = 'text-[10px] text-zinc-400 uppercase bg-[#1c1b1b] px-1.5 py-0.5 rounded border border-[#4e4635]';
+      }
+
+      // Populate Top 5 Podium
+      const podiumList = document.getElementById('hc-podium-list');
+      const top5 = data.podium.slice(0, 5);
+      
+      let html = '';
+      top5.forEach((p, idx) => {
+        let bgStyle = 'bg-[#1c1b1b] border-transparent';
+        let numColor = 'text-zinc-400';
+        let nameColor = 'text-zinc-300';
+        let wpmColor = 'text-zinc-300';
+
+        if (idx === 0) {
+          bgStyle = 'bg-[#eec14b]/10 border-[#eec14b]/30';
+          numColor = 'text-[#eec14b] font-bold';
+          nameColor = 'text-[#eec14b] font-bold';
+          wpmColor = 'text-[#eec14b] font-bold';
+        } else if (idx === 1) {
+          bgStyle = 'bg-zinc-800/40 border-zinc-700/50';
+          numColor = 'text-zinc-300 font-bold';
+          nameColor = 'text-zinc-200';
+          wpmColor = 'text-zinc-200 font-bold';
+        } else if (idx === 2) {
+          bgStyle = 'bg-amber-900/20 border-amber-800/30';
+          numColor = 'text-amber-500 font-bold';
+          nameColor = 'text-amber-300';
+          wpmColor = 'text-amber-400 font-bold';
+        }
+
+        const youBadge = p.isUser ? '<span class="text-[9px] bg-[#eec14b] text-black font-bold px-1 rounded ml-1">YOU</span>' : '';
+
+        html += `
+          <div class="flex items-center justify-between px-2 py-1 rounded border ${bgStyle}">
+            <div class="flex items-center gap-2">
+              <span class="${numColor} w-4">${idx + 1}.</span>
+              <span class="${nameColor}">${p.name}</span>
+              ${youBadge}
+            </div>
+            <div class="text-right">
+              <span class="${wpmColor}">${p.wpm} WPM</span>
+              <span class="text-zinc-500 text-[10px] ml-1">${p.acc}</span>
+            </div>
+          </div>
+        `;
+      });
+      podiumList.innerHTML = html;
+
+      // Populate 6th Row : Worst Player in the race
+      const worstPlayer = data.podium[data.podium.length - 1];
+      document.getElementById('hc-cellar-rank').innerText = `#${worstPlayer.rank || data.podium.length}.`;
+      document.getElementById('hc-cellar-name').innerText = worstPlayer.name;
+      document.getElementById('hc-cellar-wpm').innerText = `${worstPlayer.wpm} WPM`;
+      document.getElementById('hc-cellar-acc').innerText = `${worstPlayer.acc} ACC`;
+
+      // Position the card nicely next to cursor / row
+      const rect = event.currentTarget.getBoundingClientRect();
+      let topPos = rect.top + window.scrollY - 30;
+      let leftPos = rect.right - 420;
+
+      // Ensure it stays on screen
+      if (leftPos < 20) leftPos = rect.left + 50;
+      if (topPos + 320 > window.innerHeight) {
+        topPos = Math.max(10, rect.bottom - 320);
+      }
+
+      hoverCard.style.top = `${topPos}px`;
+      hoverCard.style.left = `${leftPos}px`;
+
+      hoverCard.classList.remove('hidden');
+      setTimeout(() => hoverCard.classList.remove('opacity-0'), 10);
+    }
+
+    function hideHoverCard() {
+      hoverCard.classList.add('opacity-0');
+      setTimeout(() => hoverCard.classList.add('hidden'), 150);
+    }
+
+    // Modal dialogue logic
+    function openRaceModal(raceId) {
+      hideHoverCard();
+      const data = raceData[raceId];
+      if (!data) return;
+
+      document.getElementById('modal-chamber-title').innerText = data.chamber;
+      document.getElementById('modal-chamber-desc').innerText = `Excavation Chamber completed on ${data.date}. Sealed vault protocol ASCII_256.`;
+      
+      const typeBadge = document.getElementById('modal-type-badge');
+      typeBadge.innerHTML = `<span class="material-symbols-outlined text-sm mr-1">${data.type === 'PRIVATE' ? 'lock' : 'public'}</span> ${data.type} VAULT`;
+      typeBadge.className = `px-2.5 py-1 rounded text-xs font-bold flex items-center ${data.badgeClass}`;
+
+      document.getElementById('modal-scripture-mode').innerText = data.scripture;
+      document.getElementById('modal-host').innerText = data.host;
+      document.getElementById('modal-win-wpm').innerText = data.winWpm;
+      document.getElementById('modal-winner-name').innerText = `By ${data.winner}`;
+      document.getElementById('modal-user-place').innerText = data.userPlace;
+      document.getElementById('modal-user-wpm').innerText = data.userWpm;
+
+      // Populate complete table
+      const tbody = document.getElementById('modalStandingsBody');
+      let bodyHtml = '';
+      data.podium.forEach(p => {
+        const isUserRow = p.isUser ? 'bg-[#eec14b]/10 font-bold' : '';
+        const rankMedal = p.rank === 1 ? '🥇 1' : (p.rank === 2 ? '🥈 2' : (p.rank === 3 ? '🥉 3' : p.rank));
+        const userTag = p.isUser ? '<span class="text-[9px] bg-[#eec14b] text-black font-bold px-1.5 py-0.2 rounded ml-1.5">YOU</span>' : '';
+
+        bodyHtml += `
+          <tr class="hover:bg-[#201f1f] ${isUserRow} transition">
+            <td class="py-2.5 px-3 text-[#eec14b] font-bold">${rankMedal}</td>
+            <td class="py-2.5 px-3 flex items-center gap-1">
+              <span class="${p.isUser ? 'text-[#eec14b]' : 'text-[#e5e2e1]'}">${p.name}</span>
+              ${userTag}
+            </td>
+            <td class="py-2.5 px-3 font-bold ${p.rank === 1 ? 'text-[#eec14b]' : 'text-zinc-200'}">${p.wpm} WPM</td>
+            <td class="py-2.5 px-3 text-emerald-400">${p.acc}</td>
+            <td class="py-2.5 px-3 text-rose-400">${p.faults} faults</td>
+            <td class="py-2.5 px-3 text-zinc-400">${p.time}</td>
+            <td class="py-2.5 px-3 text-right text-amber-300 font-medium">${p.ore}</td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = bodyHtml;
+
+      document.getElementById('raceModalOverlay').classList.remove('hidden');
+    }
+
+    function closeRaceModal() {
+      document.getElementById('raceModalOverlay').classList.add('hidden');
+    }
+
+    // Close on backdrop click
+    document.getElementById('raceModalOverlay').addEventListener('click', (e) => {
+      if (e.target.id === 'raceModalOverlay') {
+        closeRaceModal();
+      }
+    });
+
+    // Close on ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeRaceModal();
+        hideHoverCard();
+      }
+    });
+  </script>
+
+
+
+
+
+
+</body></html>
