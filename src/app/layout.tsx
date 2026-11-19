@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { getLocale, pick } from '../i18n/messages';
 import { ThemeProvider } from '../theme/ThemeProvider';
-import { buildInlineThemeScript } from '../theme/theme';
+import ThemeScript from '../theme/ThemeScript';
 import { DARK_BACKGROUND_HEX, LIGHT_BACKGROUND_HEX } from '../theme/palette';
 
 /**
@@ -60,8 +60,10 @@ export default async function RootLayout({
       <head>
         {/* Runs synchronously during HTML parsing — before first paint — and
             applies the stored/system theme so the user never sees the wrong
-            theme flash (DES-05). */}
-        <script dangerouslySetInnerHTML={{ __html: buildInlineThemeScript() }} />
+            theme flash (DES-05). ThemeScript renders it `text/javascript` on
+            the server and a `text/plain` data block on the client (see
+            src/theme/ThemeScript.tsx for the React 19 rationale). */}
+        <ThemeScript />
         {/* Fonts live in <head> so the typefaces and the Material Symbols
             icons resolve before the body paints — putting <link> in <body> is
             invalid HTML and defers the stylesheet until after first paint. */}
