@@ -70,12 +70,12 @@ async function main(): Promise<void> {
   await racerPage.waitForURL(/\/rooms\/[0-9a-f-]{36}$/);
 
   await hostPage.getByRole('button', { name: 'Start the race' }).click();
-  await expect(hostPage.locator('[data-testid="countdown-overlay"]')).toBeVisible();
-  await expect(racerPage.locator('[data-testid="countdown-overlay"]')).toBeVisible();
-  // The shared text is revealed during the countdown (COURSE-03, GAME-1) —
-  // read it before EN_COURSE replaces the panel with the typing zone.
-  const text = (await racerPage.locator('[data-testid="race-text"]').innerText()).trim();
+  // Both contexts move to the dedicated race arena.
+  await hostPage.waitForURL(/\/race\/[0-9a-f-]{36}$/);
+  await racerPage.waitForURL(/\/race\/[0-9a-f-]{36}$/);
   await expect(racerPage.locator('[data-testid="typing-input"]')).toBeEnabled();
+  // The shared text is rendered char-by-char in the typing zone (GAME-1).
+  const text = (await racerPage.locator('[data-testid="typing-text"]').innerText()).trim();
   const halfway = Math.floor(text.length / 2);
 
   // In progress: demo2 has typed half the text — track markers + typing zone.
@@ -95,11 +95,13 @@ async function main(): Promise<void> {
     .click();
   await expect(hostPage.locator('[data-testid="spectator-badge"]')).toBeVisible();
 
-  // demo2 finishes → results on both screens.
+  // demo2 finishes → both return to the room's results screen.
   await racerPage.keyboard.type(text.slice(halfway), { delay: 15 });
+  await expect(racerPage).toHaveURL(/\/rooms\/[0-9a-f-]{36}$/);
   await expect(racerPage.locator('[data-testid="results-podium"]')).toBeVisible();
   await expect(racerPage.locator('[data-testid="results-table"]')).toBeVisible();
   await shoot(racerPage, 'results', true);
+  await expect(hostPage).toHaveURL(/\/rooms\/[0-9a-f-]{36}$/);
   await expect(hostPage.locator('[data-testid="results-podium"]')).toBeVisible();
 
   // HIST-01/02: the finished race shows in demo2's history.
