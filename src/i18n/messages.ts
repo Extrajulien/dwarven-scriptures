@@ -516,6 +516,7 @@ export interface Messages {
   'pageTitle.room': string;
   'pageTitle.invitation': string;
   'pageTitle.race': string;
+  'pageTitle.raceArena': string;
   // ------------------------------------------------------------ account screen
   'account.breadcrumb.left': string;
   'account.breadcrumb.node': string;
@@ -1271,6 +1272,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'pageTitle.room': 'Salle',
     'pageTitle.invitation': 'Invitation',
     'pageTitle.race': 'Caverne de course',
+    'pageTitle.raceArena': 'Course',
     // ------------------------------------------------------------ account screen
     'account.breadcrumb.left': 'ᛞ [TERMINAL_DU_DOSSIER]',
     'account.breadcrumb.node': '[NŒUD : BASALT_CRAG_01]',
@@ -2026,6 +2028,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'pageTitle.room': 'Room',
     'pageTitle.invitation': 'Invitation',
     'pageTitle.race': 'Race cavern',
+    'pageTitle.raceArena': 'Race',
     // ------------------------------------------------------------ account screen
     'account.breadcrumb.left': 'ᛞ [DOSSIER_TERMINAL]',
     'account.breadcrumb.node': '[NODE: BASALT_CRAG_01]',
