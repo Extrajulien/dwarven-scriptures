@@ -13,6 +13,7 @@ import {
   ROOM_CODE_JOIN_WINDOW_MS,
 } from '../lib/rate-limit';
 import {
+  MEMBER_RECONNECT_GRACE_MS,
   RoomHub,
   type HubConnection,
   type HubIdentity,
@@ -400,7 +401,9 @@ describe('duplicate connections for one membership', () => {
 
     expect(second.last('roomSnapshot')).toBeDefined();
     expect(hub.connectionCount()).toBe(1);
-    expect(store.leaveCalls).toHaveLength(1);
+    // The reconnect grace keeps the first tab's membership until the second
+    // tab re-attaches, so no DB leave happens.
+    expect(store.leaveCalls).toHaveLength(0);
   });
 });
 
@@ -510,7 +513,39 @@ describe('leaving', () => {
     expect(hub.connectionCount()).toBe(0);
   });
 
-  test('a disconnect applies the same departure path (memberLeft broadcast)', async () => {
+  test('a disconnect defers the departure until the reconnect grace expires', async () => {
+    jest.useFakeTimers();
+    try {
+      const store = new FakeStore();
+      store.states.set(ROOM_ID, roomState());
+      const { hub } = makeHub(store);
+
+      const hostConn = connection('c1', ada);
+      await hub.handleJoin(hostConn, { type: 'joinRoom', code: 'DWRF42' });
+      const guestConn = connection('c2', gimli);
+      await hub.handleJoin(guestConn, { type: 'joinRoom', code: 'DWRF42' });
+
+      await hub.handleDisconnect(guestConn);
+
+      // Within the grace window the membership is kept: no leave, no broadcast.
+      expect(store.leaveCalls).toHaveLength(0);
+      expect(hostConn.last('memberLeft')).toBeUndefined();
+
+      jest.advanceTimersByTime(MEMBER_RECONNECT_GRACE_MS);
+      await Promise.resolve();
+
+      expect(hostConn.last('memberLeft')?.member).toMatchObject({
+        kind: 'guest',
+        guestToken: GUEST_TOKEN,
+        connected: false,
+      });
+      expect(store.leaveCalls).toHaveLength(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('a reconnect within the grace window re-attaches without a departure', async () => {
     const store = new FakeStore();
     store.states.set(ROOM_ID, roomState());
     const { hub } = makeHub(store);
@@ -521,13 +556,16 @@ describe('leaving', () => {
     await hub.handleJoin(guestConn, { type: 'joinRoom', code: 'DWRF42' });
 
     await hub.handleDisconnect(guestConn);
+    expect(store.leaveCalls).toHaveLength(0);
 
-    expect(hostConn.last('memberLeft')?.member).toMatchObject({
-      kind: 'guest',
-      guestToken: GUEST_TOKEN,
-      connected: false,
-    });
-    expect(store.leaveCalls).toHaveLength(1);
+    // The guest re-attaches (e.g. lobby → race arena navigation) within grace.
+    const rejoined = connection('c3', gimli);
+    await hub.handleJoin(rejoined, { type: 'joinRoom', code: 'DWRF42' });
+
+    expect(rejoined.last('roomSnapshot')).toBeDefined();
+    expect(store.leaveCalls).toHaveLength(0);
+    expect(hostConn.last('memberLeft')).toBeUndefined();
+    expect(hub.connectionCount()).toBe(2);
   });
 
   test('a disconnect after a hub-initiated close is a no-op', async () => {
@@ -662,18 +700,30 @@ describe('race hooks (COURSE-08 reconnect window)', () => {
     expect(hub.connectionCount()).toBe(1);
   });
 
-  test('applies the normal departure when the hook declines to keep the slot', async () => {
-    const hooks = new FakeRaceHooks();
-    hooks.keep = false;
-    const { hub, store, hostConn, bobConn } = joinedPair(hooks);
-    await hub.handleJoin(hostConn, { type: 'joinRoom', code: 'DWRF42' });
-    await hub.handleJoin(bobConn, { type: 'joinRoom', code: 'DWRF42' });
+  test('applies the deferred departure when the hook declines to keep the slot', async () => {
+    jest.useFakeTimers();
+    try {
+      const hooks = new FakeRaceHooks();
+      hooks.keep = false;
+      const { hub, store, hostConn, bobConn } = joinedPair(hooks);
+      await hub.handleJoin(hostConn, { type: 'joinRoom', code: 'DWRF42' });
+      await hub.handleJoin(bobConn, { type: 'joinRoom', code: 'DWRF42' });
 
-    await hub.handleDisconnect(bobConn);
+      await hub.handleDisconnect(bobConn);
 
-    expect(store.leaveCalls).toHaveLength(1);
-    expect(hostConn.last('memberLeft')).toBeDefined();
-    expect(hooks.disconnected).toHaveLength(0);
+      // Not racing → the reconnect grace defers the departure.
+      expect(store.leaveCalls).toHaveLength(0);
+      expect(hooks.disconnected).toHaveLength(0);
+
+      jest.advanceTimersByTime(MEMBER_RECONNECT_GRACE_MS);
+      await Promise.resolve();
+
+      expect(store.leaveCalls).toHaveLength(1);
+      expect(hostConn.last('memberLeft')).toBeDefined();
+      expect(hooks.disconnected).toHaveLength(0);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   test('notifies the engine when a membership attaches a connection (join/rejoin)', async () => {
@@ -730,8 +780,13 @@ describe('heartbeat and shutdown', () => {
 
       expect(conn.terminated).toBe(true);
       await Promise.resolve();
-      expect(store.leaveCalls).toHaveLength(1);
+      // The departure is deferred by the reconnect grace.
+      expect(store.leaveCalls).toHaveLength(0);
       expect(hub.connectionCount()).toBe(0);
+
+      jest.advanceTimersByTime(MEMBER_RECONNECT_GRACE_MS);
+      await Promise.resolve();
+      expect(store.leaveCalls).toHaveLength(1);
     } finally {
       jest.useRealTimers();
     }
