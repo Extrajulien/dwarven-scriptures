@@ -157,6 +157,7 @@ export interface Messages {
   'lobby.config.noTimeLimit': string;
   'lobby.config.errorMode': string;
   'lobby.config.options': string;
+  'lobby.config.sectionText': string;
   'lobby.config.bonuses': string;
   'lobby.config.bots': string;
   'lobby.lang.fr': string;
@@ -895,6 +896,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'lobby.config.noTimeLimit': 'Aucun',
     'lobby.config.errorMode': 'Mode d’erreur',
     'lobby.config.options': 'Options',
+    'lobby.config.sectionText': 'Texte',
     'lobby.config.bonuses': 'Bonus de remontée',
     'lobby.config.bots': 'Bots',
     'lobby.lang.fr': 'Français',
@@ -1654,6 +1656,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'lobby.config.noTimeLimit': 'None',
     'lobby.config.errorMode': 'Error mode',
     'lobby.config.options': 'Options',
+    'lobby.config.sectionText': 'Text',
     'lobby.config.bonuses': 'Comeback bonuses',
     'lobby.config.bots': 'Bots',
     'lobby.lang.fr': 'French',

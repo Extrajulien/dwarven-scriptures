@@ -18,13 +18,19 @@ jest.mock('../../app/rooms/actions', () => ({
 
 const mockedUpdateRoomConfig = jest.mocked(updateRoomConfig);
 
-function renderEditor(config: RoomConfig = defaultRoomConfig, canEdit = true, lockedReason: string | null = null) {
+function renderEditor(
+  config: RoomConfig = defaultRoomConfig,
+  canEdit = true,
+  lockedReason: string | null = null,
+  onClose?: () => void,
+) {
   return render(
     <RaceConfigEditor
       config={config}
       roomPublicId={ROOM_PUBLIC_ID}
       canEdit={canEdit}
       lockedReason={lockedReason}
+      onClose={onClose}
       messages={messages}
     />,
   );
@@ -178,9 +184,10 @@ describe('RaceConfigEditor (CONF-01..10)', () => {
     });
   });
 
-  test('submit sends the edited config to the action with the exact payload', async () => {
+  test('submit sends the edited config to the action and closes on success', async () => {
     mockedUpdateRoomConfig.mockResolvedValue({ ok: true });
-    renderEditor();
+    const onClose = jest.fn();
+    renderEditor(defaultRoomConfig, true, null, onClose);
 
     fireEvent.change(screen.getByLabelText('Langue du texte'), { target: { value: 'fr' } });
     fireEvent.change(screen.getByLabelText('Complexité'), { target: { value: 'difficile' } });
@@ -208,7 +215,7 @@ describe('RaceConfigEditor (CONF-01..10)', () => {
         bots: [],
       },
     });
-    expect(await screen.findByRole('status')).toHaveTextContent('Configuration enregistrée');
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
   test('a configLocked denial from the action shows the localized message', async () => {

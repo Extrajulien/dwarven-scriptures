@@ -469,18 +469,16 @@ export default function RoomLobby({
             the server action and re-applied by the socket hook, so this
             editor and the summary above re-render from the new snapshot. */}
         {isHost && editingConfig && (
-          <div className="pt-space-md">
-            <RaceConfigEditor
-              config={config}
-              roomPublicId={room.publicId}
-              canEdit={room.status === 'en_attente'}
-              lockedReason={
-                room.status !== 'en_attente' ? messages['lobby.config.lockedRace'] : null
-              }
-              onClose={() => setEditingConfig(false)}
-              messages={messages}
-            />
-          </div>
+          <RaceConfigEditor
+            config={config}
+            roomPublicId={room.publicId}
+            canEdit={room.status === 'en_attente'}
+            lockedReason={
+              room.status !== 'en_attente' ? messages['lobby.config.lockedRace'] : null
+            }
+            onClose={() => setEditingConfig(false)}
+            messages={messages}
+          />
         )}
       </section>
 
