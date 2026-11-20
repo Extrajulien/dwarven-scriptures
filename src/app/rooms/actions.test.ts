@@ -103,7 +103,7 @@ jest.mock('../../db/queries/invitations', () => {
 
 jest.mock('../../realtime/events', () => {
   const actual = jest.requireActual('../../realtime/events');
-  return { ...actual, requestEngineStart: jest.fn() };
+  return { ...actual, requestEngineStart: jest.fn(), publishHostChanged: jest.fn() };
 });
 
 import {
@@ -121,7 +121,7 @@ import {
   transferHost,
   updateRoomConfig,
 } from './actions';
-import { requestEngineStart } from '../../realtime/events';
+import { publishHostChanged, requestEngineStart } from '../../realtime/events';
 import { redirect } from 'next/navigation';
 import { defaultRoomConfig } from '../../lib/room-config';
 import type { RoomConfig } from '../../db/schema';
@@ -146,6 +146,7 @@ const transferHostQueryMock = transferHostQuery as jest.Mock;
 const markMemberLeftMock = markMemberLeft as jest.Mock;
 const createInvitationLinksQueryMock = createInvitationLinksQuery as jest.Mock;
 const requestEngineStartMock = requestEngineStart as jest.Mock;
+const publishHostChangedMock = publishHostChanged as jest.Mock;
 const limiterCheckMock = roomCodeJoinLimiter.check as jest.Mock;
 const limiterResetMock = roomCodeJoinLimiter.reset as jest.Mock;
 const redirectMock = redirect as unknown as jest.Mock;
@@ -672,12 +673,18 @@ describe('transferHost (SALLE-08)', () => {
   test('hands the room to the resolved target', async () => {
     userActor();
     getRoomInternalByPublicIdMock.mockResolvedValue(roomRow);
-    getUserFullProfileMock.mockResolvedValueOnce({ id: 7 }).mockResolvedValueOnce({ id: 9 });
+    getUserFullProfileMock
+      .mockResolvedValueOnce({ id: 7 })
+      .mockResolvedValueOnce({ id: 9, publicId: USER_PUBLIC_ID, username: 'bob' });
 
     await expect(
       transferHost({ roomPublicId: ROOM_PUBLIC_ID, targetUserId: USER_PUBLIC_ID }),
     ).resolves.toEqual({ ok: true });
     expect(transferHostQueryMock).toHaveBeenCalledWith(42, 9);
+    expect(publishHostChangedMock).toHaveBeenCalledWith(42, {
+      publicId: USER_PUBLIC_ID,
+      username: 'bob',
+    });
   });
 
   test('maps an ineligible successor', async () => {

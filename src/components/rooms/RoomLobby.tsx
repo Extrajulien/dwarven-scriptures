@@ -105,7 +105,7 @@ export default function RoomLobby({
   viewerBestWpm,
 }: RoomLobbyProps) {
   const router = useRouter();
-  const { status, snapshot, error, race, join, leave, startRace, quitRace, sendRaceProgress } =
+  const { status, snapshot, error, race, join, leave, startRace, quitRace, sendRaceProgress, updateRoomHost } =
     useRoomSocket();
 
   const [leftByUser, setLeftByUser] = useState(false);  const [copied, setCopied] = useState(false);
@@ -165,10 +165,15 @@ export default function RoomLobby({
     setManageTarget(null);
     setBusy(true);
     try {
-      await transferHost({
+      const result = await transferHost({
         roomPublicId: snapshot?.room.publicId ?? roomPublicId,
         targetUserId: member.publicId,
       });
+      if (result.ok) {
+        // SALLE-08: reflect the new host immediately; the server broadcast
+        // confirms it for every other member in the room.
+        updateRoomHost({ publicId: member.publicId, username: member.username });
+      }
     } finally {
       setBusy(false);
     }

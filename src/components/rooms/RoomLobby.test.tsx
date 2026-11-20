@@ -26,6 +26,7 @@ const mockLeave = jest.fn();
 const mockStartRace = jest.fn();
 const mockQuitRace = jest.fn();
 const mockSendProgress = jest.fn();
+const mockUpdateRoomHost = jest.fn();
 const mockReplace = jest.fn();
 const mockRefresh = jest.fn();
 
@@ -40,6 +41,7 @@ jest.mock('../../realtime/useRoomSocket', () => ({
     startRace: mockStartRace,
     quitRace: mockQuitRace,
     sendRaceProgress: mockSendProgress,
+    updateRoomHost: mockUpdateRoomHost,
   }),
 }));
 
@@ -255,6 +257,7 @@ describe('host controls (SALLE-07, SEC-01)', () => {
   });
 
   test('transfers the host to a picked human member (SALLE-08)', async () => {
+    mockedTransferHost.mockResolvedValueOnce({ ok: true });
     renderOpenLobby(hostViewer);
 
     fireEvent.click(screen.getAllByRole('button', { name: messages['lobby.manageMember'] })[0]);
@@ -266,6 +269,7 @@ describe('host controls (SALLE-07, SEC-01)', () => {
         targetUserId: BOB_ID,
       }),
     );
+    expect(mockUpdateRoomHost).toHaveBeenCalledWith({ publicId: BOB_ID, username: 'bob' });
   });
 
   test('a guest member only offers kick, never host transfer', () => {
