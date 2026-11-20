@@ -263,13 +263,14 @@ the single source of truth. Semantics as implemented:
   boundary); `advance` flips to `en_course` once `startAt` passes. The clock
   is injected (`now`), so the whole machine is deterministic in tests.
 * **End conditions (COURSE-09):** in `en_course`, `advance` moves to
-  `resultats` when every racing participant (spectators excluded, bots
-  included) has a `finished`/`quit` result, or when
-  `config.timeLimitSeconds` (if set) has elapsed since `startAt` — the still
-  active participants are then recorded as `timeout` at that instant and
-  `finishedAt` is stamped. `finishParticipant` only records a result (it is
-  idempotent and cannot change the phase); the transition belongs to
-  `advance`, the single place where a clock decides.
+  `resultats` when every racing **human** (spectators and bots excluded) has
+  a `finished`/`quit` result, or when `config.timeLimitSeconds` (if set) has
+  elapsed since `startAt`. Bots never gate the finish: once the humans are
+  done, any still-typing bot is cut off as `timeout` at that instant (bots
+  still count toward the start guards, COURSE-02). `finishedAt` is stamped.
+  `finishParticipant` only records a result (it is idempotent and cannot
+  change the phase); the transition belongs to `advance`, the single place
+  where a clock decides.
 * **Relaunch / close (COURSE-11):** `relaunch` is legal only from
   `resultats`, keeps the participant list and can replace the config
   snapshot; `closeRace` is legal from `en_attente` or `resultats`.
@@ -634,6 +635,16 @@ screen into a "not found" error.
   `configUpdated`, `hostChanged`, `memberJoined/Left/Kicked` and `roomClosed`
   re-render from the authoritative state; a kicked member is redirected home
   with a notice.
+* **Race arena (`/race/[publicId]`):** when a race starts, the whole room
+  (participants and spectators) is redirected to a dedicated, centered arena
+  that replaces the room-embedded race — the live track block (overtake
+  alerts, top-3, bonus announcements, progress track), the typing zone and
+  the "give up" button (`src/components/race/RaceArena.tsx`). A racer who
+  gives up stays on the arena as a spectator (the track block remains their
+  leaderboard) until the race ends; on finish (COURSE-09: all humans done),
+  abort or room close, everyone returns to `/rooms/[publicId]`, which shows
+  the results screen. The arena rejoins the same room socket (by code,
+  active-member re-attach) and resumes mid-race via `rejoinRace`.
 
 ```mermaid
 sequenceDiagram
