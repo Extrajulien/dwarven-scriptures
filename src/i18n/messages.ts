@@ -808,21 +808,21 @@ export const MESSAGES: Record<Locale, Messages> = {
   fr: {
     // ------------------------------------------------------------ home race section
     'raceSection.title': 'CAVERNE DE COURSE',
-    'raceSection.subtitle': 'REJOINDRE OU FONDER UNE EXPÉDITION DE FRAPPE',
-    'raceSection.quickPlayLabel': 'Démarrer une course',
+    'raceSection.subtitle': 'REJOINDRE OU HÉBERGER UNE EXPÉDITION DE FRAPPE',
+    'raceSection.quickPlayLabel': 'Rejoindre une course aléatoire',
     'raceSection.quickPlayHint': 'Rejoint la salle publique la plus remplie',
     'raceSection.explorerLink': 'Explorateur des salles',
     'raceSection.explorerHint': 'Parcourir les salles publiques en attente',
-    'raceSection.createTitle': 'Fonder une salle',
+    'raceSection.createTitle': 'Héberger une salle',
     'raceSection.createHint': 'Devenez l’hôte d’une nouvelle expédition',
     'raceSection.guestEmpty': 'Aucune salle publique n’attend de mineurs pour le moment.',
     'raceSection.guestEmptyHint':
-      'Seuls les membres de la guilde peuvent fonder une salle — connectez-vous pour en créer une.',
+      'Seuls les membres de la guilde peuvent héberger une salle — connectez-vous pour en créer une.',
     // ------------------------------------------------------------ race home page
     'raceHome.racesTitle': 'COURSES PUBLIQUES',
     'raceHome.colCode': 'Code',
     'raceHome.empty': 'Aucune course publique pour le moment.',
-    'raceHome.createOne': 'En fonder une',
+    'raceHome.createOne': 'En héberger une',
     'raceHome.active': 'expéditions actives',
     // ------------------------------------------------------------ join by code
     'joinCode.title': 'REJOINDRE PAR CODE',
@@ -843,7 +843,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'joinCode.viewCurrent': 'Voir ma salle actuelle',
     'joinCode.leaveAndJoin': 'Quitter ma salle et rejoindre',
     // ------------------------------------------------------------ create room card
-    'createRoom.title': 'FONDER UNE SALLE',
+    'createRoom.title': 'HÉBERGER UNE SALLE',
     'createRoom.visibilityLabel': 'Visibilité',
     'createRoom.visibility.public': 'Publique',
     'createRoom.visibility.code': 'Sur code',
@@ -852,9 +852,9 @@ export const MESSAGES: Record<Locale, Messages> = {
     'createRoom.roleLabel': 'Votre rôle',
     'createRoom.role.participant': 'Participant',
     'createRoom.role.spectator': 'Spectateur',
-    'createRoom.submit': 'Fonder la salle',
-    'createRoom.submitPending': 'Fondation en cours…',
-    'createRoom.error.authRequired': 'Connectez-vous pour fonder une salle.',
+    'createRoom.submit': 'Héberger la salle',
+    'createRoom.submitPending': 'Hébergement en cours…',
+    'createRoom.error.authRequired': 'Connectez-vous pour héberger une salle.',
     'createRoom.error.alreadyInRoom': 'Vous êtes déjà dans une salle — quittez-la d’abord.',
     'createRoom.error.invalidInput': 'Configuration invalide — vérifiez la capacité.',
     'createRoom.error.unexpected': 'Une erreur est survenue. Réessayez.',
@@ -1002,7 +1002,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'explorer.status': 'État',
     'explorer.join': 'Rejoindre',
     'explorer.joinPending': 'Entrée…',
-    'explorer.empty': 'Aucune salle publique en attente. Fondez-en une depuis l’accueil !',
+    'explorer.empty': 'Aucune salle publique en attente. Hébergez-en une depuis l’accueil !',
     'explorer.emptyGuest': 'Aucune salle publique en attente pour le moment.',
     'explorer.autoRefresh': 'Actualisation automatique',
     'explorer.updated': 'Mis à jour',
@@ -1024,7 +1024,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'inviteError.home': 'Retour à l’accueil',
     // ------------------------------------------------------------ home notices
     'notice.kicked': 'Vous avez été expulsé de la salle.',
-    'notice.noRooms': 'Aucune salle publique en attente — fondez la vôtre ci-dessous !',
+    'notice.noRooms': 'Aucune salle publique en attente — hébergez la vôtre ci-dessous !',
     'notice.noRoomsGuest': 'Aucune salle publique en attente pour le moment.',
     // ------------------------------------------------------------ locale selector (I18N-02)
     'locale.fr': 'FR',
@@ -1568,16 +1568,16 @@ export const MESSAGES: Record<Locale, Messages> = {
   en: {
     // ------------------------------------------------------------ home race section
     'raceSection.title': 'RACE CAVERN',
-    'raceSection.subtitle': 'JOIN OR FORGE A TYPING EXPEDITION',
-    'raceSection.quickPlayLabel': 'Start a race',
+    'raceSection.subtitle': 'JOIN OR HOST A TYPING EXPEDITION',
+    'raceSection.quickPlayLabel': 'Join a random race',
     'raceSection.quickPlayHint': 'Joins the fullest public room',
     'raceSection.explorerLink': 'Room explorer',
     'raceSection.explorerHint': 'Browse public rooms waiting for miners',
-    'raceSection.createTitle': 'Forge a room',
+    'raceSection.createTitle': 'Host a room',
     'raceSection.createHint': 'Become the host of a new expedition',
     'raceSection.guestEmpty': 'No public room is waiting for miners right now.',
     'raceSection.guestEmptyHint':
-      'Only guild members can forge a room — sign in to create one.',
+      'Only guild members can host a room — sign in to create one.',
     // ------------------------------------------------------------ race home page
     'raceHome.racesTitle': 'PUBLIC RACES',
     'raceHome.colCode': 'Code',
@@ -1603,7 +1603,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'joinCode.viewCurrent': 'View my current room',
     'joinCode.leaveAndJoin': 'Leave my room and join',
     // ------------------------------------------------------------ create room card
-    'createRoom.title': 'FORGE A ROOM',
+    'createRoom.title': 'HOST A ROOM',
     'createRoom.visibilityLabel': 'Visibility',
     'createRoom.visibility.public': 'Public',
     'createRoom.visibility.code': 'Code-only',
@@ -1612,9 +1612,9 @@ export const MESSAGES: Record<Locale, Messages> = {
     'createRoom.roleLabel': 'Your role',
     'createRoom.role.participant': 'Participant',
     'createRoom.role.spectator': 'Spectator',
-    'createRoom.submit': 'Forge the room',
-    'createRoom.submitPending': 'Forging…',
-    'createRoom.error.authRequired': 'Sign in to forge a room.',
+    'createRoom.submit': 'Host the room',
+    'createRoom.submitPending': 'Hosting…',
+    'createRoom.error.authRequired': 'Sign in to host a room.',
     'createRoom.error.alreadyInRoom': 'You are already in a room — leave it first.',
     'createRoom.error.invalidInput': 'Invalid configuration — check the capacity.',
     'createRoom.error.unexpected': 'Something went wrong. Please try again.',
@@ -1762,7 +1762,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'explorer.status': 'Status',
     'explorer.join': 'Join',
     'explorer.joinPending': 'Entering…',
-    'explorer.empty': 'No public room waiting. Forge one from the home page!',
+    'explorer.empty': 'No public room waiting. Host one from the home page!',
     'explorer.emptyGuest': 'No public room waiting right now.',
     'explorer.autoRefresh': 'Auto-refresh',
     'explorer.updated': 'Updated',
@@ -1784,7 +1784,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'inviteError.home': 'Back to home',
     // ------------------------------------------------------------ home notices
     'notice.kicked': 'You were kicked from the room.',
-    'notice.noRooms': 'No public room waiting — forge your own below!',
+    'notice.noRooms': 'No public room waiting — host your own below!',
     'notice.noRoomsGuest': 'No public room waiting right now.',
     // ------------------------------------------------------------ locale selector (I18N-02)
     'locale.fr': 'FR',
