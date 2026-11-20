@@ -374,7 +374,7 @@ describe('race screen integration (COURSE-02/03, GAME-1)', () => {
     expect(screen.getByText(messages['lobby.configTitle'])).toBeInTheDocument();
   });
 
-  test('decompte: the countdown overlay and the revealed text render', () => {
+  test('decompte: the lobby redirects the member to the race arena', () => {
     renderOpenLobby(
       hostViewer,
       null,
@@ -387,13 +387,10 @@ describe('race screen integration (COURSE-02/03, GAME-1)', () => {
         ownProgress: { validatedChars: 0, correctKeystrokes: 0, totalKeystrokes: 0 },
       }),
     );
-    expect(screen.getByTestId('countdown-overlay')).toBeInTheDocument();
-    expect(screen.getByTestId('countdown-number')).toHaveTextContent('3');
-    expect(screen.getByTestId('race-text')).toHaveTextContent('bonjour les nains');
-    expect(screen.queryByTestId('typing-input')).not.toBeInTheDocument();
+    expect(mockReplace).toHaveBeenCalledWith(`/race/${ROOM_ID}`);
   });
 
-  test('en_course: a participant gets the typing zone wired to the hook', () => {
+  test('en_course: a participant is redirected to the race arena', () => {
     renderOpenLobby(
       memberViewer,
       null,
@@ -406,17 +403,10 @@ describe('race screen integration (COURSE-02/03, GAME-1)', () => {
         ownProgress: { validatedChars: 0, correctKeystrokes: 0, totalKeystrokes: 0 },
       }),
     );
-    expect(screen.getByTestId('typing-zone')).toBeInTheDocument();
-
-    fireEvent.keyDown(screen.getByTestId('typing-input'), { key: 'b' });
-    expect(mockSendProgress).toHaveBeenCalledWith({
-      validatedChars: 1,
-      correctKeystrokes: 1,
-      totalKeystrokes: 1,
-    });
+    expect(mockReplace).toHaveBeenCalledWith(`/race/${ROOM_ID}`);
   });
 
-  test('en_course: a spectator viewer sees the badge and no typing zone', () => {
+  test('en_course: a spectator is also redirected to the race arena', () => {
     const spectatorMembers = defaultMembers().map((member) =>
       member.kind === 'guest' ? { ...member, role: 'spectator' as const } : member,
     );
@@ -444,8 +434,7 @@ describe('race screen integration (COURSE-02/03, GAME-1)', () => {
         viewerBestWpm={null}
       />,
     );
-    expect(screen.getByTestId('spectator-badge')).toBeInTheDocument();
-    expect(screen.queryByTestId('typing-zone')).not.toBeInTheDocument();
+    expect(mockReplace).toHaveBeenCalledWith(`/race/${ROOM_ID}`);
   });
 
   test('resultats: the full results screen renders from the raceFinished payload (RES-01..04)', () => {

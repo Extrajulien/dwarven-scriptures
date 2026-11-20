@@ -125,6 +125,14 @@ export default function RoomLobby({
     join(invitationToken ? { invitationToken } : { code: roomCode });
   }, [join, invitationToken, roomCode]);
 
+  // A started race moves the whole room to the dedicated race arena
+  // (`/race/[publicId]`): the lobby no longer hosts the countdown/race UI.
+  useEffect(() => {
+    if (race?.phase === 'decompte' || race?.phase === 'en_course') {
+      router.replace(`/race/${roomPublicId}`);
+    }
+  }, [race?.phase, roomPublicId, router]);
+
   // SALLE-07: the kicked member is told on the way out and sent home.
   useEffect(() => {
     if (error?.code === 'kicked') {
