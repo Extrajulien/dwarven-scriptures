@@ -206,20 +206,19 @@ describe('host controls (SALLE-07, SEC-01)', () => {
   test('are only rendered for the host — members and guests never see them', () => {
     const memberRender = renderOpenLobby(memberViewer);
     expect(screen.queryByText(messages['lobby.hostControlsTitle'])).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: messages['lobby.kick'] })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages['lobby.manageMember'] })).not.toBeInTheDocument();
     memberRender.unmount();
 
     renderOpenLobby(guestViewer);
     expect(screen.queryByText(messages['lobby.hostControlsTitle'])).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: messages['lobby.kick'] })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages['lobby.manageMember'] })).not.toBeInTheDocument();
   });
 
   test('kicks a member after the two-step confirm', async () => {
     renderOpenLobby(hostViewer);
 
-    const kickButtons = screen.getAllByRole('button', { name: messages['lobby.kick'] });
-    expect(kickButtons.length).toBeGreaterThan(0);
-    fireEvent.click(kickButtons[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: messages['lobby.manageMember'] })[0]);
+    fireEvent.click(screen.getByRole('button', { name: messages['lobby.kick'] }));
 
     expect(screen.getByText(messages['lobby.confirmKick'])).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: messages['lobby.confirm'] }));
@@ -235,7 +234,8 @@ describe('host controls (SALLE-07, SEC-01)', () => {
   test('cancel aborts the kick', () => {
     renderOpenLobby(hostViewer);
 
-    fireEvent.click(screen.getAllByRole('button', { name: messages['lobby.kick'] })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: messages['lobby.manageMember'] })[0]);
+    fireEvent.click(screen.getByRole('button', { name: messages['lobby.kick'] }));
     fireEvent.click(screen.getByRole('button', { name: messages['lobby.cancel'] }));
 
     expect(screen.queryByText(messages['lobby.confirmKick'])).not.toBeInTheDocument();
@@ -257,10 +257,8 @@ describe('host controls (SALLE-07, SEC-01)', () => {
   test('transfers the host to a picked human member (SALLE-08)', async () => {
     renderOpenLobby(hostViewer);
 
-    fireEvent.change(screen.getByLabelText(messages['lobby.transferHostPicker']), {
-      target: { value: BOB_ID },
-    });
-    fireEvent.click(screen.getByRole('button', { name: messages['lobby.transferHostButton'] }));
+    fireEvent.click(screen.getAllByRole('button', { name: messages['lobby.manageMember'] })[0]);
+    fireEvent.click(screen.getByRole('button', { name: messages['lobby.transferHost'] }));
 
     await waitFor(() =>
       expect(mockedTransferHost).toHaveBeenCalledWith({
@@ -268,6 +266,15 @@ describe('host controls (SALLE-07, SEC-01)', () => {
         targetUserId: BOB_ID,
       }),
     );
+  });
+
+  test('a guest member only offers kick, never host transfer', () => {
+    renderOpenLobby(hostViewer);
+
+    fireEvent.click(screen.getAllByRole('button', { name: messages['lobby.manageMember'] })[1]);
+
+    expect(screen.queryByRole('button', { name: messages['lobby.transferHost'] })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: messages['lobby.kick'] })).toBeInTheDocument();
   });
 });
 

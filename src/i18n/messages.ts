@@ -211,8 +211,7 @@ export interface Messages {
   'lobby.closeRoom': string;
   'lobby.confirmClose': string;
   'lobby.transferHost': string;
-  'lobby.transferHostPicker': string;
-  'lobby.transferHostButton': string;
+  'lobby.manageMember': string;
   'lobby.kick': string;
   'lobby.confirmKick': string;
   'lobby.confirm': string;
@@ -950,8 +949,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'lobby.closeRoom': 'Fermer la salle',
     'lobby.confirmClose': 'Fermer la salle ? Tous les membres seront expulsés.',
     'lobby.transferHost': 'Transférer l’hôte',
-    'lobby.transferHostPicker': 'Nouvel hôte',
-    'lobby.transferHostButton': 'Transférer',
+    'lobby.manageMember': 'Gérer',
     'lobby.kick': 'Expulser',
     'lobby.confirmKick': 'Expulser ce membre ? Ses liens d’invitation seront révoqués.',
     'lobby.confirm': 'Confirmer',
@@ -1710,8 +1708,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'lobby.closeRoom': 'Close the room',
     'lobby.confirmClose': 'Close the room? Every member will be evicted.',
     'lobby.transferHost': 'Transfer host',
-    'lobby.transferHostPicker': 'New host',
-    'lobby.transferHostButton': 'Transfer',
+    'lobby.manageMember': 'Manage',
     'lobby.kick': 'Kick',
     'lobby.confirmKick': 'Kick this member? Their invitation links will be revoked.',
     'lobby.confirm': 'Confirm',

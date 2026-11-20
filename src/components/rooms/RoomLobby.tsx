@@ -112,7 +112,7 @@ export default function RoomLobby({
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmKickTarget, setConfirmKickTarget] = useState<string | null>(null);
-  const [transferTarget, setTransferTarget] = useState('');
+  const [manageTarget, setManageTarget] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [editingConfig, setEditingConfig] = useState(false);
 
@@ -161,17 +161,14 @@ export default function RoomLobby({
     }
   };
 
-  const handleTransfer = async () => {
-    if (!transferTarget) {
-      return;
-    }
+  const handleTransfer = async (member: Extract<MemberInfo, { kind: 'user' }>) => {
+    setManageTarget(null);
     setBusy(true);
     try {
       await transferHost({
         roomPublicId: snapshot?.room.publicId ?? roomPublicId,
-        targetUserId: transferTarget,
+        targetUserId: member.publicId,
       });
-      setTransferTarget('');
     } finally {
       setBusy(false);
     }
@@ -287,10 +284,6 @@ export default function RoomLobby({
     (member) => member.kind === 'user' && member.publicId === room.host.publicId,
   );
   const hostDisplayName = hostMember ? memberDisplayName(hostMember, messages) : room.host.username;
-  const transferCandidates = snapshot.members.filter(
-    (member): member is Extract<MemberInfo, { kind: 'user' }> =>
-      member.kind === 'user' && member.publicId !== room.host.publicId,
-  );
   const config = room.config;
 
   // Race screen wiring (COURSE-02/03, GAME-1): the race UI renders for every
@@ -501,6 +494,7 @@ export default function RoomLobby({
                 (viewer.kind === 'guest' && member.kind === 'guest' && member.guestToken === viewer.guestToken);
               const isRoomHost = member.kind === 'user' && member.publicId === room.host.publicId;
               const confirmingKick = confirmKickTarget === identity;
+              const managing = manageTarget === identity;
               return (
                 <li
                   key={identity}
@@ -557,14 +551,38 @@ export default function RoomLobby({
                             {messages['lobby.cancel']}
                           </ButtonSecondary>
                         </>
+                      ) : managing ? (
+                        <>
+                          {member.kind === 'user' && (
+                            <ButtonSecondary
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void handleTransfer(member)}
+                              className="px-space-sm py-space-xs"
+                            >
+                              {messages['lobby.transferHost']}
+                            </ButtonSecondary>
+                          )}
+                          <ButtonSecondary
+                            type="button"
+                            disabled={busy}
+                            onClick={() => {
+                              setManageTarget(null);
+                              setConfirmKickTarget(identity);
+                            }}
+                            className="px-space-sm py-space-xs"
+                          >
+                            {messages['lobby.kick']}
+                          </ButtonSecondary>
+                        </>
                       ) : (
                         <ButtonSecondary
                           type="button"
                           disabled={busy}
-                          onClick={() => setConfirmKickTarget(identity)}
+                          onClick={() => setManageTarget(identity)}
                           className="px-space-sm py-space-xs"
                         >
-                          {messages['lobby.kick']}
+                          {messages['lobby.manageMember']}
                         </ButtonSecondary>
                       )}
                     </div>
@@ -609,36 +627,6 @@ export default function RoomLobby({
                   </div>
                 </div>
               )}
-
-              <div className="flex flex-col gap-space-xs">
-                <label
-                  htmlFor="transfer-host-picker"
-                  className="font-label-sm text-label-sm uppercase text-dwarf-parchmentMuted"
-                >
-                  {messages['lobby.transferHostPicker']}
-                </label>
-                <select
-                  id="transfer-host-picker"
-                  value={transferTarget}
-                  onChange={(event) => setTransferTarget(event.target.value)}
-                  disabled={busy || transferCandidates.length === 0}
-                  className="w-full rounded border border-dwarf-border bg-dwarf-bg px-2 py-1.5 font-mono text-sm text-dwarf-parchment shadow-stone-inner focus:border-dwarf-gold focus:outline-none focus:ring-1 focus:ring-dwarf-gold"
-                >
-                  <option value="">{messages['lobby.transferHost']}…</option>
-                  {transferCandidates.map((member) => (
-                    <option key={member.publicId} value={member.publicId}>
-                      {member.username}
-                    </option>
-                  ))}
-                </select>
-                <ButtonSecondary
-                  type="button"
-                  disabled={busy || transferTarget === ''}
-                  onClick={() => void handleTransfer()}
-                >
-                  {messages['lobby.transferHostButton']}
-                </ButtonSecondary>
-              </div>
 
               <InvitationsPanel
                 roomPublicId={room.publicId}
