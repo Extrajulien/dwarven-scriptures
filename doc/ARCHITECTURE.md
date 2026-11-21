@@ -837,16 +837,17 @@ tops out at ~2 400 points. The series travels in
 ```mermaid
 sequenceDiagram
     participant E as RaceEngine
-    participant C as Client (RaceScreen)
-    participant R as ResultsScreen (client)
+    participant A as RaceArena (/race/[publicId])
+    participant V as RaceResultsView (/rooms/.../results)
+    participant L as RoomLobby (/rooms/[publicId])
     Note over E: EN_COURSE: append wpmSeries sample per tick broadcast (~4/s)
-    E-->>C: raceFinished {results[], wpmSeries[], durationMs}
-    C-->>R: podium + table (RES-01/02) + WPM chart (all series) + local heatmap
-    Note over R: heatmap = LOCAL session keyErrors (typing reducer, no round-trip)
-    Note over R: record badge = local wpm > pre-race profile bestWpm (RES-04)
-    C->>E: host: startRace (relaunch — engine re-collects members + config)
-    Note over E: resultats → decompte; config guard (en_attente) unlocks again
-    C->>C: host: closeRoom action / others: leaveRoom action (COURSE-11)
+    E-->>A: raceFinished {results[], wpmSeries[], durationMs}
+    A->>V: store local keyErrors (sessionStorage) + navigate to results
+    Note over V: podium + table + WPM chart + local heatmap (RES-01..04)
+    V->>L: "Return to room" → lobby waiting panel (relaunch lives here)
+    L->>E: host startRace (relaunch — engine re-collects members + config)
+    V->>V: host closeRoom / others leaveRoom (COURSE-11)
+    Note over E,V: a late joiner gets raceFinished replayed right after roomSnapshot
 ```
 
 Client-side rendering rules:
@@ -857,27 +858,33 @@ Client-side rendering rules:
   visual language is reused (hand-rolled SVG, no dependency).
 * The keyboard heatmap (`RaceKeyboardHeatmap`) is **per-race and client-side
   only**: the typing reducer counts wrong keystrokes per key
-  (`TypingState.keyErrors`, letters lower-cased) during the local session and
-  `RaceScreen` hands the latest map to the results screen — no server
+  (`TypingState.keyErrors`, letters lower-cased) during the local session; the
+  arena (`RaceArena`) holds the latest map via `TypingZone.onKeyErrors` and
+  stores it to `sessionStorage` (`src/lib/race/key-errors-store.ts`) on
+  finish, and the results view (`RaceResultsView`) reads it back — no server
   round-trip, no persistence (aggregate keyboard stats are not required by
   the matrix; the account-page `KeyboardHeatmap` keeps its placeholder
   values, noted honestly). Spectators and late joiners get an honest
   "unavailable" state, a clean race a "no errors" state.
-* Personal record (RES-04): the room page loads `user_stats.bestWpm` from
+* Personal record (RES-04): the results page loads `user_stats.bestWpm` from
   the profile and threads it down; the badge shows when the local net WPM
   strictly beats that **pre-race** best (guests have no stats — AUTH-03).
   Since SP-3B the stored best is refreshed race after race by
   `persistRaceResult` (SQL `GREATEST`), so the comparison reads a live
   personal record.
-* COURSE-11: the host's relaunch re-invokes `startRace` (the engine
-  re-collects the current members and re-reads the stored config, so the
-  `en_attente`-only config guard unlocks automatically once the room leaves
-  `resultats`); close/leave reuse the existing `closeRoom`/`leaveRoom`
-  actions. A viewer joining while the room is already in `resultats`
-  (SALLE-09) **receives the replayed `raceFinished`** since SP-3B (see
-  below); the "results unavailable" state only remains for the degenerate
-  case where the engine has no payload in memory (e.g. a server restart —
-  the persisted `/races/[publicId]` page stays available, HIST-02).
+* COURSE-11: the results live in a **dedicated view**
+  `/rooms/[publicId]/results` (`RaceResultsView` + `ResultsScreen`); everyone
+  can return to the room, the host closes the room and others leave (reusing
+  the existing `closeRoom`/`leaveRoom` actions). The relaunch happens from
+  the lobby's waiting panel: `RaceScreen` treats `resultats` like
+  `en_attente`, so the host's `startRace` re-invokes the engine (which
+  re-collects the current members and re-reads the stored config, unlocking
+  the `en_attente`-only config guard). A viewer joining while the room is
+  already in `resultats` (SALLE-09) **receives the replayed `raceFinished`**
+  since SP-3B (see below); the "results unavailable" state only remains for
+  the degenerate case where the engine has no payload in memory (e.g. a
+  server restart — the persisted `/races/[publicId]` page stays available,
+  HIST-02).
 
 ## Comeback bonuses (BONUS-01..04)
 
