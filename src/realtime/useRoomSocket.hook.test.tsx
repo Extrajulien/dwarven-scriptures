@@ -16,6 +16,11 @@ const ROOM_PUBLIC_ID = '8f9c2a55-3b4a-4c1e-8a2d-9e7f6a5b4c3d';
 const ADA_ID = '1f2e3d4c-5b6a-4978-8c9d-0e1f2a3b4c5d';
 const BOB_ID = '2f3e4d5c-6b7a-4987-9c0d-1e2f3a4b5c6d';
 
+/** A valid, empty mining window: 16 columns × 3 wall tiles (DES-04). */
+const EMPTY_TRACK = Array.from({ length: 16 }, () =>
+  Array.from({ length: 3 }, () => ({ mineral: null })),
+);
+
 /** Minimal WebSocket double: records sent frames and lets tests drive events. */
 class FakeWebSocket {
   static readonly OPEN = 1;
@@ -176,6 +181,8 @@ describe('useRoomSocket (mocked WebSocket)', () => {
             wpm: 12,
             finished: false,
             totalLength: 19,
+            gold: 0,
+            track: EMPTY_TRACK,
           },
         ],
       });
