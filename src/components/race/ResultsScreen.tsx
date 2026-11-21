@@ -26,10 +26,9 @@ import ResultsWpmChart from './ResultsWpmChart';
  * hides the indicator. SP-3B's persistence will refresh this value after
  * each race; the comparison itself is final.
  *
- * COURSE-11 controls: the host can relaunch (same participants, config
- * editable again once the room returns to `en_attente` — the engine
- * re-collects participants on every `startRace`, verified in
- * `race-engine.test.ts`) or close the room; everyone else can stay or leave.
+ * COURSE-11 controls: everyone can return to the room (where the host can
+ * relaunch from the lobby's waiting panel), the host can close the room, and
+ * everyone else can leave.
  */
 
 export type ResultsScreenProps = {
@@ -44,9 +43,7 @@ export type ResultsScreenProps = {
   locale: Locale;
   // ----- COURSE-11 controls
   isHost: boolean;
-  /** Present participants (for the relaunch gate, COURSE-02). */
-  participantCount: number;
-  onRelaunch: () => void;
+  onReturnToRoom: () => void;
   onCloseRoom: () => void;
   onLeaveRoom: () => void;
 };
@@ -62,108 +59,91 @@ export function recordBeaten(
 /** COURSE-11 action panel: relaunch/close for the host, stay/leave otherwise. */
 function ResultsControls({
   isHost,
-  participantCount,
   messages,
-  onRelaunch,
+  onReturnToRoom,
   onCloseRoom,
   onLeaveRoom,
 }: {
   isHost: boolean;
-  participantCount: number;
   messages: Messages;
-  onRelaunch: () => void;
+  onReturnToRoom: () => void;
   onCloseRoom: () => void;
   onLeaveRoom: () => void;
 }) {
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
 
-  if (isHost) {
-    const needsMore = participantCount < 2;
-    return (
-      <div
-        data-testid="results-controls"
-        className="flex flex-col gap-space-sm rounded bg-surface-container-lowest p-space-md shadow-xl"
-      >
-        <div className="flex flex-wrap items-center gap-space-sm">
-          <ButtonPrimary type="button" disabled={needsMore} onClick={onRelaunch}>
-            {messages['results.relaunch']}
-          </ButtonPrimary>
-          {!confirmClose ? (
-            <ButtonSecondary type="button" onClick={() => setConfirmClose(true)}>
-              {messages['results.closeRoom']}
+  const closeOrLeave = isHost
+    ? !confirmClose
+      ? (
+          <ButtonSecondary type="button" onClick={() => setConfirmClose(true)}>
+            {messages['results.closeRoom']}
+          </ButtonSecondary>
+        )
+      : (
+          <div className="flex flex-wrap items-center gap-space-sm">
+            <span role="alert" className="font-label-sm text-label-sm text-dwarf-magma">
+              {messages['lobby.confirmClose']}
+            </span>
+            <ButtonPrimary
+              type="button"
+              onClick={() => {
+                setConfirmClose(false);
+                onCloseRoom();
+              }}
+              className="px-space-sm py-space-xs"
+            >
+              {messages['lobby.confirm']}
+            </ButtonPrimary>
+            <ButtonSecondary
+              type="button"
+              onClick={() => setConfirmClose(false)}
+              className="px-space-sm py-space-xs"
+            >
+              {messages['lobby.cancel']}
             </ButtonSecondary>
-          ) : (
-            <div className="flex flex-wrap items-center gap-space-sm">
-              <span role="alert" className="font-label-sm text-label-sm text-dwarf-magma">
-                {messages['lobby.confirmClose']}
-              </span>
-              <ButtonPrimary
-                type="button"
-                onClick={() => {
-                  setConfirmClose(false);
-                  onCloseRoom();
-                }}
-                className="px-space-sm py-space-xs"
-              >
-                {messages['lobby.confirm']}
-              </ButtonPrimary>
-              <ButtonSecondary
-                type="button"
-                onClick={() => setConfirmClose(false)}
-                className="px-space-sm py-space-xs"
-              >
-                {messages['lobby.cancel']}
-              </ButtonSecondary>
-            </div>
-          )}
-        </div>
-        {needsMore && (
-          <p
-            data-testid="results-need-participants"
-            className="font-label-sm text-label-sm text-dwarf-magma"
-          >
-            {messages['race.needParticipants']}
-          </p>
-        )}
-      </div>
-    );
-  }
+          </div>
+        )
+    : !confirmLeave
+      ? (
+          <ButtonSecondary type="button" onClick={() => setConfirmLeave(true)}>
+            {messages['results.leave']}
+          </ButtonSecondary>
+        )
+      : (
+          <div className="flex flex-wrap items-center gap-space-sm">
+            <span role="alert" className="font-label-sm text-label-sm text-dwarf-magma">
+              {messages['lobby.confirmLeave']}
+            </span>
+            <ButtonPrimary
+              type="button"
+              onClick={() => {
+                setConfirmLeave(false);
+                onLeaveRoom();
+              }}
+              className="px-space-sm py-space-xs"
+            >
+              {messages['lobby.confirm']}
+            </ButtonPrimary>
+            <ButtonSecondary
+              type="button"
+              onClick={() => setConfirmLeave(false)}
+              className="px-space-sm py-space-xs"
+            >
+              {messages['lobby.cancel']}
+            </ButtonSecondary>
+          </div>
+        );
 
   return (
     <div
       data-testid="results-controls"
       className="flex flex-wrap items-center gap-space-sm rounded bg-surface-container-lowest p-space-md shadow-xl"
     >
-      <ButtonSecondary type="button">{messages['results.stay']}</ButtonSecondary>
-      {!confirmLeave ? (
-        <ButtonSecondary type="button" onClick={() => setConfirmLeave(true)}>
-          {messages['results.leave']}
-        </ButtonSecondary>
-      ) : (
-        <div className="flex flex-wrap items-center gap-space-sm">
-          <span role="alert" className="font-label-sm text-label-sm text-dwarf-magma">
-            {messages['lobby.confirmLeave']}
-          </span>
-          <ButtonPrimary
-            type="button"
-            onClick={() => {
-              setConfirmLeave(false);
-              onLeaveRoom();
-            }}
-            className="px-space-sm py-space-xs"
-          >
-            {messages['lobby.confirm']}
-          </ButtonPrimary>
-          <ButtonSecondary
-            type="button"
-            onClick={() => setConfirmLeave(false)}
-            className="px-space-sm py-space-xs"
-          >
-            {messages['lobby.cancel']}
-          </ButtonSecondary>
-        </div>
-      )}
+      <ButtonSecondary type="button" onClick={onReturnToRoom}>
+        {messages['results.returnToRoom']}
+      </ButtonSecondary>
+      {closeOrLeave}
     </div>
   );
 }
@@ -177,8 +157,7 @@ export default function ResultsScreen({
   messages,
   locale,
   isHost,
-  participantCount,
-  onRelaunch,
+  onReturnToRoom,
   onCloseRoom,
   onLeaveRoom,
 }: ResultsScreenProps) {
@@ -217,9 +196,8 @@ export default function ResultsScreen({
       </div>
       <ResultsControls
         isHost={isHost}
-        participantCount={participantCount}
         messages={messages}
-        onRelaunch={onRelaunch}
+        onReturnToRoom={onReturnToRoom}
         onCloseRoom={onCloseRoom}
         onLeaveRoom={onLeaveRoom}
       />

@@ -118,9 +118,9 @@ export async function runDemoRace(
     .getByRole('button', { name: 'Confirm' })
     .click();
 
-  // The race ends and both return to the room's results screen (podium + table).
-  await expect(hostPage).toHaveURL(/\/rooms\/[0-9a-f-]{36}$/);
-  await expect(racerPage).toHaveURL(/\/rooms\/[0-9a-f-]{36}$/);
+  // The race ends and both land on the dedicated results view (podium + table).
+  await expect(hostPage).toHaveURL(/\/rooms\/[0-9a-f-]{36}\/results$/);
+  await expect(racerPage).toHaveURL(/\/rooms\/[0-9a-f-]{36}\/results$/);
   await expect(racerPage.locator('[data-testid="results-podium"]')).toBeVisible();
   await expect(hostPage.locator('[data-testid="results-podium"]')).toBeVisible();
 

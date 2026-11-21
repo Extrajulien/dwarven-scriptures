@@ -157,8 +157,6 @@ function renderOpenLobby(
       viewer={viewer}
       initialInvitations={invitations}
       messages={messages}
-      locale="fr"
-      viewerBestWpm={null}
     />,
   );
 }
@@ -196,8 +194,6 @@ describe('lobby snapshot rendering (SALLE-01, CONF-12)', () => {
         viewer={memberViewer}
         initialInvitations={null}
         messages={messages}
-        locale="fr"
-        viewerBestWpm={null}
       />,
     );
     expect(mockJoin).toHaveBeenCalledWith({ invitationToken: 'tok123' });
@@ -311,8 +307,6 @@ describe('leave, kick notice and closed screen', () => {
         viewer={memberViewer}
         initialInvitations={null}
         messages={messages}
-        locale="fr"
-        viewerBestWpm={null}
       />,
     );
 
@@ -329,8 +323,6 @@ describe('leave, kick notice and closed screen', () => {
         viewer={memberViewer}
         initialInvitations={null}
         messages={messages}
-        locale="fr"
-        viewerBestWpm={null}
       />,
     );
 
@@ -354,8 +346,6 @@ describe('leave, kick notice and closed screen', () => {
         viewer={memberViewer}
         initialInvitations={null}
         messages={messages}
-        locale="fr"
-        viewerBestWpm={null}
       />,
     );
 
@@ -430,101 +420,29 @@ describe('race screen integration (COURSE-02/03, GAME-1)', () => {
         viewer={guestViewer}
         initialInvitations={null}
         messages={messages}
-        locale="fr"
-        viewerBestWpm={null}
       />,
     );
     expect(mockReplace).toHaveBeenCalledWith(`/race/${ROOM_ID}`);
   });
 
-  test('resultats: the full results screen renders from the raceFinished payload (RES-01..04)', () => {
+  test('resultats: the lobby shows the waiting panel so the host can relaunch (COURSE-11)', () => {
     renderOpenLobby(
       hostViewer,
       null,
       'resultats',
       makeRace({
         phase: 'resultats',
-        finished: {
-          durationMs: 45_000,
-          results: [
-            {
-              participantId: ADA_ID,
-              displayName: 'ada',
-              kind: 'user',
-              wpm: 50,
-              rawWpm: 55,
-              accuracy: 94,
-              errors: 2,
-              status: 'finished',
-              finishedAtMs: 41_000,
-              rank: 1,
-              bonusesReceived: 0,
-              wpmSeries: [{ elapsedMs: 1_000, wpm: 40 }],
-            },
-            {
-              participantId: BOB_ID,
-              displayName: 'bob',
-              kind: 'user',
-              wpm: 42,
-              rawWpm: 46,
-              accuracy: 91,
-              errors: 3,
-              status: 'timeout',
-              finishedAtMs: 45_000,
-              rank: 2,
-              bonusesReceived: 0,
-              wpmSeries: [],
-            },
-          ],
-        },
+        finished: { durationMs: 45_000, results: [] },
       }),
     );
 
-    expect(screen.getByText(messages['results.title'])).toBeInTheDocument();
-    expect(screen.getByTestId('results-podium')).toBeInTheDocument();
-    expect(screen.getByTestId('results-table')).toBeInTheDocument();
-  });
-
-  test('resultats: the host relaunches through the socket startRace (COURSE-11)', () => {
-    renderOpenLobby(
-      hostViewer,
-      null,
-      'resultats',
-      makeRace({
-        phase: 'resultats',
-        finished: {
-          durationMs: 45_000,
-          results: [
-            {
-              participantId: ADA_ID,
-              displayName: 'ada',
-              kind: 'user',
-              wpm: 50,
-              rawWpm: 55,
-              accuracy: 94,
-              errors: 2,
-              status: 'finished',
-              finishedAtMs: 41_000,
-              rank: 1,
-              bonusesReceived: 0,
-              wpmSeries: [],
-            },
-          ],
-        },
-      }),
-    );
-
-    const relaunch = screen.getByRole('button', { name: messages['results.relaunch'] });
-    expect(relaunch).toBeEnabled();
-    fireEvent.click(relaunch);
+    // The lobby never renders the standings: the dedicated results view owns
+    // them. It offers the waiting panel instead, so the host can relaunch.
+    expect(screen.queryByTestId('results-podium')).not.toBeInTheDocument();
+    const start = screen.getByRole('button', { name: messages['race.startButton'] });
+    expect(start).toBeEnabled();
+    fireEvent.click(start);
     expect(mockStartRace).toHaveBeenCalledTimes(1);
-  });
-
-  test('resultats: a late joiner sees the honest unavailable state', () => {
-    renderOpenLobby(memberViewer, null, 'resultats', null);
-    expect(screen.getByTestId('results-unavailable')).toHaveTextContent(
-      messages['results.unavailableHint'],
-    );
   });
 });
 
@@ -552,8 +470,6 @@ describe('config editing and live sync (CONF-01..12)', () => {
         viewer={viewer}
         initialInvitations={null}
         messages={messages}
-        locale="fr"
-        viewerBestWpm={null}
       />,
     );
   }

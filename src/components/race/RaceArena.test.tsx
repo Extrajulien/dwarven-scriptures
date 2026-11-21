@@ -2,6 +2,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MESSAGES } from '../../i18n/messages';
 import { defaultRoomConfig } from '../../lib/room-config';
+import { readRaceKeyErrors } from '../../lib/race/key-errors-store';
 import type { RaceSocketState, RaceView, RoomSnapshot } from '../../realtime/client-types';
 import type { RoomStatus } from '../../realtime/protocol';
 import RaceArena, { type RaceArenaViewer } from './RaceArena';
@@ -118,7 +119,7 @@ describe('RaceArena join and navigation', () => {
     expect(mockJoin).toHaveBeenCalledWith({ code: 'DWRF42' });
   });
 
-  test('redirects back to the room when the race finishes', () => {
+  test('redirects to the results view when the race finishes', () => {
     socketState = {
       status: 'open',
       snapshot: makeSnapshot('resultats'),
@@ -134,7 +135,30 @@ describe('RaceArena join and navigation', () => {
         messages={messages}
       />,
     );
-    expect(mockReplace).toHaveBeenCalledWith(`/rooms/${ROOM_ID}`);
+    expect(mockReplace).toHaveBeenCalledWith(`/rooms/${ROOM_ID}/results`);
+  });
+
+  test('stores the local per-key errors before leaving the arena on finish (RES-03)', () => {
+    window.sessionStorage.clear();
+    // Right after the finish the snapshot room status is still the in-race
+    // value; `race.phase` is what flips to `resultats`.
+    socketState = {
+      status: 'open',
+      snapshot: makeSnapshot('en_course'),
+      error: null,
+      race: makeRace({ phase: 'resultats', finished: { durationMs: 1_000, results: [] } }),
+    };
+    render(
+      <RaceArena
+        roomPublicId={ROOM_ID}
+        roomCode="DWRF42"
+        viewer={viewer}
+        viewerRole="participant"
+        messages={messages}
+      />,
+    );
+    expect(mockReplace).toHaveBeenCalledWith(`/rooms/${ROOM_ID}/results`);
+    expect(readRaceKeyErrors(ROOM_ID)).toEqual({});
   });
 
   test('redirects a kicked member home with a notice (SALLE-07)', () => {

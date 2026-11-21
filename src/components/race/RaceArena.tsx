@@ -1,10 +1,11 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Messages } from '../../i18n/messages';
 import type { MemberInfo } from '../../realtime/protocol';
 import { useRoomSocket } from '../../realtime/useRoomSocket';
+import { storeRaceKeyErrors } from '../../lib/race/key-errors-store';
 import ButtonPrimary from '../ButtonPrimary';
 import ButtonSecondary from '../ButtonSecondary';
 import BonusAnnouncer from './BonusAnnouncer';
@@ -59,6 +60,9 @@ export default function RaceArena({
 }: RaceArenaProps) {
   const router = useRouter();
   const { status, snapshot, error, race, join, quitRace, sendRaceProgress } = useRoomSocket();
+  // RES-03: the LOCAL session's per-key error counts, fed by the typing zone
+  // and handed to the results view (via session storage) when the race ends.
+  const keyErrorsRef = useRef<Readonly<Record<string, number>>>({});
   const [quitLocal, setQuitLocal] = useState(false);
   const [confirmQuit, setConfirmQuit] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -106,12 +110,18 @@ export default function RaceArena({
       return;
     }
     const roomStatus = snapshot?.room.status ?? null;
-    if (roomStatus === 'en_attente' || roomStatus === 'resultats' || roomStatus === 'fermee') {
+    if (roomStatus === 'en_attente' || roomStatus === 'fermee') {
       router.replace(`/rooms/${roomPublicId}`);
       return;
     }
+    if (roomStatus === 'resultats') {
+      router.replace(`/rooms/${roomPublicId}/results`);
+      return;
+    }
     if (race?.phase === 'resultats') {
-      router.replace(`/rooms/${roomPublicId}`);
+      // RES-03: hand the local racer's per-key errors to the results view.
+      storeRaceKeyErrors(roomPublicId, keyErrorsRef.current);
+      router.replace(`/rooms/${roomPublicId}/results`);
       return;
     }
   }, [error, status, snapshot, race, roomPublicId, router]);
@@ -264,6 +274,9 @@ export default function RaceArena({
                     initialProgress={race.ownProgress ?? undefined}
                     messages={messages}
                     onProgress={sendRaceProgress}
+                    onKeyErrors={(errors) => {
+                      keyErrorsRef.current = errors;
+                    }}
                     bonusEvents={race.bonusLog.filter(
                       (event) => event.targetParticipantId === viewerParticipantId,
                     )}

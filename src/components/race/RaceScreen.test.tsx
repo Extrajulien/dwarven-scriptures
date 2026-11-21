@@ -2,7 +2,7 @@ import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MESSAGES } from '../../i18n/messages';
 import { defaultRoomConfig } from '../../lib/room-config';
-import type { BonusAppliedMessage, RaceResultEntry } from '../../realtime/protocol';
+import type { BonusAppliedMessage } from '../../realtime/protocol';
 import type { RaceView } from '../../realtime/client-types';
 import { installMatchMedia } from '../../testing/matchMediaMock';
 import { BONUS_BANNER_DISMISS_MS } from './BonusAnnouncer';
@@ -43,29 +43,9 @@ function makeRace(overrides: Partial<RaceView> = {}): RaceView {
   };
 }
 
-function makeResult(overrides: Partial<RaceResultEntry> = {}): RaceResultEntry {
-  return {
-    participantId: '99999999-9999-4999-8999-999999999999',
-    displayName: 'rival',
-    kind: 'user',
-    wpm: 30,
-    rawWpm: 33,
-    accuracy: 92,
-    errors: 2,
-    status: 'finished',
-    finishedAtMs: 20_000,
-    rank: 1,
-    bonusesReceived: 0,
-    wpmSeries: [],
-    ...overrides,
-  };
-}
-
 const onStartRace = jest.fn();
 const onQuitRace = jest.fn();
 const onSendProgress = jest.fn();
-const onCloseRoom = jest.fn();
-const onLeaveRoom = jest.fn();
 
 function renderScreen(overrides: Partial<RaceScreenProps> = {}) {
   const props: RaceScreenProps = {
@@ -76,14 +56,10 @@ function renderScreen(overrides: Partial<RaceScreenProps> = {}) {
     isHost: false,
     participantCount: 2,
     viewerParticipantId: ADA,
-    bestWpm: null,
     messages,
-    locale: 'fr',
     onStartRace,
     onQuitRace,
     onSendProgress,
-    onCloseRoom,
-    onLeaveRoom,
     ...overrides,
   };
   return render(<RaceScreen {...props} />);
@@ -135,6 +111,21 @@ describe('waiting panel (en_attente, COURSE-02 UI)', () => {
     renderScreen({ isHost: false, participantCount: 2 });
     expect(screen.getByText(messages['race.waitingHost'])).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: messages['race.startButton'] })).not.toBeInTheDocument();
+  });
+
+  test('resultats shows the waiting panel, not the results screen (COURSE-11)', () => {
+    renderScreen({
+      roomStatus: 'resultats',
+      isHost: true,
+      participantCount: 2,
+      race: makeRace({
+        phase: 'resultats',
+        finished: { durationMs: 45_000, results: [] },
+      }),
+    });
+
+    expect(screen.getByRole('button', { name: messages['race.startButton'] })).toBeEnabled();
+    expect(screen.queryByTestId('results-podium')).not.toBeInTheDocument();
   });
 });
 
@@ -398,157 +389,6 @@ describe('bonus announcements and track flash (BONUS-03)', () => {
       'data-bonus-flash',
       'true',
     );
-  });
-});
-
-describe('results screen (resultats, RES-01..04)', () => {
-  test('renders the full results screen from the raceFinished payload', () => {
-    renderScreen({
-      roomStatus: 'resultats',
-      race: makeRace({
-        phase: 'resultats',
-        finished: {
-          durationMs: 45_000,
-          results: [
-            makeResult({ rank: 1, displayName: 'rival', wpm: 45, wpmSeries: [{ elapsedMs: 1_000, wpm: 40 }, { elapsedMs: 20_000, wpm: 45 }] }),
-            makeResult({ rank: 2, participantId: '88888888-8888-4888-8888-888888888888', displayName: 'bob', wpm: 40, status: 'timeout' }),
-            makeResult({ rank: 3, participantId: '77777777-7777-4777-8777-777777777777', displayName: 'carl', wpm: 35, status: 'quit' }),
-            makeResult({ rank: 4, participantId: ADA, displayName: 'ada', wpm: 42, accuracy: 97, status: 'finished' }),
-          ],
-        },
-      }),
-    });
-
-    expect(screen.getByText(messages['results.title'])).toBeInTheDocument();
-    // Podium + full table render.
-    expect(screen.getByTestId('results-podium')).toBeInTheDocument();
-    expect(screen.getByTestId('results-table')).toBeInTheDocument();
-    expect(screen.getAllByTestId('results-row')).toHaveLength(4);
-    // The chart renders a line for the participant with a series.
-    expect(screen.getByTestId('results-wpm-chart-line')).toBeInTheDocument();
-    // The local participant raced: their heatmap renders (empty = clean race).
-    expect(screen.getByTestId('results-heatmap-no-errors')).toBeInTheDocument();
-  });
-
-  test('a late joiner sees the honest unavailable state (no raceFinished payload)', () => {
-    renderScreen({
-      roomStatus: 'resultats',
-      race: null,
-    });
-    expect(screen.getByTestId('results-unavailable')).toHaveTextContent(
-      messages['results.unavailableHint'],
-    );
-    expect(screen.queryByTestId('results-podium')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('results-table')).not.toBeInTheDocument();
-  });
-
-  test('a spectator never sees a fabricated keyboard heatmap', () => {
-    renderScreen({
-      roomStatus: 'resultats',
-      viewerRole: 'spectator',
-      race: makeRace({
-        phase: 'resultats',
-        finished: {
-          durationMs: 45_000,
-          results: [
-            makeResult({ rank: 1, displayName: 'rival' }),
-            makeResult({ rank: 2, participantId: ADA, displayName: 'ada' }),
-          ],
-        },
-      }),
-    });
-    expect(screen.getByTestId('results-heatmap-unavailable')).toBeInTheDocument();
-  });
-
-  test('the record indicator appears only when the local wpm beats a prior best (RES-04)', () => {
-    const finished = {
-      durationMs: 45_000,
-      results: [
-        makeResult({ rank: 1, displayName: 'rival', wpm: 90 }),
-        makeResult({ rank: 2, participantId: ADA, displayName: 'ada', wpm: 42 }),
-      ],
-    };
-    const { unmount } = renderScreen({
-      roomStatus: 'resultats',
-      bestWpm: 40,
-      race: makeRace({ phase: 'resultats', finished }),
-    });
-    expect(screen.getByTestId('results-record')).toHaveTextContent(
-      messages['results.record.beaten'],
-    );
-    unmount();
-
-    // Not beaten (below the best) → no indicator.
-    renderScreen({
-      roomStatus: 'resultats',
-      bestWpm: 99,
-      race: makeRace({ phase: 'resultats', finished }),
-    });
-    expect(screen.queryByTestId('results-record')).not.toBeInTheDocument();
-  });
-});
-
-describe('results controls (COURSE-11)', () => {
-  const finishedRace = (overrides: Partial<RaceView> = {}) =>
-    makeRace({
-      phase: 'resultats',
-      finished: {
-        durationMs: 45_000,
-        results: [
-          makeResult({ rank: 1, displayName: 'rival', wpm: 50 }),
-          makeResult({ rank: 2, participantId: ADA, displayName: 'ada', wpm: 42 }),
-        ],
-      },
-      ...overrides,
-    });
-
-  test('the host can relaunch the race and close the room', () => {
-    renderScreen({
-      roomStatus: 'resultats',
-      race: finishedRace(),
-      isHost: true,
-      participantCount: 2,
-    });
-
-    const relaunch = screen.getByRole('button', { name: messages['results.relaunch'] });
-    expect(relaunch).toBeEnabled();
-    fireEvent.click(relaunch);
-    expect(onStartRace).toHaveBeenCalledTimes(1);
-
-    // Closing needs the two-step confirm, like the lobby control.
-    fireEvent.click(screen.getByRole('button', { name: messages['results.closeRoom'] }));
-    expect(onCloseRoom).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: messages['lobby.confirm'] }));
-    expect(onCloseRoom).toHaveBeenCalledTimes(1);
-  });
-
-  test('the relaunch button is disabled under 2 participants (COURSE-02)', () => {
-    renderScreen({
-      roomStatus: 'resultats',
-      race: finishedRace(),
-      isHost: true,
-      participantCount: 1,
-    });
-    expect(screen.getByRole('button', { name: messages['results.relaunch'] })).toBeDisabled();
-    expect(screen.getByTestId('results-need-participants')).toHaveTextContent(
-      messages['race.needParticipants'],
-    );
-  });
-
-  test('non-hosts can stay or leave the room', () => {
-    renderScreen({
-      roomStatus: 'resultats',
-      race: finishedRace(),
-      isHost: false,
-    });
-
-    expect(screen.getByRole('button', { name: messages['results.stay'] })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: messages['results.relaunch'] })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: messages['results.leave'] }));
-    expect(onLeaveRoom).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: messages['lobby.confirm'] }));
-    expect(onLeaveRoom).toHaveBeenCalledTimes(1);
   });
 });
 

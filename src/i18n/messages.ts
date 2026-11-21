@@ -716,15 +716,15 @@ export interface Messages {
   'results.unavailableHint': string;
   // ------------------------------------------------------------ race replay page (HIST-02)
   'pageTitle.raceReplay': string;
+  'pageTitle.raceResults': string;
   'raceReplay.date': string;
   'raceReplay.duration': string;
   'raceReplay.language': string;
   'raceReplay.textLabel': string;
   'raceReplay.back': string;
-  'results.relaunch': string;
   'results.closeRoom': string;
-  'results.stay': string;
   'results.leave': string;
+  'results.returnToRoom': string;
   // ------------------------------------------------------------ mobile race gate (DES-06)
   'mobile.raceTitle': string;
   'mobile.raceBody': string;
@@ -1476,12 +1476,12 @@ export const MESSAGES: Record<Locale, Messages> = {
     'results.unavailable': 'RÉSULTATS NON DISPONIBLES',
     'results.unavailableHint':
       'Vous avez rejoint la salle après la fin de la course : le classement n’a pas été rediffusé. Il sera réaffichable une fois la persistance des courses en place.',
-    'results.relaunch': 'Relancer la course',
     'results.closeRoom': 'Fermer la salle',
-    'results.stay': 'Rester',
     'results.leave': 'Quitter la salle',
+    'results.returnToRoom': 'Retour à la salle',
     // ------------------------------------------------------------ page de relecture de course (HIST-02)
     'pageTitle.raceReplay': 'Résultats de course',
+    'pageTitle.raceResults': 'Résultats de course',
     'raceReplay.date': 'Course du',
     'raceReplay.duration': 'Durée',
     'raceReplay.language': 'Langue du texte',
@@ -2232,12 +2232,12 @@ export const MESSAGES: Record<Locale, Messages> = {
     'results.unavailable': 'RESULTS UNAVAILABLE',
     'results.unavailableHint':
       'You joined the room after the race ended: the standings were not re-broadcast. They will be re-displayable once race persistence lands.',
-    'results.relaunch': 'Relaunch the race',
     'results.closeRoom': 'Close the room',
-    'results.stay': 'Stay',
     'results.leave': 'Leave the room',
+    'results.returnToRoom': 'Return to room',
     // ------------------------------------------------------------ race replay page (HIST-02)
     'pageTitle.raceReplay': 'Race results',
+    'pageTitle.raceResults': 'Race results',
     'raceReplay.date': 'Race of',
     'raceReplay.duration': 'Duration',
     'raceReplay.language': 'Text language',

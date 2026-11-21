@@ -52,8 +52,7 @@ function renderResults(
     lang?: 'fr' | 'en';
     pfpUrls?: Record<string, string | null>;
     isHost?: boolean;
-    participantCount?: number;
-    onRelaunch?: () => void;
+    onReturnToRoom?: () => void;
     onCloseRoom?: () => void;
     onLeaveRoom?: () => void;
   } = {},
@@ -68,8 +67,7 @@ function renderResults(
       locale={overrides.lang === 'en' ? 'en' : 'fr'}
       pfpUrls={overrides.pfpUrls ?? {}}
       isHost={overrides.isHost ?? false}
-      participantCount={overrides.participantCount ?? 2}
-      onRelaunch={overrides.onRelaunch ?? jest.fn()}
+      onReturnToRoom={overrides.onReturnToRoom ?? jest.fn()}
       onCloseRoom={overrides.onCloseRoom ?? jest.fn()}
       onLeaveRoom={overrides.onLeaveRoom ?? jest.fn()}
     />,
@@ -371,35 +369,31 @@ describe('results controls (COURSE-11)', () => {
       entry({ rank: 2, participantId: ADA, displayName: 'ada', wpm: 42 }),
     ]);
 
-  test('the host sees relaunch and close; relaunch is gated by the participant count', () => {
-    const onRelaunch = jest.fn();
+  test('everyone sees return-to-room; the host additionally sees close', () => {
+    const onReturnToRoom = jest.fn();
     const onCloseRoom = jest.fn();
-    const renderHost = renderResults(withResults(), {
+    renderResults(withResults(), {
       isHost: true,
-      participantCount: 2,
-      onRelaunch,
+      onReturnToRoom,
       onCloseRoom,
     });
 
-    fireEvent.click(screen.getByRole('button', { name: fr['results.relaunch'] }));
-    expect(onRelaunch).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: fr['results.returnToRoom'] }));
+    expect(onReturnToRoom).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: fr['results.closeRoom'] }));
     expect(onCloseRoom).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: fr['lobby.confirm'] }));
     expect(onCloseRoom).toHaveBeenCalledTimes(1);
-    renderHost.unmount();
-
-    renderResults(withResults(), { isHost: true, participantCount: 1 });
-    expect(screen.getByRole('button', { name: fr['results.relaunch'] })).toBeDisabled();
   });
 
-  test('non-hosts see stay and leave; leave needs the confirm', () => {
+  test('non-hosts see return-to-room and leave; leave needs the confirm', () => {
+    const onReturnToRoom = jest.fn();
     const onLeaveRoom = jest.fn();
-    renderResults(withResults(), { onLeaveRoom });
+    renderResults(withResults(), { onReturnToRoom, onLeaveRoom });
 
-    expect(screen.getByRole('button', { name: fr['results.stay'] })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: fr['results.relaunch'] })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: fr['results.returnToRoom'] })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: fr['results.closeRoom'] })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: fr['results.leave'] }));
     expect(onLeaveRoom).not.toHaveBeenCalled();

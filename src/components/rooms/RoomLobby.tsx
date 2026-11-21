@@ -9,7 +9,7 @@ import {
   transferHost,
 } from '../../app/rooms/actions';
 import type { InvitationLinkForPage } from '../../db/queries/invitations';
-import type { Locale, Messages } from '../../i18n/messages';
+import type { Messages } from '../../i18n/messages';
 import type { MemberInfo } from '../../realtime/protocol';
 import { useRoomSocket } from '../../realtime/useRoomSocket';
 import ButtonPrimary from '../ButtonPrimary';
@@ -33,10 +33,6 @@ type RoomLobbyProps = {
   viewer: LobbyViewer;
   initialInvitations: InvitationLinkForPage[] | null;
   messages: Messages;
-  /** Active UI locale, forwarded to the results screen formatting (I18N-03). */
-  locale: Locale;
-  /** The viewer's pre-race personal best net WPM (RES-04); `null` for guests. */
-  viewerBestWpm: number | null;
 };
 
 const STATUS_KEYS = {
@@ -101,8 +97,6 @@ export default function RoomLobby({
   viewer,
   initialInvitations,
   messages,
-  locale,
-  viewerBestWpm,
 }: RoomLobbyProps) {
   const router = useRouter();
   const { status, snapshot, error, race, join, leave, startRace, quitRace, sendRaceProgress, updateRoomHost } =
@@ -391,14 +385,10 @@ export default function RoomLobby({
         participantCount={participantCount}
         viewerParticipantId={viewerParticipantId}
         pfpUrls={pfpUrls}
-        bestWpm={viewerBestWpm}
         messages={messages}
-        locale={locale}
         onStartRace={startRace}
         onQuitRace={quitRace}
         onSendProgress={sendRaceProgress}
-        onCloseRoom={() => void handleCloseRoom()}
-        onLeaveRoom={() => void handleLeave()}
       />
 
       {/* Room header: code, visibility, status, capacity. The h1 of the room

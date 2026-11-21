@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { Locale, Messages } from '../../i18n/messages';
+import type { Messages } from '../../i18n/messages';
 import type { RaceProgress, RaceView } from '../../realtime/client-types';
 import type { RoomStatus } from '../../realtime/protocol';
 import type { RoomConfig } from '../../db/schema';
@@ -12,7 +12,6 @@ import BonusAnnouncer from './BonusAnnouncer';
 import MobileRaceGate from './MobileRaceGate';
 import OvertakeIndicator from './OvertakeIndicator';
 import ProgressTrack from './ProgressTrack';
-import ResultsScreen from './ResultsScreen';
 import Top3Panel from './Top3Panel';
 import TypingZone from './TypingZone';
 
@@ -24,6 +23,10 @@ import TypingZone from './TypingZone';
  *
  * - `en_attente` — the launch panel: the host's `startRace` button, disabled
  *   with a reason when fewer than 2 participants are present (COURSE-02);
+ * - `resultats` — treated as the between-races waiting panel: the host can
+ *   relaunch (`startRace` re-collects the present participants, COURSE-11)
+ *   while everyone else waits. The full results screen lives in the
+ *   dedicated `/rooms/[publicId]/results` view (RES-01..04, COURSE-11);
  * - `decompte` — the 3-2-1 countdown overlay, derived client-side from
  *   `race.startAt` and the client clock (no new server messages; the same
  *   math as `countdownSecondsRemaining` in `src/lib/race/state.ts`); the
@@ -35,11 +38,6 @@ import TypingZone from './TypingZone';
  *   {@link MobileRaceGate}'s physical-keyboard notice while the track and
  *   top-3 stay visible; the quit button and the host's start button are not
  *   typing input and remain available;
- * - `resultats` — the full results screen (RES-01..04): podium, complete
- *   table, WPM-over-time chart for all participants and the local player's
- *   keyboard heatmap, with the personal-record indicator. A viewer who
- *   joined after the race (no `raceFinished` payload) sees the honest
- *   "results unavailable" state — replay arrives with SP-3B persistence.
  *
  * All participants see the same text because every client renders
  * `race.text` from the same `countdownStarted`/`raceSnapshot` payload
@@ -90,7 +88,6 @@ type RacerViewProps = {
   localParticipantId: string;
   onQuitRace: () => void;
   onSendProgress: (progress: RaceProgress) => void;
-  onKeyErrors: (errors: Readonly<Record<string, number>>) => void;
 };
 
 /**
@@ -107,7 +104,6 @@ function RacerView({
   localParticipantId,
   onQuitRace,
   onSendProgress,
-  onKeyErrors,
 }: RacerViewProps) {
   const [confirmQuit, setConfirmQuit] = useState(false);
   // Local "instant spectator" switch: confirming the quit dialog flips the
@@ -188,7 +184,6 @@ function RacerView({
           initialProgress={race.ownProgress ?? undefined}
           messages={messages}
           onProgress={onSendProgress}
-          onKeyErrors={onKeyErrors}
           bonusEvents={localBonusEvents}
         />
       </MobileRaceGate>
@@ -211,18 +206,10 @@ export type RaceScreenProps = {
   viewerParticipantId: string;
   /** participantId → profile picture URL for user participants (track avatars). */
   pfpUrls?: Record<string, string | null>;
-  /** The viewer's pre-race personal best net WPM (RES-04); `null` for guests. */
-  bestWpm: number | null;
   messages: Messages;
-  /** Active UI locale, for the locale-aware result formatting (I18N-03). */
-  locale: Locale;
   onStartRace: () => void;
   onQuitRace: () => void;
   onSendProgress: (progress: RaceProgress) => void;
-  /** COURSE-11: the host closes the room from the results screen. */
-  onCloseRoom: () => void;
-  /** COURSE-11: non-hosts leave the room from the results screen. */
-  onLeaveRoom: () => void;
 };
 
 export default function RaceScreen({
@@ -234,19 +221,12 @@ export default function RaceScreen({
   participantCount,
   viewerParticipantId,
   pfpUrls = {},
-  bestWpm,
   messages,
-  locale,
   onStartRace,
   onQuitRace,
   onSendProgress,
-  onCloseRoom,
-  onLeaveRoom,
 }: RaceScreenProps) {
   const [nowMs, setNowMs] = useState(() => Date.now());
-  // RES-03: the LOCAL session's per-key error counts, fed by the typing zone
-  // on every wrong keystroke (client-side; the server only sees counters).
-  const [keyErrors, setKeyErrors] = useState<Readonly<Record<string, number>>>({});
 
   // BONUS-03: a fresh bonus event makes the targeted track marker glow for
   // ~2 s. Detected *during render* from the log length (the "adjust state
@@ -278,44 +258,10 @@ export default function RaceScreen({
     return () => clearInterval(id);
   }, [roomStatus]);
 
-  if (roomStatus === 'resultats') {
-    // RES-01..04: the full results screen from the `raceFinished` payload.
-    // A viewer who joined after the race never received that payload
-    // (replay is SP-3B persistence) — show the honest empty state.
-    const finished = race?.finished ?? null;
-    if (finished === null) {
-      return (
-        <section className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl">
-          <SectionHeader title={messages['results.unavailable']} />
-          <p
-            data-testid="results-unavailable"
-            className="font-body-sm text-body-sm text-dwarf-parchmentMuted"
-          >
-            {messages['results.unavailableHint']}
-          </p>
-        </section>
-      );
-    }
-    return (
-      <ResultsScreen
-        results={finished}
-        localParticipantId={viewerParticipantId}
-        pfpUrls={pfpUrls}
-        keyErrors={viewerRole === 'participant' ? keyErrors : null}
-        bestWpm={bestWpm}
-        messages={messages}
-        locale={locale}
-        isHost={isHost}
-        participantCount={participantCount}
-        onRelaunch={onStartRace}
-        onCloseRoom={onCloseRoom}
-        onLeaveRoom={onLeaveRoom}
-      />
-    );
-  }
-
-  if (roomStatus === 'en_attente' || roomStatus === 'fermee' || race === null) {
+  if (roomStatus === 'en_attente' || roomStatus === 'resultats' || roomStatus === 'fermee' || race === null) {
     // Waiting: the host launches (COURSE-02 gating), everyone else waits.
+    // `resultats` is treated the same as `en_attente` here: the dedicated
+    // results view owns the standings, so the lobby only offers the relaunch.
     const needsMore = participantCount < 2;
     return (
       <section className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl">
@@ -438,14 +384,13 @@ export default function RaceScreen({
           localParticipantId={viewerParticipantId}
           onQuitRace={onQuitRace}
           onSendProgress={onSendProgress}
-          onKeyErrors={setKeyErrors}
         />
       </section>
     );
   }
 
-  // Every non-resultats status below requires a live race view: the resultats
-  // branch above handles the finished race, the en_attente branch above the
-  // waiting room — what remains is the racing view.
+  // The en_attente/resultats/fermee branch above handles the waiting room and
+  // the countdown/en_course branches handle the racing view — nothing else
+  // can reach this point.
   throw new Error('unreachable: unexpected room status in RaceScreen');
 }
