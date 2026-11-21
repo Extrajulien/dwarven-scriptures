@@ -12,7 +12,7 @@
  * exercised by the temporary smoke script against the real database.
  */
 
-import { raceParticipants, races, userStats } from '../schema';
+import { raceParticipants, races, userResources, userStats } from '../schema';
 import type { RaceResultsPayload } from '../../realtime/race-engine';
 
 type RecordedCall = {
@@ -78,6 +78,7 @@ function chainable(operation: RecordedCall['operation'], call: RecordedCall): Re
 
 const txStub = {
   insert: (...args: unknown[]) => chainable('insert', newCall('insert', args)),
+  update: (...args: unknown[]) => chainable('update', newCall('update', args)),
 };
 
 jest.mock('../index', () => ({
@@ -251,6 +252,7 @@ describe('mapEngineResultsToPersistence', () => {
       finishedAtMs: 45_000,
       rank: 1,
       bonusesReceived: 2,
+      goldEarned: 0,
       wpmSeries: [{ elapsedMs: 1_000, wpm: 80.12 }],
     });
     expect(mapped.participants[1]).toMatchObject({
@@ -352,6 +354,35 @@ describe('persistRaceResult', () => {
     await persistRaceResult(payload);
 
     expect(insertsOf(userStats)).toHaveLength(0);
+  });
+
+  test('credits mined-vein gold to user coins, skipping zero and non-user rows (DES-04)', async () => {
+    insertRow = { id: 99 };
+    const payload = payloadFixture();
+    // The user participant earned gold; the guest earned none.
+    payload.results[0] = { ...payload.results[0], goldEarned: 12 };
+
+    await persistRaceResult(payload);
+
+    const coinUpdates = calls.filter(
+      (call) => call.operation === 'update' && call.args[0]?.[0] === userResources,
+    );
+    expect(coinUpdates).toHaveLength(1);
+    expect(coinUpdates[0].methods).toEqual(['update', 'set', 'where']);
+    expect(coinUpdates[0].methods).toContain('set');
+  });
+
+  test('skips the coin credit for participants with no mined gold', async () => {
+    insertRow = { id: 99 };
+    const payload = payloadFixture();
+    // Both participants carry goldEarned 0 in the fixture.
+
+    await persistRaceResult(payload);
+
+    const coinUpdates = calls.filter(
+      (call) => call.operation === 'update' && call.args[0]?.[0] === userResources,
+    );
+    expect(coinUpdates).toHaveLength(0);
   });
 });
 

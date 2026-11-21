@@ -90,7 +90,7 @@ jest.mock('../index', () => ({
   },
 }));
 
-import { adjustUserCoins, createUserWithProfiles, getUserCredentialsByUsername, getUserFullProfile, recordCompletedRace, updateUserProfile, UsernameTakenError, type RaceStatsExecutor } from './users';
+import { adjustUserCoins, createUserWithProfiles, creditUserCoins, getUserCredentialsByUsername, getUserFullProfile, recordCompletedRace, updateUserProfile, UsernameTakenError, type RaceStatsExecutor, type ResourceUpdateExecutor } from './users';
 
 beforeEach(() => {
   calls.length = 0;
@@ -335,6 +335,39 @@ describe('adjustUserCoins', () => {
 
   test('rejects a non-positive internal id', async () => {
     await expect(adjustUserCoins(0, 1n)).rejects.toThrow(/positive integer/);
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe('creditUserCoins', () => {
+  test('credits the balance with a SQL-side increment (no non-negative guard)', async () => {
+    await creditUserCoins(7, 12);
+
+    const where = sqlTextOf('update');
+    expect(where).toContain('"user_resources"."coins" + 12');
+    expect(where).toContain('"user_resources"."userId" =');
+    // A pure credit never reads the balance first.
+    expect(calls.some((call) => call.operation === 'select')).toBe(false);
+  });
+
+  test('accepts an executor so a caller can share its transaction', async () => {
+    const executor = {
+      update: (...args: unknown[]) => chainable('update', newCall('update', args)),
+    } as unknown as ResourceUpdateExecutor;
+
+    await creditUserCoins(7, 5, executor);
+
+    expect(sqlTextOf('update')).toContain('"user_resources"."coins" + 5');
+  });
+
+  test.each([
+    [0, 1],
+    [1.5, 1],
+    [7, 0],
+    [7, -1],
+    [7, Number.NaN],
+  ])('rejects invalid input (%p, %p) before touching the database', async (id, amount) => {
+    await expect(creditUserCoins(id, amount)).rejects.toThrow();
     expect(calls).toHaveLength(0);
   });
 });

@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from 'dr
 import { db } from '..';
 import type { RaceResultsPayload } from '../../realtime/race-engine';
 import { raceParticipants, races, users } from '../schema';
-import { recordCompletedRace } from './users';
+import { creditUserCoins, recordCompletedRace } from './users';
 
 /**
  * Persistence and history of finished races (RES-05, HIST-01/02).
@@ -68,6 +68,8 @@ export type PersistRaceParticipant = {
   finishedAtMs: number;
   rank: number;
   bonusesReceived: number;
+  /** Coins earned this race from mined veins (DES-04), credited for users. */
+  goldEarned: number;
   wpmSeries: Array<{ elapsedMs: number; wpm: number }>;
 };
 
@@ -152,6 +154,7 @@ export function mapEngineResultsToPersistence(
       finishedAtMs: Math.trunc(result.endedAtMs),
       rank: result.rank,
       bonusesReceived: Math.max(0, Math.trunc(result.bonusesReceived)),
+      goldEarned: Math.max(0, Math.trunc(result.goldEarned)),
       wpmSeries: result.wpmSeries.map((point) => ({
         elapsedMs: Math.trunc(point.elapsedMs),
         wpm: clampPersistedWpm(point.wpm),
@@ -267,6 +270,12 @@ export async function persistRaceResult(payload: RaceResultsPayload): Promise<vo
         },
         tx,
       );
+
+      // DES-04: mined-vein gold credits the user's coin balance in the same
+      // transaction, so a race's stats and its rewards commit together.
+      if (participant.goldEarned > 0) {
+        await creditUserCoins(participant.userId, participant.goldEarned, tx);
+      }
     }
   });
 }
