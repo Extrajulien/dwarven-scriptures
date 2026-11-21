@@ -24,12 +24,21 @@ export default function JoinableRooms({
       className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl"
       aria-labelledby="joinable-rooms-title"
     >
-      <h2
-        id="joinable-rooms-title"
-        className="font-display text-headline-sm uppercase tracking-wide text-primary"
-      >
-        {messages['home.rooms.title']}
-      </h2>
+      <div className="flex items-center justify-between gap-space-sm border-b border-dwarf-divider pb-space-sm">
+        <h2
+          id="joinable-rooms-title"
+          className="font-display text-headline-sm uppercase tracking-wide text-primary"
+        >
+          {messages['home.rooms.title']}
+        </h2>
+        <span
+          data-testid="joinable-rooms-count"
+          className="inline-flex shrink-0 items-center gap-space-xs rounded border border-dwarf-gold/40 bg-dwarf-gold/10 px-space-md py-space-xs font-label-sm text-label-sm uppercase text-dwarf-gold"
+        >
+          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-tertiary animate-pulse" />
+          {rooms.length} {messages['home.hero.roomsLive']}
+        </span>
+      </div>
 
       {rooms.length === 0 ? (
         <div className="flex flex-col gap-space-sm py-space-md">

@@ -72,6 +72,9 @@ test('renders the compact joinable-rooms list with code, host and fill (JOIN-02)
   expect(screen.getByText('ada · 3/10')).toBeInTheDocument();
   expect(screen.getByText('bob · 9/12')).toBeInTheDocument();
   expect(screen.getAllByRole('button', { name: messages['explorer.join'] })).toHaveLength(2);
+  expect(screen.getByTestId('joinable-rooms-count')).toHaveTextContent(
+    `2 ${messages['home.hero.roomsLive']}`,
+  );
 });
 
 test('shows the empty state with a host-room call to action', () => {

@@ -42,7 +42,7 @@ export default async function Page() {
       <main className="min-h-[calc(100vh-3rem)] w-full bg-surface pb-16 pt-20">
         <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-space-xl px-margin py-space-lg sm:px-margin-tablet">
           {/* First section: hero */}
-          <section className="grid grid-cols-1 items-stretch gap-space-lg lg:grid-cols-2">
+          <section className="grid grid-cols-1 items-stretch gap-space-lg lg:min-h-[90vh] lg:grid-cols-2">
             <div className="flex flex-col justify-center gap-space-md">
               <h1 className="font-display text-headline-xl-mobile uppercase tracking-wide text-primary sm:text-headline-xl">
                 {messages['home.hero.title']}
@@ -60,10 +60,6 @@ export default async function Page() {
                 <ButtonSecondary href="/race">
                   {messages['raceSection.createTitle']}
                 </ButtonSecondary>
-                <span className="inline-flex items-center gap-space-xs rounded border border-dwarf-gold/40 bg-dwarf-gold/10 px-space-md py-space-xs font-label-sm text-label-sm uppercase text-dwarf-gold">
-                  <span aria-hidden="true" className="h-2 w-2 rounded-full bg-tertiary animate-pulse" />
-                  {rooms.length} {messages['home.hero.roomsLive']}
-                </span>
               </div>
             </div>
 
