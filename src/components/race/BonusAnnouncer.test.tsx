@@ -25,6 +25,8 @@ function participant(overrides: Partial<RaceTickParticipant> = {}): RaceTickPart
     wpm: 20,
     finished: false,
     totalLength: 43,
+    gold: 0,
+    track: [],
     ...overrides,
   };
 }

@@ -170,6 +170,8 @@ describe('RaceArena racing surface', () => {
             wpm: 18,
             finished: false,
             totalLength: 7,
+            gold: 0,
+            track: [],
           },
         ],
       }),

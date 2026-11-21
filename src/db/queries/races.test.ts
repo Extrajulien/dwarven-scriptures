@@ -170,6 +170,7 @@ function payloadFixture(): RaceResultsPayload {
         progressChars: 120,
         rank: 1,
         bonusesReceived: 2,
+        goldEarned: 0,
         wpmSeries: [{ elapsedMs: 1_000, wpm: 80.12 }],
       },
       {
@@ -191,6 +192,7 @@ function payloadFixture(): RaceResultsPayload {
         progressChars: 100,
         rank: 2,
         bonusesReceived: 0,
+        goldEarned: 0,
         wpmSeries: [{ elapsedMs: 1_000, wpm: 70.0 }],
       },
     ],

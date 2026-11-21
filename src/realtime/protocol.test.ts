@@ -25,6 +25,11 @@ const ROOM_PUBLIC_ID = '8f9c2a55-3b4a-4c1e-8a2d-9e7f6a5b4c3d';
 const USER_PUBLIC_ID = '1f2e3d4c-5b6a-4978-8c9d-0e1f2a3b4c5d';
 const GUEST_TOKEN = '2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d';
 
+/** A valid, empty mining window: 16 columns × 3 wall tiles (DES-04). */
+const EMPTY_TRACK = Array.from({ length: 16 }, () =>
+  Array.from({ length: 3 }, () => ({ mineral: null })),
+);
+
 const validUserMember = {
   kind: 'user',
   publicId: USER_PUBLIC_ID,
@@ -364,7 +369,9 @@ describe('server → client messages', () => {
           position: 31,
           wpm: 52.4,
           finished: true,
-        totalLength: 100,
+          totalLength: 100,
+          gold: 0,
+          track: EMPTY_TRACK,
         },
         {
           participantId: GUEST_TOKEN,
@@ -373,7 +380,9 @@ describe('server → client messages', () => {
           position: 12,
           wpm: 18.2,
           finished: false,
-        totalLength: 100,
+          totalLength: 100,
+          gold: 0,
+          track: EMPTY_TRACK,
         },
         {
           participantId: '3a4b5c6d-7e8f-4a9b-8c0d-1e2f3a4b5c6d',
@@ -382,7 +391,9 @@ describe('server → client messages', () => {
           position: 9,
           wpm: 15,
           finished: false,
-        totalLength: 100,
+          totalLength: 100,
+          gold: 0,
+          track: EMPTY_TRACK,
         },
       ],
     });
@@ -410,7 +421,9 @@ describe('server → client messages', () => {
             position: -2,
             wpm: 10,
             finished: false,
-          totalLength: 100,
+            totalLength: 100,
+            gold: 0,
+            track: EMPTY_TRACK,
           },
         ],
       }).success,
@@ -426,7 +439,9 @@ describe('server → client messages', () => {
             position: 2,
             wpm: 10,
             finished: false,
-          totalLength: 100,
+            totalLength: 100,
+            gold: 0,
+            track: EMPTY_TRACK,
           },
         ],
       }).success,

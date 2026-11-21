@@ -10,6 +10,7 @@
 
 import { defaultRoomConfig } from '../lib/room-config';
 import { generateBotSchedule } from '../lib/bots/schedule';
+import { columnGoldValue, createColumnStream, TRACK_COLUMNS_AHEAD } from '../lib/race/mine';
 import type { RoomConfig } from '../db/schema';
 import type { RaceText } from '../lib/race/state';
 import { raceTickMessageSchema, type RaceTickParticipant, type ServerMessage } from './protocol';
@@ -1786,5 +1787,55 @@ describe('comeback bonuses (BONUS-01/04, CONF-09)', () => {
     const bob = engine.raceSnapshotFor(ROOM_ID, 'user:8');
     expect(bob?.text).toBe(`${DEFAULT_BODY} tunnel forge nain`);
     expect(bob?.totalLength).toBe(GROWN);
+  });
+});
+
+describe('mining track (DES-04)', () => {
+  test('raceTick carries the mining window and zero gold before any column is mined', async () => {
+    const { engine, deps } = makeEngine();
+    await startAndCountdown(engine, deps);
+    deps.clock.advance(RACE_TICK_BROADCAST_INTERVAL_MS);
+    engine.tick();
+
+    const tick = deps.messagesOf(ROOM_ID, 'raceTick')[0];
+    expect(tick.participants).toHaveLength(3);
+    for (const participant of tick.participants) {
+      expect(participant.gold).toBe(0);
+      expect(participant.track).toHaveLength(TRACK_COLUMNS_AHEAD);
+      expect(participant.track[0]).toHaveLength(3);
+      for (const tile of participant.track.flat()) {
+        expect(tile.mineral === null || ['coal', 'copper', 'iron', 'silver', 'gold'].includes(tile.mineral)).toBe(true);
+      }
+    }
+  });
+
+  test('mining a column awards its vein gold and keeps the stream deterministic', async () => {
+    const { engine, deps } = makeEngine();
+    await startAndCountdown(engine, deps);
+
+    // Cross one column boundary (position 0 → 30) for the host (ada, first
+    // participant, world seed = raceSeed + 0).
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(30))).toEqual({ ok: true });
+    deps.clock.advance(RACE_TICK_BROADCAST_INTERVAL_MS);
+    engine.tick();
+
+    const tick = deps.messagesOf(ROOM_ID, 'raceTick').at(-1);
+    const ada = tick?.participants.find((participant) => participant.participantId === ADA_PUBLIC_ID);
+    const expected = columnGoldValue(createColumnStream(deps.pickedSeeds[0]).peek(1)[0]);
+    expect(ada?.gold).toBe(expected);
+  });
+
+  test('no gold is awarded while a column is still being mined', async () => {
+    const { engine, deps } = makeEngine();
+    await startAndCountdown(engine, deps);
+
+    // 29 chars: still inside the first column (30 chars per column).
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(29))).toEqual({ ok: true });
+    deps.clock.advance(RACE_TICK_BROADCAST_INTERVAL_MS);
+    engine.tick();
+
+    const tick = deps.messagesOf(ROOM_ID, 'raceTick').at(-1);
+    const ada = tick?.participants.find((participant) => participant.participantId === ADA_PUBLIC_ID);
+    expect(ada?.gold).toBe(0);
   });
 });
