@@ -80,6 +80,19 @@ export interface Messages {
   'raceSection.createHint': string;
   'raceSection.guestEmpty': string;
   'raceSection.guestEmptyHint': string;
+  // ------------------------------------------------------------ landing page
+  'home.hero.title': string;
+  'home.hero.subtitle': string;
+  'home.hero.roomsLive': string;
+  'home.rooms.title': string;
+  'home.rooms.empty': string;
+  'home.how.title': string;
+  'home.how.step1.title': string;
+  'home.how.step1.body': string;
+  'home.how.step2.title': string;
+  'home.how.step2.body': string;
+  'home.how.step3.title': string;
+  'home.how.step3.body': string;
   // ------------------------------------------------------------ race home page
   'raceHome.racesTitle': string;
   'raceHome.colCode': string;
@@ -819,6 +832,23 @@ export const MESSAGES: Record<Locale, Messages> = {
     'raceSection.guestEmpty': 'Aucune salle publique n’attend de mineurs pour le moment.',
     'raceSection.guestEmptyHint':
       'Seuls les membres de la guilde peuvent héberger une salle — connectez-vous pour en créer une.',
+    // ------------------------------------------------------------ landing page
+    'home.hero.title': 'Frappez les touches !',
+    'home.hero.subtitle':
+      'Des courses de frappe compétitives en temps réel. Rejoignez une salle, tapez le même texte, dépassez le peloton.',
+    'home.hero.roomsLive': 'salles ouvertes',
+    'home.rooms.title': 'SALLES À REJOINDRE',
+    'home.rooms.empty':
+      'Aucune salle publique pour le moment — soyez le premier à en héberger une.',
+    'home.how.title': 'Comment ça marche',
+    'home.how.step1.title': 'Rejoignez une salle',
+    'home.how.step1.body':
+      'Choisissez une course aléatoire ou une salle publique, ou hébergez la vôtre avec un code.',
+    'home.how.step2.title': 'Lisez le décompte',
+    'home.how.step2.body': 'Le texte se révèle, puis 3, 2, 1 — préparez vos doigts.',
+    'home.how.step3.title': 'Frappez et dépassez',
+    'home.how.step3.body':
+      'Tapez le texte, suivez la piste de progression en direct et franchissez la ligne avant les autres.',
     // ------------------------------------------------------------ race home page
     'raceHome.racesTitle': 'COURSES PUBLIQUES',
     'raceHome.colCode': 'Code',
@@ -1580,6 +1610,22 @@ export const MESSAGES: Record<Locale, Messages> = {
     'raceSection.guestEmpty': 'No public room is waiting for miners right now.',
     'raceSection.guestEmptyHint':
       'Only guild members can host a room — sign in to create one.',
+    // ------------------------------------------------------------ landing page
+    'home.hero.title': 'Strike the keys!',
+    'home.hero.subtitle':
+      'Real-time competitive typing races. Join a room, type the same text, outpace the pack.',
+    'home.hero.roomsLive': 'rooms open',
+    'home.rooms.title': 'JOINABLE ROOMS',
+    'home.rooms.empty': 'No public rooms right now — be the first to host one.',
+    'home.how.title': 'How it works',
+    'home.how.step1.title': 'Join a room',
+    'home.how.step1.body':
+      'Pick a random race or a public room, or host your own with a code.',
+    'home.how.step2.title': 'Ride the countdown',
+    'home.how.step2.body': 'The text is revealed, then 3, 2, 1 — get your fingers ready.',
+    'home.how.step3.title': 'Type and overtake',
+    'home.how.step3.body':
+      'Type the text, watch the live progress track and cross the line first.',
     // ------------------------------------------------------------ race home page
     'raceHome.racesTitle': 'PUBLIC RACES',
     'raceHome.colCode': 'Code',
