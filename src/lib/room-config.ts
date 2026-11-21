@@ -88,11 +88,16 @@ export const roomConfigSchema = z
 export type RoomConfigInput = z.input<typeof roomConfigSchema>;
 export type RoomConfigOutput = z.output<typeof roomConfigSchema>;
 
-/** Sensible defaults for a newly created room (CONF-01..10). */
+/**
+ * Sensible defaults for a newly created room (CONF-01..10). `textType` is
+ * `random` so a new room (and quick-play) generates its text from the
+ * configured language and exact word count (CONF-03/04); the host can still
+ * switch to `coherent` corpus passages in the config editor (CONF-07).
+ */
 export const defaultRoomConfig: RoomConfig = {
   textLanguage: 'fr',
   textComplexity: 'moyen',
-  textType: 'coherent',
+  textType: 'random',
   wordCount: 60,
   timeLimitSeconds: 60,
   errorMode: 'accumulate',
