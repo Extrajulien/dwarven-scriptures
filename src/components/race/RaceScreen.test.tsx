@@ -355,11 +355,14 @@ describe('bonus announcements and track flash (BONUS-03)', () => {
       expect(banner).toHaveAttribute('aria-live', 'polite');
       expect(banner).toHaveTextContent('−3 mots');
       expect(banner).toHaveTextContent(messages['bonus.banner.removeWords']);
-      expect(screen.getByTestId(`track-marker-${ADA}`)).toHaveAttribute(
-        'data-bonus-flash',
-        'true',
-      );
-      expect(screen.getByTestId(`track-marker-${BOB}`)).toHaveAttribute(
+      // The local player is in the top-3 AND has their own normal row — pick
+      // the normal row (the "your progress" visualizer) to assert the glow.
+      const adaNormalRow = () =>
+        screen
+          .getAllByTestId(`track-row-${ADA}`)
+          .find((row) => row.getAttribute('data-variant') === 'normal');
+      expect(adaNormalRow()).toHaveAttribute('data-bonus-flash', 'true');
+      expect(screen.getByTestId(`track-row-${BOB}`)).toHaveAttribute(
         'data-bonus-flash',
         'false',
       );
@@ -368,10 +371,7 @@ describe('bonus announcements and track flash (BONUS-03)', () => {
       act(() => {
         jest.advanceTimersByTime(BONUS_MARKER_FLASH_MS);
       });
-      expect(screen.getByTestId(`track-marker-${ADA}`)).toHaveAttribute(
-        'data-bonus-flash',
-        'false',
-      );
+      expect(adaNormalRow()).toHaveAttribute('data-bonus-flash', 'false');
       expect(screen.getByTestId('bonus-banner')).toBeInTheDocument();
 
       act(() => {
@@ -394,7 +394,7 @@ describe('bonus announcements and track flash (BONUS-03)', () => {
     const line = screen.getByTestId('bonus-feed-line');
     expect(line).toHaveTextContent('bob');
     expect(line).toHaveTextContent('+1 mots');
-    expect(screen.getByTestId(`track-marker-${BOB}`)).toHaveAttribute(
+    expect(screen.getByTestId(`track-row-${BOB}`)).toHaveAttribute(
       'data-bonus-flash',
       'true',
     );

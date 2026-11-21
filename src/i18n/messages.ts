@@ -734,6 +734,7 @@ export interface Messages {
   'track.youTag': string;
   'track.rankLabel': string;
   'track.finishLabel': string;
+  'track.goldLabel': string;
   'top3.title': string;
   'overtake.overtookPrefix': string;
   'overtake.overtakenBySuffix': string;
@@ -1496,6 +1497,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'track.youTag': 'VOUS',
     'track.rankLabel': 'Rang',
     'track.finishLabel': 'Arrivée',
+    'track.goldLabel': 'or',
     'top3.title': 'TÊTE DE COURSE',
     'overtake.overtookPrefix': 'Vous doublez',
     'overtake.overtakenBySuffix': 'vous double',
@@ -2251,6 +2253,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'track.youTag': 'YOU',
     'track.rankLabel': 'Rank',
     'track.finishLabel': 'Finished',
+    'track.goldLabel': 'gold',
     'top3.title': 'LEADERS',
     'overtake.overtookPrefix': 'You overtake',
     'overtake.overtakenBySuffix': 'overtakes you',

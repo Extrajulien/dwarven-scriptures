@@ -193,6 +193,9 @@ export default function RaceArena({
                 participants={race.participants}
                 finishRanks={race.finishRanks}
                 localParticipantId={viewerParticipantId}
+                variant={viewerRole === 'participant' ? 'condensed' : 'normal'}
+                pfpUrls={pfpUrls}
+                flashParticipantId={flashTargetId}
                 messages={messages}
               />
               <BonusAnnouncer
@@ -203,8 +206,8 @@ export default function RaceArena({
               />
               <ProgressTrack
                 participants={race.participants}
-                lastTickAt={race.lastTickAt}
                 localParticipantId={viewerParticipantId}
+                viewerRole={viewerRole}
                 finishRanks={race.finishRanks}
                 pfpUrls={pfpUrls}
                 flashParticipantId={flashTargetId}
