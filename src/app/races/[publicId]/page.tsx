@@ -118,7 +118,7 @@ export default async function RaceReplayPage({
             />
           </section>
 
-          <div className="grid grid-cols-1 gap-space-md lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-space-md">
             <ResultsWpmChart results={results} messages={messages} locale={locale} />
             {/* RES-03: the heatmap comes from the local typing session of the
                 race itself; a persisted replay has no per-key data, so the

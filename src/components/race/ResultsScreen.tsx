@@ -201,7 +201,7 @@ export default function ResultsScreen({
         onCloseRoom={onCloseRoom}
         onLeaveRoom={onLeaveRoom}
       />
-      <div className="grid grid-cols-1 gap-space-md lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-space-md">
         <ResultsWpmChart results={results.results} messages={messages} locale={locale} />
         <RaceKeyboardHeatmap keyErrors={keyErrors} messages={messages} locale={locale} />
       </div>
