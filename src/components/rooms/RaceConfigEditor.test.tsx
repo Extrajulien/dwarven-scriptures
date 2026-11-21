@@ -55,7 +55,7 @@ describe('RaceConfigEditor (CONF-01..10)', () => {
 
     expect(screen.getByLabelText('Langue du texte')).toHaveValue('fr');
     expect(screen.getByLabelText('Complexité')).toHaveValue('moyen');
-    expect(screen.getByLabelText('Type de texte')).toHaveValue('coherent');
+    expect(screen.getByLabelText('Type de texte')).toHaveValue('random');
     expect(screen.getByLabelText('Nombre de mots')).toHaveValue(60);
     expect(screen.getByLabelText('Temps maximal')).toHaveValue(60);
     expect(screen.getByLabelText('Mode d’erreur')).toHaveValue('accumulate');
