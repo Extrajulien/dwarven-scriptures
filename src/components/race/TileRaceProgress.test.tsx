@@ -57,10 +57,10 @@ describe('TileRaceProgress', () => {
     expect(screen.getByTestId('track-finish-badge')).toHaveTextContent('1');
   });
 
-  test('condensed variant shows the compact strip and the live top-3 metadata', () => {
+  test('condensed variant is a full-width progress bar with the name top-left', () => {
     render(
       <TileRaceProgress
-        participant={participant({ participantId: ADA, wpm: 55 })}
+        participant={participant({ participantId: ADA, position: 500, totalLength: 1_000, wpm: 55 })}
         variant="condensed"
         isLocal={false}
         finishRank={null}
@@ -70,12 +70,15 @@ describe('TileRaceProgress', () => {
 
     const row = screen.getByTestId(`track-row-${ADA}`);
     expect(row).toHaveAttribute('data-variant', 'condensed');
+    expect(row).toHaveTextContent('ada'); // name label in the top-left corner
     expect(screen.getByTestId('top3-wpm')).toHaveTextContent(
       `55 ${messages['race.liveWpmLabel']}`,
     );
     expect(screen.getByTestId('track-gold')).toHaveTextContent(
       `12 ${messages['track.goldLabel']}`,
     );
+    // The mined fill reflects progression: 500 / 1_000 = 50 %.
+    expect(screen.getByTestId('track-progress-fill').style.width).toBe('50%');
   });
 
   test('localizes bot display names in both variants (BOT-04)', () => {

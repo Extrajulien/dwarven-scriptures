@@ -596,12 +596,14 @@ player who returns within 30 s resumes in place (COURSE-08).
     and `track` (a bounded 16-column × 3-tile window, `track[0]` = the current
     column). The window is bounded for PERF-02; no new message type is needed.
   * **Two variants, role-composed:** `TileRaceProgress` renders a **normal**
-    (3-high) rectangle and a **condensed** (1-high) rectangle. While racing,
-    `Top3Panel` shows the top-3 condensed and `ProgressTrack` shows the local
-    player's own normal row (clearly "yours") plus the remaining players
-    condensed; while spectating, the top-3 are normal and ranks 4+ condensed.
-    The miner is the profile picture (slightly smaller than a tile), centered
-    on the current block.
+    (3-high, camera-follows stream) rectangle and a **condensed** (1-high,
+    full-width progress bar with the name in the top-left corner) rectangle.
+    While racing, `Top3Panel` shows the top-3 condensed and `ProgressTrack`
+    shows the local player's own normal row (clearly "yours") plus the
+    remaining players condensed; while spectating, the top-3 are normal and
+    ranks 4+ condensed. The miner is the profile picture (slightly smaller
+    than a tile), centered on the current block (normal) or riding the
+    progress boundary (condensed).
   * **Smoothness trade-off (documented):** the marker lane's ~60 Hz horizontal
     interpolation no longer applies (the miner is camera-fixed). Perceived
     motion comes from the discrete column scroll + crack frames at the tick
@@ -770,12 +772,15 @@ final standings, the client only *presents* them:
 
 1. **Tile rendering** — `TileRaceProgress` turns a participant's `position` +
    `track` window into a mining view via the pure builders of
-   `src/lib/race/mine-view.ts` (`buildNormalGrid`, `condensedMineral`); the
+   `src/lib/race/mine-view.ts` (`buildNormalGrid`); the
    existing `resolveCellSprites`/`LayeredTileCell` draw the wall/vein faces
    (minerals only show when exposed to air). The normal (3-high) row keeps the
    miner (profile picture, slightly smaller than a tile) centered on the
-   current block; the condensed (1-high) row shows the highest-value tile of
-   the current column. Role composition lives in `ProgressTrack`/`Top3Panel`
+   current block, with floor behind and, past the last column, floor ahead (the
+   tunnel's end); the condensed (1-high) row is a full-width progress bar — the
+   mined floor fills proportionally to the participant's progression and the
+   name sits in the top-left corner. Role composition lives in
+   `ProgressTrack`/`Top3Panel`
    (ADR-012): a racer gets a normal "you" row plus condensed others, a
    spectator gets normal top-3 plus condensed rest. The ~60 Hz marker
    interpolation is no longer needed — the miner is camera-fixed, and perceived

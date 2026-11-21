@@ -46,8 +46,7 @@ export type MineralId = (typeof MINERAL_IDS)[number];
 
 /**
  * Coins credited to the player account when a block of this mineral is mined.
- * Ordered like {@link MINERAL_VALUE_ORDER} — coal is the least valuable vein,
- * gold the most.
+ * The values ascend coal < copper < iron < silver < gold.
  */
 export const MINERAL_GOLD_VALUES: Record<MineralId, number> = {
   coal: 1,
@@ -56,32 +55,6 @@ export const MINERAL_GOLD_VALUES: Record<MineralId, number> = {
   silver: 10,
   gold: 25,
 };
-
-/**
- * Ascending mineral value order used by the condensed top-3 view. Wall (no
- * mineral) ranks below every entry here, i.e. `wall < coal < copper < iron <
- * silver < gold`.
- */
-export const MINERAL_VALUE_ORDER: readonly MineralId[] = [
-  'coal',
-  'copper',
-  'iron',
-  'silver',
-  'gold',
-];
-
-const MINERAL_VALUE_RANK: Readonly<Record<MineralId, number>> = (() => {
-  const rank = {} as Record<MineralId, number>;
-  MINERAL_VALUE_ORDER.forEach((mineral, index) => {
-    rank[mineral] = index + 1;
-  });
-  return rank;
-})();
-
-/** Numeric value rank of a mineral (wall = 0, coal = 1, … gold = 5). */
-export function mineralValueRank(mineral: MineralId): number {
-  return MINERAL_VALUE_RANK[mineral];
-}
 
 // --- Tiles --------------------------------------------------------------------
 
@@ -131,17 +104,6 @@ export function generateTile(rng: () => number): TileKind {
 /** Generates one 3-block column, top to bottom. */
 export function generateColumn(rng: () => number): TileColumn {
   return [generateTile(rng), generateTile(rng), generateTile(rng)];
-}
-
-/** The highest-value mineral among a column's blocks, or `null` for pure wall. */
-export function highestValueMineral(tiles: readonly TileKind[]): MineralId | null {
-  let best: MineralId | null = null;
-  for (const tile of tiles) {
-    if (tile.mineral !== null && (best === null || mineralValueRank(tile.mineral) > mineralValueRank(best))) {
-      best = tile.mineral;
-    }
-  }
-  return best;
 }
 
 /** Coins earned by mining a whole column (the sum of its veins' values). */

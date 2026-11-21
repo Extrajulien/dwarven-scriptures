@@ -4,7 +4,6 @@ import {
   CHARS_PER_COLUMN,
   MINERAL_GOLD_VALUES,
   MINERAL_IDS,
-  MINERAL_VALUE_ORDER,
   blockIndexWithinColumn,
   charsWithinBlock,
   columnGoldValue,
@@ -13,8 +12,6 @@ import {
   digFrameForChars,
   generateColumn,
   generateTile,
-  highestValueMineral,
-  mineralValueRank,
   veinTile,
   wallTile,
 } from './mine';
@@ -32,14 +29,13 @@ describe('constants', () => {
     expect(CHARS_PER_COLUMN).toBe(30);
   });
 
-  test('mineral value order is wall < coal < copper < iron < silver < gold', () => {
-    expect(MINERAL_VALUE_ORDER).toEqual(['coal', 'copper', 'iron', 'silver', 'gold']);
+  test('every mineral carries a positive gold value, ordered wall < coal < … < gold', () => {
     expect(MINERAL_IDS).toEqual(['coal', 'copper', 'iron', 'silver', 'gold']);
-    // Every mineral has a gold value and a strictly ascending value rank.
-    MINERAL_VALUE_ORDER.forEach((mineral, index) => {
-      expect(MINERAL_GOLD_VALUES[mineral]).toBeGreaterThan(0);
-      expect(mineralValueRank(mineral)).toBe(index + 1);
-    });
+    expect(MINERAL_GOLD_VALUES.coal).toBeGreaterThan(0);
+    expect(MINERAL_GOLD_VALUES.coal).toBeLessThan(MINERAL_GOLD_VALUES.copper);
+    expect(MINERAL_GOLD_VALUES.copper).toBeLessThan(MINERAL_GOLD_VALUES.iron);
+    expect(MINERAL_GOLD_VALUES.iron).toBeLessThan(MINERAL_GOLD_VALUES.silver);
+    expect(MINERAL_GOLD_VALUES.silver).toBeLessThan(MINERAL_GOLD_VALUES.gold);
   });
 });
 
@@ -71,13 +67,6 @@ describe('position mapping', () => {
 });
 
 describe('mineral value / gold', () => {
-  test('highestValueMineral picks the highest mineral, wall ranks below all', () => {
-    expect(highestValueMineral([wallTile(), wallTile(), wallTile()])).toBeNull();
-    expect(highestValueMineral([wallTile(), veinTile('copper'), wallTile()])).toBe('copper');
-    expect(highestValueMineral([veinTile('copper'), veinTile('iron'), wallTile()])).toBe('iron');
-    expect(highestValueMineral([veinTile('coal'), veinTile('copper'), veinTile('gold')])).toBe('gold');
-  });
-
   test('columnGoldValue sums every vein in the column', () => {
     expect(columnGoldValue([wallTile(), wallTile(), wallTile()])).toBe(0);
     expect(columnGoldValue([veinTile('coal'), veinTile('copper'), wallTile()])).toBe(
