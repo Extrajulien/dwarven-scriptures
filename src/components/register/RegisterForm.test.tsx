@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import RegisterForm from './RegisterForm';
 import { registerUser } from '../../app/register/actions';
 import { MESSAGES } from '../../i18n/messages';
@@ -124,4 +124,13 @@ test('fills the strength bar green for a strong password', () => {
   const bar = screen.getByRole('progressbar', { name: /robustesse du mot de passe/i });
   expect(bar).toHaveAttribute('data-strength', 'strong');
   expect(Number(bar.getAttribute('aria-valuenow'))).toBeGreaterThanOrEqual(80);
+});
+
+test('redirects to / when the action succeeds (auto-connect)', async () => {
+  mockedRegisterUser.mockResolvedValueOnce({ ok: true });
+
+  render(<RegisterForm messages={MESSAGES.fr} />);
+  submitForm();
+
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/'));
 });

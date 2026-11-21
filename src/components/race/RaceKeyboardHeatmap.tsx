@@ -83,6 +83,7 @@ function DataKey({
   tone,
   dataKey,
   count,
+  grow = 1,
   className = '',
 }: {
   children: ReactNode;
@@ -90,6 +91,8 @@ function DataKey({
   /** The normalized heatmap key (letters lower-cased, space = ' '). */
   dataKey?: string;
   count?: number;
+  /** Relative width in the flex row (standard keys = 1, modifiers larger). */
+  grow?: number;
   className?: string;
 }) {
   return (
@@ -98,15 +101,28 @@ function DataKey({
       data-key={dataKey}
       data-count={count}
       data-tone={tone}
-      className={`flex h-9 w-8 items-center justify-center rounded sm:h-10 sm:w-10 ${TONE_CLASSES[tone]} ${className}`}
+      style={{ flexGrow: grow, flexBasis: 0 }}
+      className={`flex h-9 min-w-0 items-center justify-center rounded sm:h-10 ${TONE_CLASSES[tone]} ${className}`}
     >
       {children}
     </div>
   );
 }
 
-function ModifierKey({ children, className }: { children: ReactNode; className?: string }) {
-  return <DataKey tone="plain" className={className}>{children}</DataKey>;
+function ModifierKey({
+  children,
+  grow,
+  className = '',
+}: {
+  children: ReactNode;
+  grow: number;
+  className?: string;
+}) {
+  return (
+    <DataKey tone="plain" grow={grow} className={className}>
+      {children}
+    </DataKey>
+  );
 }
 
 export default function RaceKeyboardHeatmap({
@@ -176,20 +192,20 @@ export default function RaceKeyboardHeatmap({
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-outline-variant bg-surface-container-lowest p-space-sm sm:p-space-md">
-        <div className="mx-auto w-fit min-w-[480px] select-none space-y-1.5 font-mono text-body-sm font-bold">
-          <div className="flex justify-center gap-1.5">
+      <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-space-sm sm:p-space-md">
+        <div className="w-full select-none space-y-1.5 font-mono text-body-sm font-bold">
+          <div className="flex gap-1.5">
             {KEY_ROWS[0].map((key) => (
               <DataKey key={key} tone={toneForErrorCount(countFor(key))} dataKey={errorKeyFor(key)} count={countFor(key)}>
                 {key}
               </DataKey>
             ))}
-            <ModifierKey className="w-14 font-label-sm text-label-sm uppercase tracking-wider sm:w-16">
+            <ModifierKey grow={1.5} className="font-label-sm text-label-sm uppercase tracking-wider">
               {messages['account.heatmap.key.back']}
             </ModifierKey>
           </div>
-          <div className="flex justify-center gap-1.5">
-            <ModifierKey className="w-12 font-label-sm text-label-sm uppercase tracking-wider sm:w-14">
+          <div className="flex gap-1.5">
+            <ModifierKey grow={1.25} className="font-label-sm text-label-sm uppercase tracking-wider">
               {messages['account.heatmap.key.tab']}
             </ModifierKey>
             {KEY_ROWS[1].map((key) => (
@@ -198,8 +214,8 @@ export default function RaceKeyboardHeatmap({
               </DataKey>
             ))}
           </div>
-          <div className="flex justify-center gap-1.5">
-            <ModifierKey className="w-14 font-label-sm text-label-sm uppercase tracking-wider sm:w-16">
+          <div className="flex gap-1.5">
+            <ModifierKey grow={1.5} className="font-label-sm text-label-sm uppercase tracking-wider">
               {messages['account.heatmap.key.caps']}
             </ModifierKey>
             {KEY_ROWS[2].map((key) => (
@@ -207,12 +223,12 @@ export default function RaceKeyboardHeatmap({
                 {key}
               </DataKey>
             ))}
-            <ModifierKey className="w-16 font-label-sm text-label-sm uppercase tracking-wider sm:w-20">
+            <ModifierKey grow={2} className="font-label-sm text-label-sm uppercase tracking-wider">
               {messages['account.heatmap.key.enter']}
             </ModifierKey>
           </div>
-          <div className="flex justify-center gap-1.5">
-            <ModifierKey className="w-16 font-label-sm text-label-sm uppercase tracking-wider sm:w-20">
+          <div className="flex gap-1.5">
+            <ModifierKey grow={2} className="font-label-sm text-label-sm uppercase tracking-wider">
               {messages['account.heatmap.key.shift']}
             </ModifierKey>
             {KEY_ROWS[3].map((key) => (
@@ -220,29 +236,30 @@ export default function RaceKeyboardHeatmap({
                 {key}
               </DataKey>
             ))}
-            <ModifierKey className="w-16 font-label-sm text-label-sm uppercase tracking-wider sm:w-20">
+            <ModifierKey grow={2} className="font-label-sm text-label-sm uppercase tracking-wider">
               {messages['account.heatmap.key.shift']}
             </ModifierKey>
           </div>
-          <div className="flex justify-center gap-1.5 pt-0.5">
-            <ModifierKey className="w-12 font-label-sm text-label-sm uppercase tracking-wider sm:w-14">
+          <div className="flex gap-1.5 pt-0.5">
+            <ModifierKey grow={1.25} className="font-label-sm text-label-sm uppercase tracking-wider">
               {messages['account.heatmap.key.ctrl']}
             </ModifierKey>
-            <ModifierKey className="w-12 font-label-sm text-label-sm uppercase tracking-wider sm:w-14">
+            <ModifierKey grow={1.25} className="font-label-sm text-label-sm uppercase tracking-wider">
               {messages['account.heatmap.key.alt']}
             </ModifierKey>
             <DataKey
               tone={toneForErrorCount(countFor(' '))}
               dataKey=" "
               count={countFor(' ')}
-              className="w-40 font-label-sm text-label-sm uppercase tracking-widest sm:w-56"
+              grow={5}
+              className="font-label-sm text-label-sm uppercase tracking-widest"
             >
               {messages['account.heatmap.key.space']}
             </DataKey>
-            <ModifierKey className="w-12 font-label-sm text-label-sm uppercase tracking-wider sm:w-14">
+            <ModifierKey grow={1.25} className="font-label-sm text-label-sm uppercase tracking-wider">
               {messages['account.heatmap.key.alt']}
             </ModifierKey>
-            <ModifierKey className="w-12 font-label-sm text-label-sm uppercase tracking-wider sm:w-14">
+            <ModifierKey grow={1.25} className="font-label-sm text-label-sm uppercase tracking-wider">
               {messages['account.heatmap.key.ctrl']}
             </ModifierKey>
           </div>

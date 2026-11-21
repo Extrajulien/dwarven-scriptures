@@ -26,6 +26,7 @@ const mockLeave = jest.fn();
 const mockStartRace = jest.fn();
 const mockQuitRace = jest.fn();
 const mockSendProgress = jest.fn();
+const mockUpdateRoomHost = jest.fn();
 const mockReplace = jest.fn();
 const mockRefresh = jest.fn();
 
@@ -40,6 +41,7 @@ jest.mock('../../realtime/useRoomSocket', () => ({
     startRace: mockStartRace,
     quitRace: mockQuitRace,
     sendRaceProgress: mockSendProgress,
+    updateRoomHost: mockUpdateRoomHost,
   }),
 }));
 
@@ -155,8 +157,6 @@ function renderOpenLobby(
       viewer={viewer}
       initialInvitations={invitations}
       messages={messages}
-      locale="fr"
-      viewerBestWpm={null}
     />,
   );
 }
@@ -194,8 +194,6 @@ describe('lobby snapshot rendering (SALLE-01, CONF-12)', () => {
         viewer={memberViewer}
         initialInvitations={null}
         messages={messages}
-        locale="fr"
-        viewerBestWpm={null}
       />,
     );
     expect(mockJoin).toHaveBeenCalledWith({ invitationToken: 'tok123' });
@@ -206,20 +204,19 @@ describe('host controls (SALLE-07, SEC-01)', () => {
   test('are only rendered for the host — members and guests never see them', () => {
     const memberRender = renderOpenLobby(memberViewer);
     expect(screen.queryByText(messages['lobby.hostControlsTitle'])).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: messages['lobby.kick'] })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages['lobby.manageMember'] })).not.toBeInTheDocument();
     memberRender.unmount();
 
     renderOpenLobby(guestViewer);
     expect(screen.queryByText(messages['lobby.hostControlsTitle'])).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: messages['lobby.kick'] })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages['lobby.manageMember'] })).not.toBeInTheDocument();
   });
 
   test('kicks a member after the two-step confirm', async () => {
     renderOpenLobby(hostViewer);
 
-    const kickButtons = screen.getAllByRole('button', { name: messages['lobby.kick'] });
-    expect(kickButtons.length).toBeGreaterThan(0);
-    fireEvent.click(kickButtons[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: messages['lobby.manageMember'] })[0]);
+    fireEvent.click(screen.getByRole('button', { name: messages['lobby.kick'] }));
 
     expect(screen.getByText(messages['lobby.confirmKick'])).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: messages['lobby.confirm'] }));
@@ -235,7 +232,8 @@ describe('host controls (SALLE-07, SEC-01)', () => {
   test('cancel aborts the kick', () => {
     renderOpenLobby(hostViewer);
 
-    fireEvent.click(screen.getAllByRole('button', { name: messages['lobby.kick'] })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: messages['lobby.manageMember'] })[0]);
+    fireEvent.click(screen.getByRole('button', { name: messages['lobby.kick'] }));
     fireEvent.click(screen.getByRole('button', { name: messages['lobby.cancel'] }));
 
     expect(screen.queryByText(messages['lobby.confirmKick'])).not.toBeInTheDocument();
@@ -255,12 +253,11 @@ describe('host controls (SALLE-07, SEC-01)', () => {
   });
 
   test('transfers the host to a picked human member (SALLE-08)', async () => {
+    mockedTransferHost.mockResolvedValueOnce({ ok: true });
     renderOpenLobby(hostViewer);
 
-    fireEvent.change(screen.getByLabelText(messages['lobby.transferHostPicker']), {
-      target: { value: BOB_ID },
-    });
-    fireEvent.click(screen.getByRole('button', { name: messages['lobby.transferHostButton'] }));
+    fireEvent.click(screen.getAllByRole('button', { name: messages['lobby.manageMember'] })[0]);
+    fireEvent.click(screen.getByRole('button', { name: messages['lobby.transferHost'] }));
 
     await waitFor(() =>
       expect(mockedTransferHost).toHaveBeenCalledWith({
@@ -268,6 +265,16 @@ describe('host controls (SALLE-07, SEC-01)', () => {
         targetUserId: BOB_ID,
       }),
     );
+    expect(mockUpdateRoomHost).toHaveBeenCalledWith({ publicId: BOB_ID, username: 'bob' });
+  });
+
+  test('a guest member only offers kick, never host transfer', () => {
+    renderOpenLobby(hostViewer);
+
+    fireEvent.click(screen.getAllByRole('button', { name: messages['lobby.manageMember'] })[1]);
+
+    expect(screen.queryByRole('button', { name: messages['lobby.transferHost'] })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: messages['lobby.kick'] })).toBeInTheDocument();
   });
 });
 
@@ -300,12 +307,10 @@ describe('leave, kick notice and closed screen', () => {
         viewer={memberViewer}
         initialInvitations={null}
         messages={messages}
-        locale="fr"
-        viewerBestWpm={null}
       />,
     );
 
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/?notice=kicked'));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/race?notice=kicked'));
   });
 
   test('roomClosed shows the closed screen', () => {
@@ -318,8 +323,6 @@ describe('leave, kick notice and closed screen', () => {
         viewer={memberViewer}
         initialInvitations={null}
         messages={messages}
-        locale="fr"
-        viewerBestWpm={null}
       />,
     );
 
@@ -343,8 +346,6 @@ describe('leave, kick notice and closed screen', () => {
         viewer={memberViewer}
         initialInvitations={null}
         messages={messages}
-        locale="fr"
-        viewerBestWpm={null}
       />,
     );
 
@@ -363,7 +364,7 @@ describe('race screen integration (COURSE-02/03, GAME-1)', () => {
     expect(screen.getByText(messages['lobby.configTitle'])).toBeInTheDocument();
   });
 
-  test('decompte: the countdown overlay and the revealed text render', () => {
+  test('decompte: the lobby redirects the member to the race arena', () => {
     renderOpenLobby(
       hostViewer,
       null,
@@ -376,13 +377,10 @@ describe('race screen integration (COURSE-02/03, GAME-1)', () => {
         ownProgress: { validatedChars: 0, correctKeystrokes: 0, totalKeystrokes: 0 },
       }),
     );
-    expect(screen.getByTestId('countdown-overlay')).toBeInTheDocument();
-    expect(screen.getByTestId('countdown-number')).toHaveTextContent('3');
-    expect(screen.getByTestId('race-text')).toHaveTextContent('bonjour les nains');
-    expect(screen.queryByTestId('typing-input')).not.toBeInTheDocument();
+    expect(mockReplace).toHaveBeenCalledWith(`/race/${ROOM_ID}`);
   });
 
-  test('en_course: a participant gets the typing zone wired to the hook', () => {
+  test('en_course: a participant is redirected to the race arena', () => {
     renderOpenLobby(
       memberViewer,
       null,
@@ -395,17 +393,10 @@ describe('race screen integration (COURSE-02/03, GAME-1)', () => {
         ownProgress: { validatedChars: 0, correctKeystrokes: 0, totalKeystrokes: 0 },
       }),
     );
-    expect(screen.getByTestId('typing-zone')).toBeInTheDocument();
-
-    fireEvent.keyDown(screen.getByTestId('typing-input'), { key: 'b' });
-    expect(mockSendProgress).toHaveBeenCalledWith({
-      validatedChars: 1,
-      correctKeystrokes: 1,
-      totalKeystrokes: 1,
-    });
+    expect(mockReplace).toHaveBeenCalledWith(`/race/${ROOM_ID}`);
   });
 
-  test('en_course: a spectator viewer sees the badge and no typing zone', () => {
+  test('en_course: a spectator is also redirected to the race arena', () => {
     const spectatorMembers = defaultMembers().map((member) =>
       member.kind === 'guest' ? { ...member, role: 'spectator' as const } : member,
     );
@@ -429,102 +420,29 @@ describe('race screen integration (COURSE-02/03, GAME-1)', () => {
         viewer={guestViewer}
         initialInvitations={null}
         messages={messages}
-        locale="fr"
-        viewerBestWpm={null}
       />,
     );
-    expect(screen.getByTestId('spectator-badge')).toBeInTheDocument();
-    expect(screen.queryByTestId('typing-zone')).not.toBeInTheDocument();
+    expect(mockReplace).toHaveBeenCalledWith(`/race/${ROOM_ID}`);
   });
 
-  test('resultats: the full results screen renders from the raceFinished payload (RES-01..04)', () => {
+  test('resultats: the lobby shows the waiting panel so the host can relaunch (COURSE-11)', () => {
     renderOpenLobby(
       hostViewer,
       null,
       'resultats',
       makeRace({
         phase: 'resultats',
-        finished: {
-          durationMs: 45_000,
-          results: [
-            {
-              participantId: ADA_ID,
-              displayName: 'ada',
-              kind: 'user',
-              wpm: 50,
-              rawWpm: 55,
-              accuracy: 94,
-              errors: 2,
-              status: 'finished',
-              finishedAtMs: 41_000,
-              rank: 1,
-              bonusesReceived: 0,
-              wpmSeries: [{ elapsedMs: 1_000, wpm: 40 }],
-            },
-            {
-              participantId: BOB_ID,
-              displayName: 'bob',
-              kind: 'user',
-              wpm: 42,
-              rawWpm: 46,
-              accuracy: 91,
-              errors: 3,
-              status: 'timeout',
-              finishedAtMs: 45_000,
-              rank: 2,
-              bonusesReceived: 0,
-              wpmSeries: [],
-            },
-          ],
-        },
+        finished: { durationMs: 45_000, results: [] },
       }),
     );
 
-    expect(screen.getByText(messages['results.title'])).toBeInTheDocument();
-    expect(screen.getByTestId('results-podium')).toBeInTheDocument();
-    expect(screen.getByTestId('results-table')).toBeInTheDocument();
-  });
-
-  test('resultats: the host relaunches through the socket startRace (COURSE-11)', () => {
-    renderOpenLobby(
-      hostViewer,
-      null,
-      'resultats',
-      makeRace({
-        phase: 'resultats',
-        finished: {
-          durationMs: 45_000,
-          results: [
-            {
-              participantId: ADA_ID,
-              displayName: 'ada',
-              kind: 'user',
-              wpm: 50,
-              rawWpm: 55,
-              accuracy: 94,
-              errors: 2,
-              status: 'finished',
-              finishedAtMs: 41_000,
-              rank: 1,
-              bonusesReceived: 0,
-              wpmSeries: [],
-            },
-          ],
-        },
-      }),
-    );
-
-    const relaunch = screen.getByRole('button', { name: messages['results.relaunch'] });
-    expect(relaunch).toBeEnabled();
-    fireEvent.click(relaunch);
+    // The lobby never renders the standings: the dedicated results view owns
+    // them. It offers the waiting panel instead, so the host can relaunch.
+    expect(screen.queryByTestId('results-podium')).not.toBeInTheDocument();
+    const start = screen.getByRole('button', { name: messages['race.startButton'] });
+    expect(start).toBeEnabled();
+    fireEvent.click(start);
     expect(mockStartRace).toHaveBeenCalledTimes(1);
-  });
-
-  test('resultats: a late joiner sees the honest unavailable state', () => {
-    renderOpenLobby(memberViewer, null, 'resultats', null);
-    expect(screen.getByTestId('results-unavailable')).toHaveTextContent(
-      messages['results.unavailableHint'],
-    );
   });
 });
 
@@ -552,8 +470,6 @@ describe('config editing and live sync (CONF-01..12)', () => {
         viewer={viewer}
         initialInvitations={null}
         messages={messages}
-        locale="fr"
-        viewerBestWpm={null}
       />,
     );
   }

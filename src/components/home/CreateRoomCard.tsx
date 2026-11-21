@@ -44,7 +44,8 @@ export default function CreateRoomCard({ messages }: { messages: Messages }) {
 
   return (
     <section
-      className="flex flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl"
+      id="create-room"
+      className="flex scroll-mt-24 flex-col gap-space-md rounded bg-surface-container-lowest p-space-lg shadow-xl"
       aria-labelledby="create-room-title"
     >
       <div className="flex flex-col gap-space-xs">

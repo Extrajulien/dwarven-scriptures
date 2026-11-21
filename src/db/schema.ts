@@ -460,6 +460,12 @@ export const races = pgTable(
     }),
     /** Denormalized room public id (uuid string) for replay routing. */
     roomPublicId: varchar({ length: 36 }).notNull(),
+    /**
+     * Room visibility snapshot taken at finish (SALLE-03). Denormalized like
+     * `roomPublicId` so the archive can filter public vs private races even
+     * after the room is closed or deleted (`roomId` → `SET NULL`).
+     */
+    visibility: varchar({ length: 16 }).$type<'public' | 'code' | 'private'>().notNull(),
     /** The full text typed in this race (history replay renders it). */
     textBody: text().notNull(),
     /** ISO 639-1 code of the text (`fr` or `en`). */
@@ -478,6 +484,7 @@ export const races = pgTable(
   (table) => [
     check('races_language_valid', sql`${table.textLanguage} in ('fr', 'en')`),
     check('races_status_valid', sql`${table.status} in ('finished', 'aborted')`),
+    check('races_visibility_valid', sql`${table.visibility} in ('public', 'code', 'private')`),
     check('races_duration_positive', sql`${table.durationMs} > 0`),
     check('races_room_public_id_not_empty', sql`${table.roomPublicId} <> ''`),
     // Replay routing and late-joiner lookups by the (denormalized) room id.

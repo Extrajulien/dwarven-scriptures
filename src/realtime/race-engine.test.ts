@@ -10,6 +10,7 @@
 
 import { defaultRoomConfig } from '../lib/room-config';
 import { generateBotSchedule } from '../lib/bots/schedule';
+import { columnGoldValue, createColumnStream, TRACK_COLUMNS_AHEAD } from '../lib/race/mine';
 import type { RoomConfig } from '../db/schema';
 import type { RaceText } from '../lib/race/state';
 import { raceTickMessageSchema, type RaceTickParticipant, type ServerMessage } from './protocol';
@@ -62,6 +63,7 @@ function roomData(
     publicId: ROOM_PUBLIC_ID,
     config,
     hostUserId: 7,
+    visibility: 'public',
     members: [
       member({
         memberId: 1,
@@ -996,6 +998,7 @@ describe('bots (BOT-01/04/05, ADR-011)', () => {
       publicId: ROOM_PUBLIC_ID,
       config,
       hostUserId: 7,
+      visibility: 'public',
       members: [
         member({
           memberId: 1,
@@ -1118,40 +1121,39 @@ describe('bots (BOT-01/04/05, ADR-011)', () => {
     expect(persisted?.displayName).toBe('noob 1');
   });
 
-  test('bots finish by themselves and rank mixed with humans (COURSE-10)', async () => {
+  test('the race ends when the last human finishes; still-typing bots are cut off (COURSE-09)', async () => {
     const { engine, deps } = makeEngine();
     deps.room = soloRoomData(BOTS_NOOB_EXPERT);
     await engine.startRace(ROOM_ID, 'user:7');
     deps.clock.advance(3_000);
     engine.tick();
 
-    // The human finishes first; the bots keep typing by themselves.
+    // The only human finishes first; the bots are still typing.
     const totalLength = DEFAULT_BODY.length;
     expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({
       ok: true,
     });
-    for (let step = 0; step < 200 && deps.messagesOf(ROOM_ID, 'raceFinished').length === 0; step += 1) {
-      deps.clock.advance(500);
-      engine.tick();
-    }
 
+    // COURSE-09: the race is over immediately — a bot never gates a human's
+    // finish. The still-typing bots are recorded as timeouts, not finishers.
+    expect(engine.getPhase(ROOM_ID)).toBe('resultats');
     const finished = deps.messagesOf(ROOM_ID, 'raceFinished');
     expect(finished).toHaveLength(1);
     expect(finished[0].results).toHaveLength(3);
     expect(finished[0].results.map((result) => result.kind)).toEqual(['user', 'bot', 'bot']);
-    expect(finished[0].results.map((result) => result.rank)).toEqual([1, 2, 3]);
+    const human = finished[0].results.find((result) => result.participantId === ADA_PUBLIC_ID);
+    expect(human?.status).toBe('finished');
+    const bots = finished[0].results.filter((result) => result.kind === 'bot');
+    expect(bots).toHaveLength(2);
+    for (const bot of bots) {
+      expect(bot.status).toBe('timeout');
+    }
 
-    const expert = finished[0].results[1];
-    expect(expert.displayName).toBe('expert 2');
-    expect(expert.status).toBe('finished');
-    expect(expert.wpmSeries.length).toBeGreaterThan(0);
-
+    // Only the human's finish is announced as a participant finish.
     const finishes = deps.messagesOf(ROOM_ID, 'participantFinished');
-    expect(finishes).toHaveLength(3);
-    expect(finishes.map((message) => message.rank)).toEqual([1, 2, 3]);
+    expect(finishes).toHaveLength(1);
     expect(finishes[0].participantId).toBe(ADA_PUBLIC_ID);
-    expect(finishes[1].participantId).toMatch(UUID_PATTERN);
-    expect(finishes[2].participantId).toMatch(UUID_PATTERN);
+    expect(finishes[0].rank).toBe(1);
   });
 
   test('two engines with the same seed drive identical bot timelines (BOT-05)', async () => {
@@ -1206,7 +1208,7 @@ describe('bots (BOT-01/04/05, ADR-011)', () => {
     expect(firstIds).toEqual([syntheticBotParticipantId(43), syntheticBotParticipantId(44)]);
     const firstTimeline = noobPositions(raceOneTicks);
 
-    // Finish race 1: the human completes, then the bots run to the end.
+    // Finish race 1: the human completes, which ends the race immediately.
     const totalLength = DEFAULT_BODY.length;
     expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(totalLength))).toEqual({
       ok: true,
@@ -1369,6 +1371,7 @@ describe('comeback bonuses (BONUS-01/04, CONF-09)', () => {
       publicId: ROOM_PUBLIC_ID,
       config,
       hostUserId: 7,
+      visibility: 'public',
       members: [
         member({
           memberId: 1,
@@ -1490,8 +1493,9 @@ describe('comeback bonuses (BONUS-01/04, CONF-09)', () => {
     }
 
     // Bob finishes against his extended 61-character text; ada finishes her
-    // shrunken 15-character text; the guest (untouched, 43 chars) and the
-    // noob bot complete on their own timelines.
+    // shrunken 15-character text; the guest finishes the untouched 43 chars.
+    // COURSE-09: once every human is done the race ends — the noob bot is
+    // cut off as a timeout (it never gates a human's finish).
     expect(engine.handleRaceProgress(ROOM_ID, 'user:8', progress(GROWN))).toEqual({ ok: true });
     expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(15))).toEqual({ ok: true });
     expect(
@@ -1511,7 +1515,7 @@ describe('comeback bonuses (BONUS-01/04, CONF-09)', () => {
     expect(bobResult?.status).toBe('finished');
     expect(adaResult?.status).toBe('finished');
     expect(guestResult?.status).toBe('finished');
-    expect(botResult?.status).toBe('finished');
+    expect(botResult?.status).toBe('timeout');
     expect(bobResult?.bonusesReceived).toBe(1);
     expect(adaResult?.bonusesReceived).toBe(2);
     expect(guestResult?.bonusesReceived).toBe(0);
@@ -1556,13 +1560,13 @@ describe('comeback bonuses (BONUS-01/04, CONF-09)', () => {
     expect(events[1].targetParticipantId).toBe(ADA_PUBLIC_ID);
     expect(events[2].targetParticipantId).toBe(ADA_PUBLIC_ID);
 
-    // The bot's extended schedule is typed to the end: it finished with the
-    // grown effective length and its bonus counter persisted.
+    // The bot's extended schedule carries the grown effective length and its
+    // bonus counter persists, even though the race ends before it finishes.
     const botEntry = latestTickEntry(deps, BOT_ID);
     expect(botEntry?.totalLength).toBe(GROWN);
 
     // The human was helped twice (43 → 30 → 15 chars): she finishes her
-    // shrunken text, then the bot completes its extended schedule.
+    // shrunken text, which ends the race and cuts the bot off as a timeout.
     const adaTick = latestTickEntry(deps, ADA_PUBLIC_ID);
     expect(adaTick?.totalLength).toBe(15);
     expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(15))).toEqual({ ok: true });
@@ -1571,7 +1575,7 @@ describe('comeback bonuses (BONUS-01/04, CONF-09)', () => {
     const finished = deps.messagesOf(ROOM_ID, 'raceFinished');
     expect(finished).toHaveLength(1);
     const botResult = finished[0].results.find((entry) => entry.participantId === BOT_ID);
-    expect(botResult?.status).toBe('finished');
+    expect(botResult?.status).toBe('timeout');
     expect(botResult?.bonusesReceived).toBe(1);
     const botPersisted = deps.persistedResults[0].results.find(
       (entry) => entry.participantId === BOT_ID,
@@ -1609,7 +1613,7 @@ describe('comeback bonuses (BONUS-01/04, CONF-09)', () => {
     expect(events.every((event) => event.bonusType === 'removeWords')).toBe(true);
     expect(events.every((event) => event.targetParticipantId === ADA_PUBLIC_ID)).toBe(true);
 
-    // Ada finishes her shrunken text; the bot then completes its schedule.
+    // Ada finishes her shrunken text, ending the race; the bot is cut off.
     const adaTick = latestTickEntry(deps, ADA_PUBLIC_ID);
     expect(adaTick?.totalLength).toBe(15);
     expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(15))).toEqual({ ok: true });
@@ -1619,7 +1623,7 @@ describe('comeback bonuses (BONUS-01/04, CONF-09)', () => {
     expect(finished).toHaveLength(1);
     const botResult = finished[0].results.find((entry) => entry.participantId === BOT_ID);
     expect(botResult?.bonusesReceived).toBe(0);
-    expect(botResult?.status).toBe('finished');
+    expect(botResult?.status).toBe('timeout');
   });
 
   test('fog on a human leader applies with no text change (durationMs payload)', async () => {
@@ -1783,5 +1787,55 @@ describe('comeback bonuses (BONUS-01/04, CONF-09)', () => {
     const bob = engine.raceSnapshotFor(ROOM_ID, 'user:8');
     expect(bob?.text).toBe(`${DEFAULT_BODY} tunnel forge nain`);
     expect(bob?.totalLength).toBe(GROWN);
+  });
+});
+
+describe('mining track (DES-04)', () => {
+  test('raceTick carries the mining window and zero gold before any column is mined', async () => {
+    const { engine, deps } = makeEngine();
+    await startAndCountdown(engine, deps);
+    deps.clock.advance(RACE_TICK_BROADCAST_INTERVAL_MS);
+    engine.tick();
+
+    const tick = deps.messagesOf(ROOM_ID, 'raceTick')[0];
+    expect(tick.participants).toHaveLength(3);
+    for (const participant of tick.participants) {
+      expect(participant.gold).toBe(0);
+      expect(participant.track).toHaveLength(TRACK_COLUMNS_AHEAD);
+      expect(participant.track[0]).toHaveLength(3);
+      for (const tile of participant.track.flat()) {
+        expect(tile.mineral === null || ['coal', 'copper', 'iron', 'silver', 'gold'].includes(tile.mineral)).toBe(true);
+      }
+    }
+  });
+
+  test('mining a column awards its vein gold and keeps the stream deterministic', async () => {
+    const { engine, deps } = makeEngine();
+    await startAndCountdown(engine, deps);
+
+    // Cross one column boundary (position 0 → 30) for the host (ada, first
+    // participant, world seed = raceSeed + 0).
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(30))).toEqual({ ok: true });
+    deps.clock.advance(RACE_TICK_BROADCAST_INTERVAL_MS);
+    engine.tick();
+
+    const tick = deps.messagesOf(ROOM_ID, 'raceTick').at(-1);
+    const ada = tick?.participants.find((participant) => participant.participantId === ADA_PUBLIC_ID);
+    const expected = columnGoldValue(createColumnStream(deps.pickedSeeds[0]).peek(1)[0]);
+    expect(ada?.gold).toBe(expected);
+  });
+
+  test('no gold is awarded while a column is still being mined', async () => {
+    const { engine, deps } = makeEngine();
+    await startAndCountdown(engine, deps);
+
+    // 29 chars: still inside the first column (30 chars per column).
+    expect(engine.handleRaceProgress(ROOM_ID, 'user:7', progress(29))).toEqual({ ok: true });
+    deps.clock.advance(RACE_TICK_BROADCAST_INTERVAL_MS);
+    engine.tick();
+
+    const tick = deps.messagesOf(ROOM_ID, 'raceTick').at(-1);
+    const ada = tick?.participants.find((participant) => participant.participantId === ADA_PUBLIC_ID);
+    expect(ada?.gold).toBe(0);
   });
 });

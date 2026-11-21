@@ -126,7 +126,7 @@ export default function RegisterForm({ messages }: { messages: Messages }) {
 
   useEffect(() => {
     if (state && state.ok) {
-      router.replace('/login');
+      router.replace('/');
     }
   }, [state, router]);
 

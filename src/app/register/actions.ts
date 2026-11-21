@@ -1,7 +1,9 @@
 'use server';
 
 import { createUserWithProfiles, UsernameTakenError } from '../../db/queries/users';
+import type { User } from '../../db/schema';
 import { hashPassword } from '../../lib/password';
+import { createSession } from '../../lib/session';
 import {
   registerFieldErrors,
   registerInputSchema,
@@ -37,8 +39,9 @@ export async function registerUser(
 
   const passwordHash = await hashPassword(password);
 
+  let created: User;
   try {
-    await createUserWithProfiles({
+    created = await createUserWithProfiles({
       username: parsed.data.username,
       passwordHash,
       pfpUrl: null, // stays NULL until the profile screen lets a user set it
@@ -49,6 +52,16 @@ export async function registerUser(
     }
 
     console.error('registerUser: failed to create the account', error);
+    return { ok: false, fieldErrors: {}, formError: 'unexpected' };
+  }
+
+  // Auto-connect: sign the fresh account straight in so the form lands on the
+  // home page already authenticated (the same browser-session cookie the
+  // password login creates without "remember me").
+  try {
+    await createSession({ publicId: created.publicId, username: created.username });
+  } catch (error) {
+    console.error('registerUser: failed to create the session', error);
     return { ok: false, fieldErrors: {}, formError: 'unexpected' };
   }
 

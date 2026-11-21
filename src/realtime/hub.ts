@@ -163,6 +163,17 @@ export interface HubConnection {
 export const DEFAULT_HEARTBEAT_INTERVAL_MS = 30_000;
 
 /**
+ * A dropped connection keeps its room membership for this long before the
+ * normal departure (mark-left + host handover) applies. It exists so a quick
+ * client-side navigation — the lobby ↔ race-arena transition, which tears
+ * down and re-opens the socket — re-attaches the same membership instead of
+ * being read as a departure (which could hand the host away or close the
+ * room). Long enough for a page load, short enough that a real leave or a
+ * closed tab still cleans up promptly.
+ */
+export const MEMBER_RECONNECT_GRACE_MS = 10_000;
+
+/**
  * Application-level close codes (4000–4999 are reserved for applications).
  * The client hook reads them to decide whether reconnecting makes sense.
  */
@@ -220,6 +231,8 @@ export class RoomHub {
   private readonly rooms = new Map<number, Map<string, ConnectedMember>>();
   /** roomId → publicId, remembered so broadcasts keep working after a leave. */
   private readonly roomPublicIds = new Map<number, string>();
+  /** `${roomId}:${key}` → grace timer for a disconnected-but-not-yet-left member. */
+  private readonly pendingLeaves = new Map<string, ReturnType<typeof setTimeout>>();
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private shuttingDown = false;
 
@@ -331,6 +344,8 @@ export class RoomHub {
     }
 
     const key = memberKey(actor);
+    // A (re)join cancels any pending grace departure for this membership.
+    this.cancelGraceLeave(`${result.roomId}:${key}`);
     let room = this.rooms.get(result.roomId);
     if (!room) {
       room = new Map();
@@ -386,8 +401,11 @@ export class RoomHub {
 
   /**
    * Called by the transport when a socket closes (cleanly or not). Evicts the
-   * connection and, when it still held a membership, applies the departure
-   * path: `memberLeft` plus `hostChanged`/`roomClosed` when the host left.
+   * connection from the registry. A mid-race member is handed to the engine's
+   * reconnect window (COURSE-08); everyone else keeps their membership for
+   * {@link MEMBER_RECONNECT_GRACE_MS} so a quick lobby ↔ race-arena rejoin
+   * re-attaches instead of reading the navigation as a departure (which could
+   * hand the host away or close the room).
    */
   async handleDisconnect(connection: HubConnection): Promise<void> {
     if (this.shuttingDown) {
@@ -397,7 +415,26 @@ export class RoomHub {
     if (roomId === null) {
       return;
     }
-    await this.depart(roomId, connection, { dbLeave: true });
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return;
+    }
+    const key = this.keyFor(room, connection);
+    if (key === null) {
+      return;
+    }
+    const entry = room.get(key);
+    if (!entry) {
+      return;
+    }
+    room.delete(key);
+
+    if (this.raceHooks?.keepMembershipOnDisconnect(roomId, key)) {
+      this.raceHooks.notifyDisconnected(roomId, key);
+      return;
+    }
+
+    this.scheduleGraceLeave(roomId, key, entry);
   }
 
   /**
@@ -429,6 +466,7 @@ export class RoomHub {
       return;
     }
     room.delete(key);
+    this.cancelGraceLeave(`${roomId}:${key}`);
     const publicId = this.roomPublicIds.get(roomId) ?? null;
 
     if (options.dbLeave && this.raceHooks?.keepMembershipOnDisconnect(roomId, key)) {
@@ -447,6 +485,19 @@ export class RoomHub {
       return;
     }
 
+    await this.applyLeave(roomId, entry);
+  }
+
+  /**
+   * Applies the store departure for a member whose connection is already gone
+   * (explicit leave or an expired reconnect grace): mark-left, then the
+   * `memberLeft` / `hostChanged` / `roomClosed` broadcasts driven by the
+   * store outcome.
+   */
+  private async applyLeave(roomId: number, entry: ConnectedMember): Promise<void> {
+    const room = this.rooms.get(roomId);
+    const publicId = this.roomPublicIds.get(roomId) ?? null;
+
     let outcome: LeaveOutcome = { left: false, hostChangedTo: null, roomClosed: false };
     try {
       outcome = await this.store.leaveRoom({ roomId, identity: entry.identity });
@@ -459,25 +510,59 @@ export class RoomHub {
       return;
     }
 
-    if (outcome.left) {
-      this.broadcast(room, {
-        type: 'memberLeft',
-        roomPublicId: publicId,
-        member: { ...entry.wire, connected: false },
-      });
-    }
-    if (outcome.hostChangedTo) {
-      this.broadcast(room, {
-        type: 'hostChanged',
-        roomPublicId: publicId,
-        host: outcome.hostChangedTo,
-      });
+    if (room) {
+      if (outcome.left) {
+        this.broadcast(room, {
+          type: 'memberLeft',
+          roomPublicId: publicId,
+          member: { ...entry.wire, connected: false },
+        });
+      }
+      if (outcome.hostChangedTo) {
+        this.broadcast(room, {
+          type: 'hostChanged',
+          roomPublicId: publicId,
+          host: outcome.hostChangedTo,
+        });
+      }
     }
     if (outcome.roomClosed) {
-      this.broadcast(room, { type: 'roomClosed', roomPublicId: publicId });
+      if (room) {
+        this.broadcast(room, { type: 'roomClosed', roomPublicId: publicId });
+      }
       this.raceHooks?.notifyRoomClosed(roomId);
-      this.clearRoom(roomId, room);
+      if (room) {
+        this.clearRoom(roomId, room);
+      }
     }
+  }
+
+  /** Schedules a deferred departure for a disconnected (non-racing) member. */
+  private scheduleGraceLeave(roomId: number, key: string, entry: ConnectedMember): void {
+    this.cancelGraceLeave(`${roomId}:${key}`);
+    const timer = setTimeout(() => {
+      this.pendingLeaves.delete(`${roomId}:${key}`);
+      void this.applyLeave(roomId, entry);
+    }, MEMBER_RECONNECT_GRACE_MS);
+    timer.unref?.();
+    this.pendingLeaves.set(`${roomId}:${key}`, timer);
+  }
+
+  /** Cancels a pending grace departure (the member re-attached or left). */
+  private cancelGraceLeave(id: string): void {
+    const timer = this.pendingLeaves.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      this.pendingLeaves.delete(id);
+    }
+  }
+
+  /** Cancels every pending grace departure (graceful shutdown). */
+  private clearPendingLeaves(): void {
+    for (const timer of this.pendingLeaves.values()) {
+      clearTimeout(timer);
+    }
+    this.pendingLeaves.clear();
   }
 
   // ------------------------------------------- host action notifications
@@ -660,6 +745,7 @@ export class RoomHub {
       }
     }
     this.rooms.clear();
+    this.clearPendingLeaves();
     try {
       await this.store.markAllMembersLeft();
     } catch (error) {

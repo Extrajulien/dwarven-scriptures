@@ -101,6 +101,13 @@ export type RecordCompletedRaceParams = {
  */
 export type RaceStatsExecutor = Pick<typeof db, 'insert'>;
 
+/**
+ * Anything able to run the single resource `update` a coin credit builds: the
+ * process-wide client, or the transaction handle of a caller that persists a
+ * race and its coin credits atomically (`persistRaceResult`, RES-05).
+ */
+export type ResourceUpdateExecutor = Pick<typeof db, 'update'>;
+
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -457,6 +464,36 @@ export async function adjustUserCoins(
   }
 
   throw new InsufficientCoinsError(internalUserId);
+}
+
+/**
+ * Credits coins to a user's balance atomically (DES-04: mined-vein gold).
+ *
+ * `executor` lets a caller run the credit inside its own transaction (a race
+ * and its coin credits commit together with `recordCompletedRace`, RES-05);
+ * it defaults to the process-wide client. Unlike {@link adjustUserCoins} this
+ * is a pure credit, so there is no non-negative guard and no insufficient-funds
+ * error path.
+ */
+export async function creditUserCoins(
+  internalUserId: number,
+  amount: number,
+  executor: ResourceUpdateExecutor = db,
+): Promise<void> {
+  if (!Number.isSafeInteger(internalUserId) || internalUserId <= 0) {
+    throw new InvalidUserInputError('internalUserId must be a positive integer');
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new InvalidUserInputError('amount must be a positive number');
+  }
+
+  await executor
+    .update(userResources)
+    .set({
+      coins: sql`${userResources.coins} + ${BigInt(Math.trunc(amount))}`,
+      updatedAt: new Date(),
+    })
+    .where(eq(userResources.userId, internalUserId));
 }
 
 /**

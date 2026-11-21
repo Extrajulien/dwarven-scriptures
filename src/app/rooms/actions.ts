@@ -708,8 +708,8 @@ export async function setGuestNickname(
 /**
  * JOIN-03 "Faire une course": joins the joinable public room closest to its
  * capacity (oldest room wins ties) and redirects to it. With no joinable
- * room, signed-in users are sent to the create entry point on the home page
- * and guests to the guest empty state. A guest who has not picked a nickname
+ * room, signed-in users are sent to the create entry point on the race home
+ * page (`/race`) and guests to the guest empty state. A guest who has not picked a nickname
  * yet is redirected to the chosen room first — the lobby collects the name
  * (AUTH-02) and then joins by code (public rooms admit direct access).
  *
@@ -724,7 +724,7 @@ export async function quickPlay(): Promise<never> {
     const candidates = rankQuickPlayRooms(rooms);
 
     if (candidates.length === 0) {
-      redirect(actor.kind === 'user' ? '/?notice=noRooms' : '/?notice=noRoomsGuest');
+      redirect(actor.kind === 'user' ? '/race?notice=noRooms' : '/race?notice=noRoomsGuest');
     }
 
     if (actor.kind === 'none') {
@@ -765,14 +765,14 @@ export async function quickPlay(): Promise<never> {
     }
 
     // Every candidate failed admission between listing and joining.
-    redirect(actor.kind === 'user' ? '/?notice=noRooms' : '/?notice=noRoomsGuest');
+    redirect(actor.kind === 'user' ? '/race?notice=noRooms' : '/race?notice=noRoomsGuest');
   } catch (error) {
     // `redirect` throws by design; anything else is a real failure.
     if (isRedirectError(error)) {
       throw error;
     }
     console.error('quickPlay: unexpected failure', error);
-    redirect('/?notice=noRooms');
+    redirect('/race?notice=noRooms');
   }
 }
 

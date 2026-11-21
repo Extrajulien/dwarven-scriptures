@@ -2,23 +2,27 @@
 
 import { useMemo } from 'react';
 import type { Messages } from '../../i18n/messages';
-import { localizeBotDisplayName } from '../../lib/race/bot-display';
 import { deriveRanking } from '../../lib/race/track';
 import type { RaceTrackParticipant } from '../../realtime/client-types';
+import TileRaceProgress from './TileRaceProgress';
 
 /**
- * Live top-3 panel (GAME-2 — the top 3 in absolute terms): a compact stone
- * panel showing ranks 1–3 with names and net WPM, derived **client-side**
- * from the latest `raceTick` participants via {@link deriveRanking} (the
- * server stays authoritative for the final standings — COURSE-10). The panel
- * updates on every tick and remains visible in spectator mode alongside the
- * track (COURSE-05).
+ * Live top-3 panel (GAME-2): ranks 1–3 derived **client-side** from the latest
+ * `raceTick` via {@link deriveRanking}. Each row is a {@link TileRaceProgress}:
+ * `condensed` (1 tile high) while the viewer is racing, `normal` (3 tiles high)
+ * while spectating — so the leaders are the clearest thing on screen in
+ * spectator mode (DES-04).
  */
 
 export type Top3PanelProps = {
   participants: RaceTrackParticipant[];
   finishRanks: Record<string, number>;
   localParticipantId: string;
+  /** `condensed` for racers, `normal` for spectators (default: `condensed`). */
+  variant?: 'normal' | 'condensed';
+  pfpUrls?: Record<string, string | null>;
+  /** BONUS-03: the participant a bonus just hit — its row glows ~2 s. */
+  flashParticipantId?: string | null;
   messages: Messages;
 };
 
@@ -26,6 +30,9 @@ export default function Top3Panel({
   participants,
   finishRanks,
   localParticipantId,
+  variant = 'condensed',
+  pfpUrls = {},
+  flashParticipantId = null,
   messages,
 }: Top3PanelProps) {
   const finishOrder = useMemo(
@@ -49,38 +56,25 @@ export default function Top3Panel({
         {messages['top3.title']}
       </h2>
       <ol className="flex flex-col gap-space-xs">
-        {top3.map((entry) => {
-          const isLocal = entry.participantId === localParticipantId;
-          return (
-            <li
-              key={entry.participantId}
-              data-testid="top3-row"
-              data-rank={entry.rank}
-              data-local={isLocal ? 'true' : 'false'}
-              className="flex min-w-0 items-center gap-space-sm rounded border border-dwarf-border/40 bg-dwarf-slate px-space-sm py-space-xs"
-            >
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-dwarf-border bg-dwarf-basalt font-mono text-label-sm text-dwarf-gold">
-                {entry.rank}
-              </span>
-              <span className="min-w-0 flex-1 truncate font-body-sm text-body-sm text-dwarf-parchment">
-                {entry.kind === 'bot'
-                  ? localizeBotDisplayName(entry.displayName, messages)
-                  : entry.displayName}
-                {isLocal && (
-                  <span className="ml-space-xs font-label-sm text-label-sm text-dwarf-gold">
-                    ({messages['track.youTag']})
-                  </span>
-                )}
-              </span>
-              <span
-                data-testid="top3-wpm"
-                className="shrink-0 font-label-sm text-label-sm text-dwarf-gold"
-              >
-                {Math.round(entry.wpm)} {messages['race.liveWpmLabel']}
-              </span>
-            </li>
-          );
-        })}
+        {top3.map((entry) => (
+          <li
+            key={entry.participantId}
+            data-testid="top3-row"
+            data-rank={entry.rank}
+            data-local={entry.participantId === localParticipantId ? 'true' : 'false'}
+            className="min-w-0"
+          >
+            <TileRaceProgress
+              participant={entry}
+              variant={variant}
+              isLocal={entry.participantId === localParticipantId}
+              finishRank={finishRanks[entry.participantId] ?? null}
+              pfpUrl={pfpUrls[entry.participantId]}
+              bonusFlash={entry.participantId === flashParticipantId}
+              messages={messages}
+            />
+          </li>
+        ))}
       </ol>
     </section>
   );

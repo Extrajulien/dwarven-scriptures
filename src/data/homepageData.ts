@@ -191,10 +191,8 @@ export const GUILD: GuildInfo = {
 };
 
 export const NAV_LINKS: NavLink[] = [
-  { labelKey: 'nav.mineRace', href: '#race-cavern' },
-  { labelKey: 'nav.guildRanks', href: '#quarry-leaderboard' },
-  { labelKey: 'nav.runeworks', href: '#dwarven-armory' },
-  { labelKey: 'nav.ledgers', href: '#expedition-archives' },
+  { labelKey: 'nav.mineRace', href: '/race' },
+  { labelKey: 'nav.ledgers', href: '/previous-races' },
 ];
 
 export const BREADCRUMB: BreadcrumbInfo = {

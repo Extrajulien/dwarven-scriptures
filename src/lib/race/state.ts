@@ -250,10 +250,12 @@ export function requestStart(
  * one, so a tick never skips a phase:
  *
  * - `decompte` → `en_course` once `now >= startAt` (COURSE-03).
- * - `en_course` → `resultats` when every racing participant has a result
+ * - `en_course` → `resultats` when every racing **human** has a result
  *   (`finished` or `quit`), or when `config.timeLimitSeconds` (if set) has
  *   elapsed since `startAt` — in that case the still-active participants are
- *   recorded as `timeout` at `now` (COURSE-09). `finishedAt` is stamped.
+ *   recorded as `timeout` at `now` (COURSE-09). Bots never block the finish:
+ *   once the humans are done, still-typing bots are cut off as `timeout`.
+ *   `finishedAt` is stamped.
  *
  * Returns the same object when no boundary was crossed.
  */
@@ -269,9 +271,13 @@ export function advance(race: RaceState, now: Date): RaceState {
 
   if (race.phase === 'en_course') {
     const ended = new Set(race.results.map((result) => result.memberId));
-    const active = race.participants.filter(
+    const racers = race.participants.filter(
       (participant) => !participant.isSpectator && !ended.has(participant.memberId),
     );
+    // COURSE-09: the race ends when every HUMAN has finished or given up.
+    // Bots still typing never block the finish — they are cut off as
+    // `timeout` below (a bot cannot gate a human's race).
+    const activeHumans = racers.filter((participant) => isHumanKind(participant.kind));
 
     const timeLimitMs =
       race.config.timeLimitSeconds === null ? null : race.config.timeLimitSeconds * 1_000;
@@ -280,11 +286,11 @@ export function advance(race: RaceState, now: Date): RaceState {
       race.startAt !== null &&
       now.getTime() - race.startAt.getTime() >= timeLimitMs;
 
-    if (active.length > 0 && !timeExpired) {
+    if (activeHumans.length > 0 && !timeExpired) {
       return race;
     }
 
-    const timeouts: ParticipantResult[] = active.map((participant) => ({
+    const timeouts: ParticipantResult[] = racers.map((participant) => ({
       memberId: participant.memberId,
       finalState: 'timeout',
       endedAt: now,

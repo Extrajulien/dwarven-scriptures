@@ -168,6 +168,9 @@ function createRaceEngine(getHub: () => RoomHub): RaceEngine {
         publicId: state.publicId,
         config: state.config,
         hostUserId: state.hostUserId,
+        // `rooms.visibility` is a DB `varchar` guarded by a CHECK
+        // (public | code | private); narrow it to the engine snapshot union.
+        visibility: state.visibility as 'public' | 'code' | 'private',
         members,
       };
     },

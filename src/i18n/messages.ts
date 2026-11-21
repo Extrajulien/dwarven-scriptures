@@ -80,6 +80,25 @@ export interface Messages {
   'raceSection.createHint': string;
   'raceSection.guestEmpty': string;
   'raceSection.guestEmptyHint': string;
+  // ------------------------------------------------------------ landing page
+  'home.hero.title': string;
+  'home.hero.subtitle': string;
+  'home.hero.roomsLive': string;
+  'home.rooms.title': string;
+  'home.rooms.empty': string;
+  'home.how.title': string;
+  'home.how.step1.title': string;
+  'home.how.step1.body': string;
+  'home.how.step2.title': string;
+  'home.how.step2.body': string;
+  'home.how.step3.title': string;
+  'home.how.step3.body': string;
+  // ------------------------------------------------------------ race home page
+  'raceHome.racesTitle': string;
+  'raceHome.colCode': string;
+  'raceHome.empty': string;
+  'raceHome.createOne': string;
+  'raceHome.active': string;
   // ------------------------------------------------------------ join by code
   'joinCode.title': string;
   'joinCode.label': string;
@@ -151,6 +170,7 @@ export interface Messages {
   'lobby.config.noTimeLimit': string;
   'lobby.config.errorMode': string;
   'lobby.config.options': string;
+  'lobby.config.sectionText': string;
   'lobby.config.bonuses': string;
   'lobby.config.bots': string;
   'lobby.lang.fr': string;
@@ -204,8 +224,7 @@ export interface Messages {
   'lobby.closeRoom': string;
   'lobby.confirmClose': string;
   'lobby.transferHost': string;
-  'lobby.transferHostPicker': string;
-  'lobby.transferHostButton': string;
+  'lobby.manageMember': string;
   'lobby.kick': string;
   'lobby.confirmKick': string;
   'lobby.confirm': string;
@@ -305,6 +324,9 @@ export interface Messages {
   'nav.runeworks': string;
   'nav.ledgers': string;
   'nav.login': string;
+  'nav.settings': string;
+  'nav.menu': string;
+  'nav.home': string;
   'footer.left': string;
   'footer.status': string;
   'footer.optimal': string;
@@ -506,6 +528,8 @@ export interface Messages {
   'pageTitle.rooms': string;
   'pageTitle.room': string;
   'pageTitle.invitation': string;
+  'pageTitle.race': string;
+  'pageTitle.raceArena': string;
   // ------------------------------------------------------------ account screen
   'account.breadcrumb.left': string;
   'account.breadcrumb.node': string;
@@ -705,15 +729,15 @@ export interface Messages {
   'results.unavailableHint': string;
   // ------------------------------------------------------------ race replay page (HIST-02)
   'pageTitle.raceReplay': string;
+  'pageTitle.raceResults': string;
   'raceReplay.date': string;
   'raceReplay.duration': string;
   'raceReplay.language': string;
   'raceReplay.textLabel': string;
   'raceReplay.back': string;
-  'results.relaunch': string;
   'results.closeRoom': string;
-  'results.stay': string;
   'results.leave': string;
+  'results.returnToRoom': string;
   // ------------------------------------------------------------ mobile race gate (DES-06)
   'mobile.raceTitle': string;
   'mobile.raceBody': string;
@@ -723,6 +747,7 @@ export interface Messages {
   'track.youTag': string;
   'track.rankLabel': string;
   'track.finishLabel': string;
+  'track.goldLabel': string;
   'top3.title': string;
   'overtake.overtookPrefix': string;
   'overtake.overtakenBySuffix': string;
@@ -736,6 +761,58 @@ export interface Messages {
   'bonus.banner.addWords': string;
   'bonus.banner.removeWords': string;
   'bonus.banner.fog': string;
+  // ------------------------------------------------------------ previous races archive
+  'pageTitle.previousRaces': string;
+  'previousRaces.title': string;
+  'previousRaces.subtitle': string;
+  'previousRaces.breadcrumb': string;
+  'previousRaces.metrics.races': string;
+  'previousRaces.metrics.podiumRate': string;
+  'previousRaces.metrics.avgSpeed': string;
+  'previousRaces.metrics.wpmUnit': string;
+  'previousRaces.filter.label': string;
+  'previousRaces.filter.all': string;
+  'previousRaces.filter.mine': string;
+  'previousRaces.filter.private': string;
+  'previousRaces.filter.public': string;
+  'previousRaces.search.label': string;
+  'previousRaces.search.placeholder': string;
+  'previousRaces.col.chamber': string;
+  'previousRaces.col.type': string;
+  'previousRaces.col.champion': string;
+  'previousRaces.col.yourResult': string;
+  'previousRaces.col.scribes': string;
+  'previousRaces.col.scripture': string;
+  'previousRaces.col.finished': string;
+  'previousRaces.badge.private': string;
+  'previousRaces.badge.public': string;
+  'previousRaces.you': string;
+  'previousRaces.didNotJoin': string;
+  'previousRaces.wordsUnit': string;
+  'previousRaces.showingPrefix': string;
+  'previousRaces.showingInfix': string;
+  'previousRaces.showingSuffix': string;
+  'previousRaces.footerPrev': string;
+  'previousRaces.footerNext': string;
+  'previousRaces.empty': string;
+  'previousRaces.hover.podiumSuffix': string;
+  'previousRaces.hover.lastPlace': string;
+  'previousRaces.hover.hint': string;
+  'previousRaces.modal.completedOn': string;
+  'previousRaces.modal.yourPosition': string;
+  'previousRaces.modal.participantsLabel': string;
+  'previousRaces.modal.sortedBy': string;
+  'previousRaces.modal.colRank': string;
+  'previousRaces.modal.colScribe': string;
+  'previousRaces.modal.colSpeed': string;
+  'previousRaces.modal.colAccuracy': string;
+  'previousRaces.modal.colFaults': string;
+  'previousRaces.modal.colDuration': string;
+  'previousRaces.modal.textExtract': string;
+  'previousRaces.modal.close': string;
+  'previousRaces.modal.viewReplay': string;
+  'previousRaces.modal.rematch': string;
+  'previousRaces.modal.chamberId': string;
   // ------------------------------------------------------------ chrome accessibility
   'chrome.guildEmblemAlt': string;
   'chrome.siteLogoAlt': string;
@@ -745,16 +822,39 @@ export const MESSAGES: Record<Locale, Messages> = {
   fr: {
     // ------------------------------------------------------------ home race section
     'raceSection.title': 'CAVERNE DE COURSE',
-    'raceSection.subtitle': 'REJOINDRE OU FONDER UNE EXPÉDITION DE FRAPPE',
-    'raceSection.quickPlayLabel': 'Démarrer une course',
+    'raceSection.subtitle': 'REJOINDRE OU HÉBERGER UNE EXPÉDITION DE FRAPPE',
+    'raceSection.quickPlayLabel': 'Rejoindre une course aléatoire',
     'raceSection.quickPlayHint': 'Rejoint la salle publique la plus remplie',
     'raceSection.explorerLink': 'Explorateur des salles',
     'raceSection.explorerHint': 'Parcourir les salles publiques en attente',
-    'raceSection.createTitle': 'Fonder une salle',
+    'raceSection.createTitle': 'Héberger une salle',
     'raceSection.createHint': 'Devenez l’hôte d’une nouvelle expédition',
     'raceSection.guestEmpty': 'Aucune salle publique n’attend de mineurs pour le moment.',
     'raceSection.guestEmptyHint':
-      'Seuls les membres de la guilde peuvent fonder une salle — connectez-vous pour en créer une.',
+      'Seuls les membres de la guilde peuvent héberger une salle — connectez-vous pour en créer une.',
+    // ------------------------------------------------------------ landing page
+    'home.hero.title': 'Frappez les touches !',
+    'home.hero.subtitle':
+      'Des courses de frappe compétitives en temps réel. Rejoignez une salle, tapez le même texte, dépassez le peloton.',
+    'home.hero.roomsLive': 'salles ouvertes',
+    'home.rooms.title': 'SALLES À REJOINDRE',
+    'home.rooms.empty':
+      'Aucune salle publique pour le moment — soyez le premier à en héberger une.',
+    'home.how.title': 'Comment ça marche',
+    'home.how.step1.title': 'Rejoignez une salle',
+    'home.how.step1.body':
+      'Choisissez une course aléatoire ou une salle publique, ou hébergez la vôtre avec un code.',
+    'home.how.step2.title': 'Lisez le décompte',
+    'home.how.step2.body': 'Le texte se révèle, puis 3, 2, 1 — préparez vos doigts.',
+    'home.how.step3.title': 'Frappez et dépassez',
+    'home.how.step3.body':
+      'Tapez le texte, suivez la piste de progression en direct et franchissez la ligne avant les autres.',
+    // ------------------------------------------------------------ race home page
+    'raceHome.racesTitle': 'COURSES PUBLIQUES',
+    'raceHome.colCode': 'Code',
+    'raceHome.empty': 'Aucune course publique pour le moment.',
+    'raceHome.createOne': 'En héberger une',
+    'raceHome.active': 'expéditions actives',
     // ------------------------------------------------------------ join by code
     'joinCode.title': 'REJOINDRE PAR CODE',
     'joinCode.label': 'Code de la salle',
@@ -774,7 +874,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'joinCode.viewCurrent': 'Voir ma salle actuelle',
     'joinCode.leaveAndJoin': 'Quitter ma salle et rejoindre',
     // ------------------------------------------------------------ create room card
-    'createRoom.title': 'FONDER UNE SALLE',
+    'createRoom.title': 'HÉBERGER UNE SALLE',
     'createRoom.visibilityLabel': 'Visibilité',
     'createRoom.visibility.public': 'Publique',
     'createRoom.visibility.code': 'Sur code',
@@ -783,9 +883,9 @@ export const MESSAGES: Record<Locale, Messages> = {
     'createRoom.roleLabel': 'Votre rôle',
     'createRoom.role.participant': 'Participant',
     'createRoom.role.spectator': 'Spectateur',
-    'createRoom.submit': 'Fonder la salle',
-    'createRoom.submitPending': 'Fondation en cours…',
-    'createRoom.error.authRequired': 'Connectez-vous pour fonder une salle.',
+    'createRoom.submit': 'Héberger la salle',
+    'createRoom.submitPending': 'Hébergement en cours…',
+    'createRoom.error.authRequired': 'Connectez-vous pour héberger une salle.',
     'createRoom.error.alreadyInRoom': 'Vous êtes déjà dans une salle — quittez-la d’abord.',
     'createRoom.error.invalidInput': 'Configuration invalide — vérifiez la capacité.',
     'createRoom.error.unexpected': 'Une erreur est survenue. Réessayez.',
@@ -827,6 +927,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'lobby.config.noTimeLimit': 'Aucun',
     'lobby.config.errorMode': 'Mode d’erreur',
     'lobby.config.options': 'Options',
+    'lobby.config.sectionText': 'Texte',
     'lobby.config.bonuses': 'Bonus de remontée',
     'lobby.config.bots': 'Bots',
     'lobby.lang.fr': 'Français',
@@ -880,8 +981,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'lobby.closeRoom': 'Fermer la salle',
     'lobby.confirmClose': 'Fermer la salle ? Tous les membres seront expulsés.',
     'lobby.transferHost': 'Transférer l’hôte',
-    'lobby.transferHostPicker': 'Nouvel hôte',
-    'lobby.transferHostButton': 'Transférer',
+    'lobby.manageMember': 'Gérer',
     'lobby.kick': 'Expulser',
     'lobby.confirmKick': 'Expulser ce membre ? Ses liens d’invitation seront révoqués.',
     'lobby.confirm': 'Confirmer',
@@ -932,7 +1032,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'explorer.status': 'État',
     'explorer.join': 'Rejoindre',
     'explorer.joinPending': 'Entrée…',
-    'explorer.empty': 'Aucune salle publique en attente. Fondez-en une depuis l’accueil !',
+    'explorer.empty': 'Aucune salle publique en attente. Hébergez-en une depuis l’accueil !',
     'explorer.emptyGuest': 'Aucune salle publique en attente pour le moment.',
     'explorer.autoRefresh': 'Actualisation automatique',
     'explorer.updated': 'Mis à jour',
@@ -954,7 +1054,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'inviteError.home': 'Retour à l’accueil',
     // ------------------------------------------------------------ home notices
     'notice.kicked': 'Vous avez été expulsé de la salle.',
-    'notice.noRooms': 'Aucune salle publique en attente — fondez la vôtre ci-dessous !',
+    'notice.noRooms': 'Aucune salle publique en attente — hébergez la vôtre ci-dessous !',
     'notice.noRoomsGuest': 'Aucune salle publique en attente pour le moment.',
     // ------------------------------------------------------------ locale selector (I18N-02)
     'locale.fr': 'FR',
@@ -982,6 +1082,9 @@ export const MESSAGES: Record<Locale, Messages> = {
     'nav.runeworks': 'Atelier de runes',
     'nav.ledgers': 'Registres',
     'nav.login': '[Connexion]',
+    'nav.settings': 'Réglages',
+    'nav.menu': 'Menu',
+    'nav.home': 'Accueil',
     'footer.left':
       '▪ PROFONDEUR : NIVEAU Z -480 (PITON DE MAGMA) ▪ SALLE : N° EXP-84 (LANTERNE PUBLIQUE) ▪ PROTOCOLE : ASCII_SOCKET_v2',
     'footer.status': 'STATUT : [EXTRACTION SYNCHRONISÉE]',
@@ -1199,6 +1302,8 @@ export const MESSAGES: Record<Locale, Messages> = {
     'pageTitle.rooms': 'Explorateur des salles',
     'pageTitle.room': 'Salle',
     'pageTitle.invitation': 'Invitation',
+    'pageTitle.race': 'Caverne de course',
+    'pageTitle.raceArena': 'Course',
     // ------------------------------------------------------------ account screen
     'account.breadcrumb.left': 'ᛞ [TERMINAL_DU_DOSSIER]',
     'account.breadcrumb.node': '[NŒUD : BASALT_CRAG_01]',
@@ -1262,7 +1367,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'account.heatmap.key.shift': '[MAJ]',
     'account.heatmap.key.ctrl': '[CTRL]',
     'account.heatmap.key.alt': '[ALT]',
-    'account.heatmap.key.space': '[ESPACE] — 99,8 % DE PRÉCISION',
+    'account.heatmap.key.space': '[ESPACE]',
     'account.heatmap.weakestLabel': '⚠ [TOUCHES LES PLUS FAIBLES] :',
     'account.heatmap.drill': '[EXERCICE RECOMMANDÉ : « PONCTUATION ET RUNES DE L’AURICULAIRE DROIT »]',
     'account.modal.header': 'ᛞ [DIALOGUE // PARAMÈTRES_DU_PROFIL]',
@@ -1401,12 +1506,12 @@ export const MESSAGES: Record<Locale, Messages> = {
     'results.unavailable': 'RÉSULTATS NON DISPONIBLES',
     'results.unavailableHint':
       'Vous avez rejoint la salle après la fin de la course : le classement n’a pas été rediffusé. Il sera réaffichable une fois la persistance des courses en place.',
-    'results.relaunch': 'Relancer la course',
     'results.closeRoom': 'Fermer la salle',
-    'results.stay': 'Rester',
     'results.leave': 'Quitter la salle',
+    'results.returnToRoom': 'Retour à la salle',
     // ------------------------------------------------------------ page de relecture de course (HIST-02)
     'pageTitle.raceReplay': 'Résultats de course',
+    'pageTitle.raceResults': 'Résultats de course',
     'raceReplay.date': 'Course du',
     'raceReplay.duration': 'Durée',
     'raceReplay.language': 'Langue du texte',
@@ -1422,6 +1527,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'track.youTag': 'VOUS',
     'track.rankLabel': 'Rang',
     'track.finishLabel': 'Arrivée',
+    'track.goldLabel': 'or',
     'top3.title': 'TÊTE DE COURSE',
     'overtake.overtookPrefix': 'Vous doublez',
     'overtake.overtakenBySuffix': 'vous double',
@@ -1435,6 +1541,58 @@ export const MESSAGES: Record<Locale, Messages> = {
     'bonus.banner.addWords': '— le texte s’allonge pour vous',
     'bonus.banner.removeWords': '— l’expédition vous aide',
     'bonus.banner.fog': 'Brouillard sur vos prochains mots —',
+    // ------------------------------------------------------------ previous races archive
+    'pageTitle.previousRaces': 'Registres des courses',
+    'previousRaces.title': 'COURSES PRÉCÉDENTES',
+    'previousRaces.subtitle': 'Chronique des courses de frappe terminées.',
+    'previousRaces.breadcrumb': '// CHRONIQUES D’EXPÉDITION • ARCHIVES',
+    'previousRaces.metrics.races': 'Vos courses',
+    'previousRaces.metrics.podiumRate': 'Taux de podium',
+    'previousRaces.metrics.avgSpeed': 'Vitesse moyenne',
+    'previousRaces.metrics.wpmUnit': 'MPM',
+    'previousRaces.filter.label': '[FILTRE] :',
+    'previousRaces.filter.all': 'TOUTES LES COURSES',
+    'previousRaces.filter.mine': 'MES COURSES',
+    'previousRaces.filter.private': 'COURSES PRIVÉES',
+    'previousRaces.filter.public': 'EXPÉDITIONS PUBLIQUES',
+    'previousRaces.search.label': 'Rechercher dans l’archive',
+    'previousRaces.search.placeholder': 'RECHERCHER UN VAINQUEUR OU UN IDENTIFIANT…',
+    'previousRaces.col.chamber': 'CHAMBRE',
+    'previousRaces.col.type': 'TYPE',
+    'previousRaces.col.champion': 'CHAMPION',
+    'previousRaces.col.yourResult': 'VOTRE RÉSULTAT',
+    'previousRaces.col.scribes': 'SCRIBES',
+    'previousRaces.col.scripture': 'TEXTE',
+    'previousRaces.col.finished': 'TERMINÉE',
+    'previousRaces.badge.private': 'PRIVÉE',
+    'previousRaces.badge.public': 'PUBLIQUE',
+    'previousRaces.you': '(VOUS)',
+    'previousRaces.didNotJoin': 'N’A PAS PARTICIPÉ',
+    'previousRaces.wordsUnit': 'MOTS',
+    'previousRaces.showingPrefix': 'AFFICHAGE : ',
+    'previousRaces.showingInfix': 'SUR',
+    'previousRaces.showingSuffix': 'EXPÉDITIONS PRÉCÉDENTES',
+    'previousRaces.footerPrev': 'Précédent',
+    'previousRaces.footerNext': 'Suivant',
+    'previousRaces.empty': 'Aucune course terminée pour le moment.',
+    'previousRaces.hover.podiumSuffix': 'PODIUM',
+    'previousRaces.hover.lastPlace': 'DERNIÈRE PLACE',
+    'previousRaces.hover.hint': 'CLIQUEZ SUR UNE LIGNE POUR OUVRIR LE DOSSIER COMPLET',
+    'previousRaces.modal.completedOn': 'Terminée le',
+    'previousRaces.modal.yourPosition': 'VOTRE POSITION',
+    'previousRaces.modal.participantsLabel': 'SCRIBES ARRIVÉS',
+    'previousRaces.modal.sortedBy': 'TRIÉ PAR TEMPS DE FIN',
+    'previousRaces.modal.colRank': 'RANG',
+    'previousRaces.modal.colScribe': 'SCRIBE',
+    'previousRaces.modal.colSpeed': 'VITESSE',
+    'previousRaces.modal.colAccuracy': 'PRÉCISION',
+    'previousRaces.modal.colFaults': 'FAUTES',
+    'previousRaces.modal.colDuration': 'DURÉE',
+    'previousRaces.modal.textExtract': '[EXTRAIT DU TEXTE GRAVÉ]',
+    'previousRaces.modal.close': '[FERMER LE REGISTRE]',
+    'previousRaces.modal.viewReplay': 'VOIR LA COURSE COMPLÈTE',
+    'previousRaces.modal.rematch': '[RELANCER UNE COURSE]',
+    'previousRaces.modal.chamberId': 'IDENTIFIANT DE CHAMBRE',
     // ------------------------------------------------------------ chrome accessibility
     'chrome.guildEmblemAlt': 'Emblème de la guilde Dwarf Fortress Delve',
     'chrome.siteLogoAlt': 'Logo de Dwarven Scriptures',
@@ -1442,16 +1600,38 @@ export const MESSAGES: Record<Locale, Messages> = {
   en: {
     // ------------------------------------------------------------ home race section
     'raceSection.title': 'RACE CAVERN',
-    'raceSection.subtitle': 'JOIN OR FORGE A TYPING EXPEDITION',
-    'raceSection.quickPlayLabel': 'Start a race',
+    'raceSection.subtitle': 'JOIN OR HOST A TYPING EXPEDITION',
+    'raceSection.quickPlayLabel': 'Join a random race',
     'raceSection.quickPlayHint': 'Joins the fullest public room',
     'raceSection.explorerLink': 'Room explorer',
     'raceSection.explorerHint': 'Browse public rooms waiting for miners',
-    'raceSection.createTitle': 'Forge a room',
+    'raceSection.createTitle': 'Host a room',
     'raceSection.createHint': 'Become the host of a new expedition',
     'raceSection.guestEmpty': 'No public room is waiting for miners right now.',
     'raceSection.guestEmptyHint':
-      'Only guild members can forge a room — sign in to create one.',
+      'Only guild members can host a room — sign in to create one.',
+    // ------------------------------------------------------------ landing page
+    'home.hero.title': 'Strike the keys!',
+    'home.hero.subtitle':
+      'Real-time competitive typing races. Join a room, type the same text, outpace the pack.',
+    'home.hero.roomsLive': 'rooms open',
+    'home.rooms.title': 'JOINABLE ROOMS',
+    'home.rooms.empty': 'No public rooms right now — be the first to host one.',
+    'home.how.title': 'How it works',
+    'home.how.step1.title': 'Join a room',
+    'home.how.step1.body':
+      'Pick a random race or a public room, or host your own with a code.',
+    'home.how.step2.title': 'Ride the countdown',
+    'home.how.step2.body': 'The text is revealed, then 3, 2, 1 — get your fingers ready.',
+    'home.how.step3.title': 'Type and overtake',
+    'home.how.step3.body':
+      'Type the text, watch the live progress track and cross the line first.',
+    // ------------------------------------------------------------ race home page
+    'raceHome.racesTitle': 'PUBLIC RACES',
+    'raceHome.colCode': 'Code',
+    'raceHome.empty': 'No public races right now.',
+    'raceHome.createOne': 'Create one',
+    'raceHome.active': 'active expeditions',
     // ------------------------------------------------------------ join by code
     'joinCode.title': 'JOIN BY CODE',
     'joinCode.label': 'Room code',
@@ -1471,7 +1651,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'joinCode.viewCurrent': 'View my current room',
     'joinCode.leaveAndJoin': 'Leave my room and join',
     // ------------------------------------------------------------ create room card
-    'createRoom.title': 'FORGE A ROOM',
+    'createRoom.title': 'HOST A ROOM',
     'createRoom.visibilityLabel': 'Visibility',
     'createRoom.visibility.public': 'Public',
     'createRoom.visibility.code': 'Code-only',
@@ -1480,9 +1660,9 @@ export const MESSAGES: Record<Locale, Messages> = {
     'createRoom.roleLabel': 'Your role',
     'createRoom.role.participant': 'Participant',
     'createRoom.role.spectator': 'Spectator',
-    'createRoom.submit': 'Forge the room',
-    'createRoom.submitPending': 'Forging…',
-    'createRoom.error.authRequired': 'Sign in to forge a room.',
+    'createRoom.submit': 'Host the room',
+    'createRoom.submitPending': 'Hosting…',
+    'createRoom.error.authRequired': 'Sign in to host a room.',
     'createRoom.error.alreadyInRoom': 'You are already in a room — leave it first.',
     'createRoom.error.invalidInput': 'Invalid configuration — check the capacity.',
     'createRoom.error.unexpected': 'Something went wrong. Please try again.',
@@ -1524,6 +1704,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'lobby.config.noTimeLimit': 'None',
     'lobby.config.errorMode': 'Error mode',
     'lobby.config.options': 'Options',
+    'lobby.config.sectionText': 'Text',
     'lobby.config.bonuses': 'Comeback bonuses',
     'lobby.config.bots': 'Bots',
     'lobby.lang.fr': 'French',
@@ -1577,8 +1758,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'lobby.closeRoom': 'Close the room',
     'lobby.confirmClose': 'Close the room? Every member will be evicted.',
     'lobby.transferHost': 'Transfer host',
-    'lobby.transferHostPicker': 'New host',
-    'lobby.transferHostButton': 'Transfer',
+    'lobby.manageMember': 'Manage',
     'lobby.kick': 'Kick',
     'lobby.confirmKick': 'Kick this member? Their invitation links will be revoked.',
     'lobby.confirm': 'Confirm',
@@ -1629,7 +1809,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'explorer.status': 'Status',
     'explorer.join': 'Join',
     'explorer.joinPending': 'Entering…',
-    'explorer.empty': 'No public room waiting. Forge one from the home page!',
+    'explorer.empty': 'No public room waiting. Host one from the home page!',
     'explorer.emptyGuest': 'No public room waiting right now.',
     'explorer.autoRefresh': 'Auto-refresh',
     'explorer.updated': 'Updated',
@@ -1651,7 +1831,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'inviteError.home': 'Back to home',
     // ------------------------------------------------------------ home notices
     'notice.kicked': 'You were kicked from the room.',
-    'notice.noRooms': 'No public room waiting — forge your own below!',
+    'notice.noRooms': 'No public room waiting — host your own below!',
     'notice.noRoomsGuest': 'No public room waiting right now.',
     // ------------------------------------------------------------ locale selector (I18N-02)
     'locale.fr': 'FR',
@@ -1679,6 +1859,9 @@ export const MESSAGES: Record<Locale, Messages> = {
     'nav.runeworks': 'Runeworks',
     'nav.ledgers': 'Ledgers',
     'nav.login': '[Login]',
+    'nav.settings': 'Settings',
+    'nav.menu': 'Menu',
+    'nav.home': 'Home',
     'footer.left':
       '▪ DEPTH: -480 Z-LEVEL (MAGMA CRAG) ▪ ROOM: #EXP-84 (PUBLIC LANTERN) ▪ PROTOCOL: ASCII_SOCKET_v2',
     'footer.status': 'STATUS: [MINING SYNCHRONIZED]',
@@ -1892,6 +2075,8 @@ export const MESSAGES: Record<Locale, Messages> = {
     'pageTitle.rooms': 'Room explorer',
     'pageTitle.room': 'Room',
     'pageTitle.invitation': 'Invitation',
+    'pageTitle.race': 'Race cavern',
+    'pageTitle.raceArena': 'Race',
     // ------------------------------------------------------------ account screen
     'account.breadcrumb.left': 'ᛞ [DOSSIER_TERMINAL]',
     'account.breadcrumb.node': '[NODE: BASALT_CRAG_01]',
@@ -1955,7 +2140,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'account.heatmap.key.shift': '[SHIFT]',
     'account.heatmap.key.ctrl': '[CTRL]',
     'account.heatmap.key.alt': '[ALT]',
-    'account.heatmap.key.space': '[SPACE] — 99.8% ACCURATE',
+    'account.heatmap.key.space': '[SPACE]',
     'account.heatmap.weakestLabel': '⚠ [WEAKEST KEYS]:',
     'account.heatmap.drill': '[RECOMMENDED DRILL: "PUNCTUATION & RIGHT PINKY RUNES"]',
     'account.modal.header': 'ᛞ [DIALOGUE // PROFILE_SETTINGS]',
@@ -2093,12 +2278,12 @@ export const MESSAGES: Record<Locale, Messages> = {
     'results.unavailable': 'RESULTS UNAVAILABLE',
     'results.unavailableHint':
       'You joined the room after the race ended: the standings were not re-broadcast. They will be re-displayable once race persistence lands.',
-    'results.relaunch': 'Relaunch the race',
     'results.closeRoom': 'Close the room',
-    'results.stay': 'Stay',
     'results.leave': 'Leave the room',
+    'results.returnToRoom': 'Return to room',
     // ------------------------------------------------------------ race replay page (HIST-02)
     'pageTitle.raceReplay': 'Race results',
+    'pageTitle.raceResults': 'Race results',
     'raceReplay.date': 'Race of',
     'raceReplay.duration': 'Duration',
     'raceReplay.language': 'Text language',
@@ -2114,6 +2299,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     'track.youTag': 'YOU',
     'track.rankLabel': 'Rank',
     'track.finishLabel': 'Finished',
+    'track.goldLabel': 'gold',
     'top3.title': 'LEADERS',
     'overtake.overtookPrefix': 'You overtake',
     'overtake.overtakenBySuffix': 'overtakes you',
@@ -2127,6 +2313,58 @@ export const MESSAGES: Record<Locale, Messages> = {
     'bonus.banner.addWords': '— the text grows for you',
     'bonus.banner.removeWords': '— the expedition lends a hand',
     'bonus.banner.fog': 'Fog over your next words —',
+    // ------------------------------------------------------------ previous races archive
+    'pageTitle.previousRaces': 'Race Ledgers',
+    'previousRaces.title': 'PREVIOUS RACES',
+    'previousRaces.subtitle': 'Chronicle of completed typing races.',
+    'previousRaces.breadcrumb': '// EXPEDITION CHRONICLES • ARCHIVE',
+    'previousRaces.metrics.races': 'Your races',
+    'previousRaces.metrics.podiumRate': 'Podium rate',
+    'previousRaces.metrics.avgSpeed': 'Average speed',
+    'previousRaces.metrics.wpmUnit': 'WPM',
+    'previousRaces.filter.label': '[FILTER]:',
+    'previousRaces.filter.all': 'ALL RACES',
+    'previousRaces.filter.mine': 'MY RACES',
+    'previousRaces.filter.private': 'PRIVATE RACES',
+    'previousRaces.filter.public': 'PUBLIC EXPEDITIONS',
+    'previousRaces.search.label': 'Search the archive',
+    'previousRaces.search.placeholder': 'SEARCH A WINNER OR AN IDENTIFIER…',
+    'previousRaces.col.chamber': 'CHAMBER',
+    'previousRaces.col.type': 'TYPE',
+    'previousRaces.col.champion': 'CHAMPION',
+    'previousRaces.col.yourResult': 'YOUR RESULT',
+    'previousRaces.col.scribes': 'SCRIBES',
+    'previousRaces.col.scripture': 'TEXT',
+    'previousRaces.col.finished': 'FINISHED',
+    'previousRaces.badge.private': 'PRIVATE',
+    'previousRaces.badge.public': 'PUBLIC',
+    'previousRaces.you': '(YOU)',
+    'previousRaces.didNotJoin': 'DID NOT JOIN',
+    'previousRaces.wordsUnit': 'WORDS',
+    'previousRaces.showingPrefix': 'SHOWING ',
+    'previousRaces.showingInfix': 'OF',
+    'previousRaces.showingSuffix': 'PREVIOUS EXPEDITIONS',
+    'previousRaces.footerPrev': 'Previous',
+    'previousRaces.footerNext': 'Next',
+    'previousRaces.empty': 'No completed races yet.',
+    'previousRaces.hover.podiumSuffix': 'PODIUM',
+    'previousRaces.hover.lastPlace': 'LAST PLACE',
+    'previousRaces.hover.hint': 'CLICK A ROW TO OPEN THE FULL DOSSIER',
+    'previousRaces.modal.completedOn': 'Completed on',
+    'previousRaces.modal.yourPosition': 'YOUR POSITION',
+    'previousRaces.modal.participantsLabel': 'FINISHED SCRIBES',
+    'previousRaces.modal.sortedBy': 'SORTED BY FINISH TIME',
+    'previousRaces.modal.colRank': 'RANK',
+    'previousRaces.modal.colScribe': 'SCRIBE',
+    'previousRaces.modal.colSpeed': 'SPEED',
+    'previousRaces.modal.colAccuracy': 'ACCURACY',
+    'previousRaces.modal.colFaults': 'FAULTS',
+    'previousRaces.modal.colDuration': 'DURATION',
+    'previousRaces.modal.textExtract': '[CARVED SCRIPTURE EXTRACT]',
+    'previousRaces.modal.close': '[CLOSE LEDGER]',
+    'previousRaces.modal.viewReplay': 'VIEW FULL REPLAY',
+    'previousRaces.modal.rematch': '[REMATCH]',
+    'previousRaces.modal.chamberId': 'CHAMBER IDENTIFIER',
     // ------------------------------------------------------------ chrome accessibility
     'chrome.guildEmblemAlt': 'Dwarf Fortress Delve Guild Emblem',
     'chrome.siteLogoAlt': 'Dwarven Scriptures logo',

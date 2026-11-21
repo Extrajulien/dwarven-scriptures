@@ -14,17 +14,35 @@ import type { RaceEngine, RaceEngineOutcome } from './race-engine';
  * every call is a safe no-op, so the actions keep working unchanged. The
  * realtime layer must never be able to break an action: failures are logged,
  * not thrown.
+ *
+ * The hub and engine are kept on `globalThis`, not in module-level variables.
+ * Next.js compiles server actions into their own server bundle, so a server
+ * action can load a *different* copy of this module than the custom server
+ * that calls `setRealtimeHub` (the same reason `src/db/index.ts` caches the
+ * connection pool on `globalThis`). `globalThis` is the one object every
+ * copy shares inside the same Node process, which keeps the registered
+ * instances reachable from both sides.
  */
 
-let hub: RoomHub | null = null;
-let raceEngine: RaceEngine | null = null;
+const globalForRealtime = globalThis as unknown as {
+  __dwarfRealtimeHub?: RoomHub | null;
+  __dwarfRealtimeEngine?: RaceEngine | null;
+};
 
 export function setRealtimeHub(instance: RoomHub | null): void {
-  hub = instance;
+  globalForRealtime.__dwarfRealtimeHub = instance;
 }
 
 export function setRaceEngine(instance: RaceEngine | null): void {
-  raceEngine = instance;
+  globalForRealtime.__dwarfRealtimeEngine = instance;
+}
+
+function getHub(): RoomHub | null {
+  return globalForRealtime.__dwarfRealtimeHub ?? null;
+}
+
+function getRaceEngine(): RaceEngine | null {
+  return globalForRealtime.__dwarfRealtimeEngine ?? null;
 }
 
 function publish(action: () => void): void {
@@ -37,27 +55,27 @@ function publish(action: () => void): void {
 
 /** CONF-12: everyone present sees the config change immediately. */
 export function publishConfigUpdated(roomId: number, config: RoomConfig): void {
-  publish(() => hub?.notifyConfigUpdated(roomId, config));
+  publish(() => getHub()?.notifyConfigUpdated(roomId, config));
 }
 
 /** SALLE-07: the kicked member is evicted and the room is notified. */
 export function publishMemberKicked(roomId: number, ref: MemberRef): void {
-  publish(() => hub?.notifyMemberKicked(roomId, ref));
+  publish(() => getHub()?.notifyMemberKicked(roomId, ref));
 }
 
 /** SALLE-08: the room is notified of the new host. */
 export function publishHostChanged(roomId: number, host: HostInfo): void {
-  publish(() => hub?.notifyHostChanged(roomId, host));
+  publish(() => getHub()?.notifyHostChanged(roomId, host));
 }
 
 /** The host closed the room: everyone is evicted. */
 export function publishRoomClosed(roomId: number): void {
-  publish(() => hub?.notifyRoomClosed(roomId));
+  publish(() => getHub()?.notifyRoomClosed(roomId));
 }
 
 /** A member left through the `leaveRoom` action: presence is updated. */
 export function publishMemberLeft(roomId: number, ref: MemberRef): void {
-  publish(() => hub?.notifyMemberLeft(roomId, ref));
+  publish(() => getHub()?.notifyMemberLeft(roomId, ref));
 }
 
 /**
@@ -72,8 +90,9 @@ export function requestEngineStart(
   roomId: number,
   hostUserId: number,
 ): Promise<RaceEngineOutcome | null> {
-  if (!raceEngine) {
+  const engine = getRaceEngine();
+  if (!engine) {
     return Promise.resolve(null);
   }
-  return raceEngine.startRace(roomId, `user:${hostUserId}`);
+  return engine.startRace(roomId, `user:${hostUserId}`);
 }

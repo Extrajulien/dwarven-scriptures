@@ -191,4 +191,8 @@ describe('defaultRoomConfig', () => {
     expect(defaultRoomConfig.timeLimitSeconds).toBeGreaterThanOrEqual(ROOM_TIME_LIMIT_MIN_SECONDS);
     expect(defaultRoomConfig.timeLimitSeconds).toBeLessThanOrEqual(ROOM_TIME_LIMIT_MAX_SECONDS);
   });
+
+  test('defaults to random text generation so wordCount is exact (CONF-04)', () => {
+    expect(defaultRoomConfig.textType).toBe('random');
+  });
 });

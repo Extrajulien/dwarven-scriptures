@@ -53,8 +53,9 @@ export async function configureShortRace(page: Page): Promise<void> {
 
 /**
  * Full two-human race: `demo` hosts a public room, `demo2` joins by code, both
- * see the same text, `demo2` types it to completion while the host types a few
- * characters and quits — the race then finishes and both contexts show the
+ * are moved to the `/race/[publicId]` arena and see the same text; `demo2`
+ * types it to completion while the host types a few characters and quits — the
+ * race then finishes (all humans done) and both contexts return to the room's
  * results screen. Returns the pages and the shared race text.
  */
 export async function runDemoRace(
@@ -86,20 +87,24 @@ export async function runDemoRace(
   await expect(hostPage.locator('li', { hasText: 'demo2' })).toBeVisible();
   await expect(racerPage.locator('li', { hasText: 'host' })).toBeVisible();
 
-  // Host starts: both contexts see the countdown, then the SAME text.
+  // Host starts: both contexts are moved to the dedicated race arena. The
+  // 3-second countdown (COURSE-03) can elapse while the arena reconnects, so
+  // the EN_COURSE typing zone is the reliable gate.
   await hostPage.getByRole('button', { name: 'Start the race' }).click();
-  await expect(hostPage.locator('[data-testid="countdown-overlay"]')).toBeVisible();
-  await expect(racerPage.locator('[data-testid="countdown-overlay"]')).toBeVisible();
-  const hostText = (await hostPage.locator('[data-testid="race-text"]').innerText()).trim();
-  const racerText = (await racerPage.locator('[data-testid="race-text"]').innerText()).trim();
-  expect(hostText).toBe(racerText);
-  expect(hostText.length).toBeGreaterThan(0);
-  const text = hostText;
+  await hostPage.waitForURL(/\/race\/[0-9a-f-]{36}$/);
+  await racerPage.waitForURL(/\/race\/[0-9a-f-]{36}$/);
 
   // EN_COURSE: the accessible hidden input becomes enabled (the typing-zone
   // label is `race.typingInputLabel`; A11Y-03 also covers it in the a11y spec).
   await expect(hostPage.locator('[data-testid="typing-input"]')).toBeEnabled();
   await expect(racerPage.locator('[data-testid="typing-input"]')).toBeEnabled();
+
+  // Both see the SAME text (GAME-1) rendered char-by-char in their zones.
+  const hostText = (await hostPage.locator('[data-testid="typing-text"]').innerText()).trim();
+  const racerText = (await racerPage.locator('[data-testid="typing-text"]').innerText()).trim();
+  expect(hostText).toBe(racerText);
+  expect(hostText.length).toBeGreaterThan(0);
+  const text = hostText;
 
   // demo2 types the whole text; the host types a few characters and quits
   // (COURSE-07) so the race finishes when all humans are done.
@@ -113,7 +118,9 @@ export async function runDemoRace(
     .getByRole('button', { name: 'Confirm' })
     .click();
 
-  // Both contexts reach the results screen (podium + table).
+  // The race ends and both land on the dedicated results view (podium + table).
+  await expect(hostPage).toHaveURL(/\/rooms\/[0-9a-f-]{36}\/results$/);
+  await expect(racerPage).toHaveURL(/\/rooms\/[0-9a-f-]{36}\/results$/);
   await expect(racerPage.locator('[data-testid="results-podium"]')).toBeVisible();
   await expect(hostPage.locator('[data-testid="results-podium"]')).toBeVisible();
 

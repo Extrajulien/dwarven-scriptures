@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { BLOCKS_PER_COLUMN, MINERAL_IDS, TRACK_COLUMNS_AHEAD } from '../lib/race/mine';
 import { roomConfigSchema } from '../lib/room-config';
 
 /**
@@ -371,6 +372,20 @@ export const raceTickParticipantSchema = z
     finished: z.boolean(),
     /** Effective total length of this participant's text (BONUS-04). */
     totalLength: z.number().int().positive(),
+    /** Coins earned so far this race (display; crediting is server-side only). */
+    gold: z.number().int().min(0),
+    /**
+     * Streamed mining window (DES-04 signature element): `track[0]` is the
+     * participant's current column, `track[1..]` the ahead columns. Each column
+     * is `BLOCKS_PER_COLUMN` tiles; `mineral: null` is a plain wall.
+     */
+    track: z
+      .array(
+        z
+          .array(z.object({ mineral: z.enum(MINERAL_IDS).nullable() }))
+          .length(BLOCKS_PER_COLUMN),
+      )
+      .length(TRACK_COLUMNS_AHEAD),
   })
   .strict();
 

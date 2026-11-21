@@ -263,13 +263,14 @@ the single source of truth. Semantics as implemented:
   boundary); `advance` flips to `en_course` once `startAt` passes. The clock
   is injected (`now`), so the whole machine is deterministic in tests.
 * **End conditions (COURSE-09):** in `en_course`, `advance` moves to
-  `resultats` when every racing participant (spectators excluded, bots
-  included) has a `finished`/`quit` result, or when
-  `config.timeLimitSeconds` (if set) has elapsed since `startAt` — the still
-  active participants are then recorded as `timeout` at that instant and
-  `finishedAt` is stamped. `finishParticipant` only records a result (it is
-  idempotent and cannot change the phase); the transition belongs to
-  `advance`, the single place where a clock decides.
+  `resultats` when every racing **human** (spectators and bots excluded) has
+  a `finished`/`quit` result, or when `config.timeLimitSeconds` (if set) has
+  elapsed since `startAt`. Bots never gate the finish: once the humans are
+  done, any still-typing bot is cut off as `timeout` at that instant (bots
+  still count toward the start guards, COURSE-02). `finishedAt` is stamped.
+  `finishParticipant` only records a result (it is idempotent and cannot
+  change the phase); the transition belongs to `advance`, the single place
+  where a clock decides.
 * **Relaunch / close (COURSE-11):** `relaunch` is legal only from
   `resultats`, keeps the participant list and can replace the config
   snapshot; `closeRace` is legal from `en_attente` or `resultats`.
@@ -566,6 +567,52 @@ player who returns within 30 s resumes in place (COURSE-08).
   | expert | 70–100 | 84–100 | 2 % | 0.5–1.1× | 9 letters | 0.80–0.92× | 4 % | 1.2–1.8× | 1.3× |
   | impossible | 140+ | 165–230 | 0.5 % | 0.4–0.9× | 10 letters | 0.85–0.95× | 2 % | 1.2–1.6× | 1.2× |
 
+### ADR-012 — Tile-based mining progress track (visual + economy)
+
+* **Status:** Accepted
+* **Context:** DES-04 makes the progress track the signature element, and
+  COURSE-05 wants a real-time per-participant track. The original marker lane
+  (`ProgressTrack` + `TrackMarker`, one shared lane, one marker per participant)
+  reads as a generic progress bar; the sprite/auto-tiling system (`src/sprites/`)
+  and the "Dwarven scriptures" identity suggest a mining metaphor instead.
+* **Decision:** Recast progression as **mining**. Each participant mines their
+  own row: one **block** (wall tile) costs 10 validated characters, one
+  **column** is 3 blocks (30 characters), and the player mines a column
+  top-to-bottom before the next column scrolls into view. The miner stays in
+  the **center column** (camera-follows), so the progress bar is conceptually
+  infinite: the server keeps a per-participant **ring buffer** of columns
+  (`ColumnStream` in `src/lib/race/mine.ts`), drops mined columns, and appends
+  freshly generated ones (rarity-weighted, seeded from `raceSeed +
+  participantIndex` for BOT-05-style replay). A block **blinks** (cracks) at
+  the 5th and 7th character via the `mining.progress-*` overlay frames.
+  Minerals (`coal < copper < iron < silver < gold`) appear as tinted vein faces
+  only when exposed to air — the existing `resolveCellSprites` auto-tiling is
+  reused unchanged, so no new rendering path exists. Mining a vein awards that
+  mineral's `goldValue` (see `MINERAL_GOLD_VALUES`), credited to the player's
+  existing `user_resources.coins` **once per finished race** inside the results
+  transaction (guests/bots accumulate the value in-memory only).
+* **Consequences:**
+  * **Wire contract:** `raceTick` participants now carry `gold` (coins earned)
+    and `track` (a bounded 16-column × 3-tile window, `track[0]` = the current
+    column). The window is bounded for PERF-02; no new message type is needed.
+  * **Two variants, role-composed:** `TileRaceProgress` renders a **normal**
+    (3-high, camera-follows stream) rectangle and a **condensed** (1-high,
+    full-width progress bar with the name in the top-left corner) rectangle.
+    While racing, `Top3Panel` shows the top-3 condensed and `ProgressTrack`
+    shows the local player's own normal row (clearly "yours") plus the
+    remaining players condensed; while spectating, the top-3 are normal and
+    ranks 4+ condensed. The miner is the profile picture (slightly smaller
+    than a tile), centered on the current block (normal) or riding the
+    progress boundary (condensed).
+  * **Smoothness trade-off (documented):** the marker lane's ~60 Hz horizontal
+    interpolation no longer applies (the miner is camera-fixed). Perceived
+    motion comes from the discrete column scroll + crack frames at the tick
+    rate (~4/s, COURSE-05's floor). This is a deliberate simplification, noted
+    in `doc/EXIGENCES.md`.
+  * **Determinism:** the world replays from `raceSeed + participantIndex`;
+    the stream only advances on monotonic column crossings, so a defensive
+    backwards position never rewinds it.
+
 ## Real-time message flow
 
 ### Implemented (checkpoint 1) — `src/realtime/protocol.ts`
@@ -634,6 +681,16 @@ screen into a "not found" error.
   `configUpdated`, `hostChanged`, `memberJoined/Left/Kicked` and `roomClosed`
   re-render from the authoritative state; a kicked member is redirected home
   with a notice.
+* **Race arena (`/race/[publicId]`):** when a race starts, the whole room
+  (participants and spectators) is redirected to a dedicated, centered arena
+  that replaces the room-embedded race — the live track block (overtake
+  alerts, top-3, bonus announcements, progress track), the typing zone and
+  the "give up" button (`src/components/race/RaceArena.tsx`). A racer who
+  gives up stays on the arena as a spectator (the track block remains their
+  leaderboard) until the race ends; on finish (COURSE-09: all humans done),
+  abort or room close, everyone returns to `/rooms/[publicId]`, which shows
+  the results screen. The arena rejoins the same room socket (by code,
+  active-member re-attach) and resumes mid-race via `rejoinRace`.
 
 ```mermaid
 sequenceDiagram
@@ -688,8 +745,8 @@ Rules the flow enforces:
 
 * The server validates every progress message and rejects impossible jumps
   (COURSE-06); per-keystroke database writes are forbidden — only phase
-  changes touch `rooms.status` (PERF-02); the track interpolates client-side
-  between ticks (COURSE-05, the visual track is SP-2D).
+  changes touch `rooms.status` (PERF-02); the track renders the streamed
+  mining window client-side (COURSE-05, the visual track is SP-2D).
 * A reconnect within 30 s resumes the race where it left off (COURSE-08,
   GAME-4): during DÉCOMPTE/EN_COURSE a dropped socket keeps its membership
   (the hub asks the engine's race hooks before applying the normal departure)
@@ -707,29 +764,33 @@ Rules the flow enforces:
   (`RaceEngine.takeResults`); persistence (RES-05) consumed it in SP-3B —
   see the seam documented in `src/realtime/race-engine.ts`.
 
-### Client-side track pipeline: interpolation, ranking and overtakes (SP-2D)
+### Client-side track pipeline: tile rendering, ranking and overtakes (SP-2D)
 
 The track UI consumes the same aggregated `raceTick` stream and derives
 everything locally — the server remains authoritative for positions and
 final standings, the client only *presents* them:
 
-1. **Tick history** — `ProgressTrack` keeps the latest two ticks (the
-   previous one is adjusted during render, React's "adjust state when props
-   change" pattern, so no effect mirrors props into state). Each marker's
-   progress is `interpolatePosition(participant, prevTick, nextTick, nowMs,
-   totalLength)` from `src/lib/race/track.ts`: 0..1 progress clamped between
-   the two samples on the client clock, cubic **ease-out** by default
-   (smooths the ~250 ms server quantization without overshooting; `linear`
-   available). The component re-renders on a ~60 Hz interval
-   (`TRACK_CLOCK_INTERVAL_MS` = 16 ms) so the perceived rate stays ≥ ~4
-   updates/s between ticks (COURSE-05). An interval rather than
-   `requestAnimationFrame` keeps the interpolation deterministic under Jest
-   fake timers (the jsdom rAF shim recurses at 0 ms and would spin).
+1. **Tile rendering** — `TileRaceProgress` turns a participant's `position` +
+   `track` window into a mining view via the pure builders of
+   `src/lib/race/mine-view.ts` (`buildNormalGrid`); the
+   existing `resolveCellSprites`/`LayeredTileCell` draw the wall/vein faces
+   (minerals only show when exposed to air). The normal (3-high) row keeps the
+   miner (profile picture, slightly smaller than a tile) centered on the
+   current block, with floor behind and, past the last column, floor ahead (the
+   tunnel's end); the condensed (1-high) row is a full-width progress bar — the
+   mined floor fills proportionally to the participant's progression and the
+   name sits in the top-left corner. Role composition lives in
+   `ProgressTrack`/`Top3Panel`
+   (ADR-012): a racer gets a normal "you" row plus condensed others, a
+   spectator gets normal top-3 plus condensed rest. The ~60 Hz marker
+   interpolation is no longer needed — the miner is camera-fixed, and perceived
+   motion comes from the discrete column scroll + crack frames at the ~4/s tick
+   rate (COURSE-05's floor; the trade-off is documented in ADR-012).
 
 2. **Live ranking** — `deriveRanking(participants, finishOrder)` sorts
    finished participants first (by finish rank when known), then by position
    desc, WPM desc, participantId; it feeds the top-3 panel (GAME-2) and the
-   marker badges.
+   row badges.
 
 3. **Overtake detection** — `detectRankChanges(prevRanking, nextRanking,
    localParticipantId)` compares two consecutive rankings and emits at most
@@ -743,11 +804,10 @@ final standings, the client only *presents* them:
 ```mermaid
 sequenceDiagram
     participant S as Server (RaceEngine, <=~4 ticks/s)
-    participant T as ProgressTrack (client)
+    participant T as TileRaceProgress (client)
     participant O as OvertakeIndicator (client)
-    S-->>T: raceTick {tickAt, participants[]}
-    Note over T: keep prev+next tick, ~60 Hz clock pulses
-    T-->>T: interpolatePosition(...) → marker transform (COURSE-05)
+    S-->>T: raceTick {tickAt, participants[] {position, track, gold}}
+    Note over T: buildNormalGrid(position, track) → camera-fixed mining row
     Note over T,O: deriveRanking each tick
     O-->>O: detectRankChanges(prev, next, local) → strip + assertive announce (GAME-3)
 ```
@@ -777,16 +837,17 @@ tops out at ~2 400 points. The series travels in
 ```mermaid
 sequenceDiagram
     participant E as RaceEngine
-    participant C as Client (RaceScreen)
-    participant R as ResultsScreen (client)
+    participant A as RaceArena (/race/[publicId])
+    participant V as RaceResultsView (/rooms/.../results)
+    participant L as RoomLobby (/rooms/[publicId])
     Note over E: EN_COURSE: append wpmSeries sample per tick broadcast (~4/s)
-    E-->>C: raceFinished {results[], wpmSeries[], durationMs}
-    C-->>R: podium + table (RES-01/02) + WPM chart (all series) + local heatmap
-    Note over R: heatmap = LOCAL session keyErrors (typing reducer, no round-trip)
-    Note over R: record badge = local wpm > pre-race profile bestWpm (RES-04)
-    C->>E: host: startRace (relaunch — engine re-collects members + config)
-    Note over E: resultats → decompte; config guard (en_attente) unlocks again
-    C->>C: host: closeRoom action / others: leaveRoom action (COURSE-11)
+    E-->>A: raceFinished {results[], wpmSeries[], durationMs}
+    A->>V: store local keyErrors (sessionStorage) + navigate to results
+    Note over V: podium + table + WPM chart + local heatmap (RES-01..04)
+    V->>L: "Return to room" → lobby waiting panel (relaunch lives here)
+    L->>E: host startRace (relaunch — engine re-collects members + config)
+    V->>V: host closeRoom / others leaveRoom (COURSE-11)
+    Note over E,V: a late joiner gets raceFinished replayed right after roomSnapshot
 ```
 
 Client-side rendering rules:
@@ -797,27 +858,33 @@ Client-side rendering rules:
   visual language is reused (hand-rolled SVG, no dependency).
 * The keyboard heatmap (`RaceKeyboardHeatmap`) is **per-race and client-side
   only**: the typing reducer counts wrong keystrokes per key
-  (`TypingState.keyErrors`, letters lower-cased) during the local session and
-  `RaceScreen` hands the latest map to the results screen — no server
+  (`TypingState.keyErrors`, letters lower-cased) during the local session; the
+  arena (`RaceArena`) holds the latest map via `TypingZone.onKeyErrors` and
+  stores it to `sessionStorage` (`src/lib/race/key-errors-store.ts`) on
+  finish, and the results view (`RaceResultsView`) reads it back — no server
   round-trip, no persistence (aggregate keyboard stats are not required by
   the matrix; the account-page `KeyboardHeatmap` keeps its placeholder
   values, noted honestly). Spectators and late joiners get an honest
   "unavailable" state, a clean race a "no errors" state.
-* Personal record (RES-04): the room page loads `user_stats.bestWpm` from
+* Personal record (RES-04): the results page loads `user_stats.bestWpm` from
   the profile and threads it down; the badge shows when the local net WPM
   strictly beats that **pre-race** best (guests have no stats — AUTH-03).
   Since SP-3B the stored best is refreshed race after race by
   `persistRaceResult` (SQL `GREATEST`), so the comparison reads a live
   personal record.
-* COURSE-11: the host's relaunch re-invokes `startRace` (the engine
-  re-collects the current members and re-reads the stored config, so the
-  `en_attente`-only config guard unlocks automatically once the room leaves
-  `resultats`); close/leave reuse the existing `closeRoom`/`leaveRoom`
-  actions. A viewer joining while the room is already in `resultats`
-  (SALLE-09) **receives the replayed `raceFinished`** since SP-3B (see
-  below); the "results unavailable" state only remains for the degenerate
-  case where the engine has no payload in memory (e.g. a server restart —
-  the persisted `/races/[publicId]` page stays available, HIST-02).
+* COURSE-11: the results live in a **dedicated view**
+  `/rooms/[publicId]/results` (`RaceResultsView` + `ResultsScreen`); everyone
+  can return to the room, the host closes the room and others leave (reusing
+  the existing `closeRoom`/`leaveRoom` actions). The relaunch happens from
+  the lobby's waiting panel: `RaceScreen` treats `resultats` like
+  `en_attente`, so the host's `startRace` re-invokes the engine (which
+  re-collects the current members and re-reads the stored config, unlocking
+  the `en_attente`-only config guard). A viewer joining while the room is
+  already in `resultats` (SALLE-09) **receives the replayed `raceFinished`**
+  since SP-3B (see below); the "results unavailable" state only remains for
+  the degenerate case where the engine has no payload in memory (e.g. a
+  server restart — the persisted `/races/[publicId]` page stays available,
+  HIST-02).
 
 ## Comeback bonuses (BONUS-01..04)
 

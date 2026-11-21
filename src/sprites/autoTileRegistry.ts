@@ -1,4 +1,7 @@
+import type { MineralId } from '../lib/race/mine';
 import type { SheetKey } from './spriteRegistry';
+
+export type { MineralId } from '../lib/race/mine';
 
 /**
  * Auto-tiling registry (Dwarf Fortress wall / vein visibility).
@@ -37,15 +40,13 @@ export interface Mineral {
 }
 
 /** Mineral veins available in the world. Each carries its own tint color. */
-export const MINERALS = {
+export const MINERALS: Record<MineralId, Mineral> = {
   gold: { tint: '#eec14b', label: 'Gold' },
   silver: { tint: '#c9d1d9', label: 'Silver' },
   iron: { tint: '#b08d68', label: 'Iron' },
   copper: { tint: '#d98a5f', label: 'Copper' },
   coal: { tint: '#3a3a3a', label: 'Coal' },
-} as const satisfies Record<string, Mineral>;
-
-export type MineralId = keyof typeof MINERALS;
+};
 
 // --- Wall / vein visibility --------------------------------------------------
 

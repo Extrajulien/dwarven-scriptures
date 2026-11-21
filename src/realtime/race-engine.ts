@@ -24,6 +24,13 @@ import {
 } from '../lib/race/bonuses';
 import { createSeededRandom } from '../lib/race/text-generator';
 import {
+  columnGoldValue,
+  columnOf,
+  createColumnStream,
+  TRACK_COLUMNS_AHEAD,
+  type ColumnStream,
+} from '../lib/race/mine';
+import {
   advance,
   createRace,
   finishParticipant,
@@ -213,6 +220,8 @@ export type RaceEngineRoomData = {
   publicId: string;
   config: RoomConfig;
   hostUserId: number;
+  /** Room visibility (SALLE-03), snapshotted onto the persisted race. */
+  visibility: 'public' | 'code' | 'private';
   members: RaceEngineMember[];
 };
 
@@ -300,6 +309,8 @@ export type RaceEngineResultEntry = {
   rank: number;
   /** Comeback bonuses received during the race (BONUS-01, cap 3). */
   bonusesReceived: number;
+  /** Coins earned this race from mined veins (DES-04), persisted for users. */
+  goldEarned: number;
   /**
    * WPM-over-time series for the results charts (RES-03); sampled at most
    * once per tick broadcast and closed by a final sample at `endedAtMs`.
@@ -318,6 +329,8 @@ export type RaceResultsPayload = {
   roomId: number;
   /** Room public id at finish — denormalized onto the persisted race row. */
   roomPublicId: string;
+  /** Room visibility snapshot at finish (SALLE-03) — survives room deletion. */
+  visibility: 'public' | 'code' | 'private';
   /** Full text body typed in this race (history replay). */
   textBody: string;
   /** ISO 639-1 language of the text (config snapshot). */
@@ -364,12 +377,20 @@ type ParticipantRuntime = {
   botLevel: BotLevel | null;
   /** Next unapplied schedule step index (bots only). */
   botStepCursor: number;
+  /** Mining-world column stream (DES-04): authoritative generated columns. */
+  columnStream: ColumnStream;
+  /** Coins earned this race from mined veins (persisted for users at finish). */
+  gold: number;
+  /** Monotonic number of fully-mined columns (drives the stream's advance). */
+  minedColumns: number;
 };
 
 /** One room's race: the pure machine state plus the transport runtime data. */
 type RoomRace = {
   roomId: number;
   publicId: string;
+  /** Room visibility snapshot at start, persisted with the results (SALLE-03). */
+  visibility: 'public' | 'code' | 'private';
   state: RaceState;
   /** By participant memberId; built fresh on every start from the members. */
   runtimes: Map<string, ParticipantRuntime>;
@@ -669,6 +690,10 @@ export class RaceEngine implements RaceEngineHooks {
     // Fresh runtimes on every start: progress never leaks across races.
     const runtimes = new Map<string, ParticipantRuntime>();
     const byHubKey = new Map<string, string>();
+    // DES-04: each participant mines their own deterministic world, seeded from
+    // the race seed plus a stable per-participant offset (same order as the
+    // participant list, so the world replays for a fixed seed).
+    let worldSeedOffset = 0;
     for (const member of room.members) {
       if (member.role === 'spectator') {
         continue;
@@ -696,7 +721,11 @@ export class RaceEngine implements RaceEngineHooks {
         botSchedule: null,
         botLevel: null,
         botStepCursor: 0,
+        columnStream: createColumnStream(seed + worldSeedOffset),
+        gold: 0,
+        minedColumns: 0,
       });
+      worldSeedOffset += 1;
       byHubKey.set(member.hubKey, memberId);
     }
     for (const botEntry of botEntries) {
@@ -727,13 +756,18 @@ export class RaceEngine implements RaceEngineHooks {
         botSchedule: botEntry.schedule,
         botLevel: botEntry.level,
         botStepCursor: 0,
+        columnStream: createColumnStream(seed + worldSeedOffset),
+        gold: 0,
+        minedColumns: 0,
       };
+      worldSeedOffset += 1;
       runtimes.set(botEntry.participantId, runtime);
     }
 
     const entry: RoomRace = {
       roomId,
       publicId: room.publicId,
+      visibility: room.visibility,
       state: started,
       runtimes,
       byHubKey,
@@ -1166,6 +1200,19 @@ export class RaceEngine implements RaceEngineHooks {
     }
 
     runtime.progress = { ...payload };
+
+    // DES-04: crossing a column boundary mines the previous column — drop it
+    // from the ring buffer, award the gold of any vein tiles it carried, and
+    // move the stream forward. `previous` is the pre-update progress, so the
+    // crossed columns are exactly (previousColumn, nextColumn].
+    const previousColumn = columnOf(previous.validatedChars);
+    const nextColumn = columnOf(payload.validatedChars);
+    for (let crossed = previousColumn; crossed < nextColumn; crossed++) {
+      const mined = runtime.columnStream.advance();
+      runtime.gold += columnGoldValue(mined);
+      runtime.minedColumns += 1;
+    }
+
     entry.lastActivityAt = this.deps.now().getTime();
 
     if (payload.validatedChars >= totalLength) {
@@ -1353,6 +1400,9 @@ export class RaceEngine implements RaceEngineHooks {
         // BONUS-04: the effective per-participant length, so clients derive
         // progression as position / totalLength for each participant.
         totalLength: runtime.text.length,
+        // DES-04: coins earned + the streamed mining window (current + ahead).
+        gold: runtime.gold,
+        track: runtime.columnStream.peek(TRACK_COLUMNS_AHEAD),
       });
       // RES-03: sample the WPM series at tick-broadcast rate (≤ ~4/s). The
       // series is NEVER part of the tick payload itself (PERF-02).
@@ -1458,6 +1508,7 @@ export class RaceEngine implements RaceEngineHooks {
         progressChars: correctChars,
         rank: index + 1,
         bonusesReceived: runtime?.bonusesReceived ?? 0,
+        goldEarned: runtime?.gold ?? 0,
         wpmSeries: runtime ? [...runtime.wpmSeries] : [],
       };
     });
@@ -1465,6 +1516,7 @@ export class RaceEngine implements RaceEngineHooks {
     return {
       roomId: entry.roomId,
       roomPublicId: entry.publicId,
+      visibility: entry.visibility,
       textBody: state.chosenText?.body ?? '',
       textLanguage: state.config.textLanguage,
       config: state.config,

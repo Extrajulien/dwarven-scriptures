@@ -378,6 +378,43 @@ describe('advance — end conditions (COURSE-09)', () => {
     expect(next.phase).toBe('resultats');
   });
 
+  test('ends when every human finished even if a bot is still racing (bots never block)', () => {
+    const withBot = [
+      participant({ memberId: 'member-1' }),
+      participant({ memberId: 'member-2' }),
+      participant({ memberId: 'bot-1', kind: 'bot', displayName: 'noob 1' }),
+    ];
+    let race = racingRace(withBot);
+    const t1 = new Date(T0.getTime() + COUNTDOWN_MS + 10_000);
+    race = finishParticipant(race, 'member-1', t1, 'finished');
+    race = finishParticipant(race, 'member-2', t1, 'finished');
+
+    const next = advance(race, t1);
+    expect(next.phase).toBe('resultats');
+    // The still-typing bot is cut off as a timeout, not as a finisher.
+    const botResult = next.results.find((result) => result.memberId === 'bot-1');
+    expect(botResult?.finalState).toBe('timeout');
+    expect(next.results.map((result) => result.finalState).sort()).toEqual([
+      'finished',
+      'finished',
+      'timeout',
+    ]);
+  });
+
+  test('a bot finishing does not end the race while a human is still racing', () => {
+    const withBot = [
+      participant({ memberId: 'human-1' }),
+      participant({ memberId: 'bot-1', kind: 'bot', displayName: 'noob 1' }),
+    ];
+    let race = racingRace(withBot);
+    const t1 = new Date(T0.getTime() + COUNTDOWN_MS + 10_000);
+    race = finishParticipant(race, 'bot-1', t1, 'finished');
+
+    const next = advance(race, t1);
+    expect(next).toBe(race);
+    expect(next.phase).toBe('en_course');
+  });
+
   test('times out remaining participants when the time limit is reached', () => {
     const config = { ...defaultRoomConfig, timeLimitSeconds: 60 };
     let race = requestStart(raceWith(members, config), T0, hostActor(), TEXT);

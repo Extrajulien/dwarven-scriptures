@@ -15,7 +15,7 @@ export default async function AuthLayout({
   const messages = pick(locale);
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-dwarf-cave font-mono text-dwarf-parchment antialiased selection:bg-dwarf-gold selection:text-dwarf-abyss">
+    <div className="relative flex min-h-screen flex-col overflow-x-clip bg-dwarf-cave font-mono text-dwarf-parchment antialiased selection:bg-dwarf-gold selection:text-dwarf-abyss">
       {/* Scanline texture overlay */}
       <div className="retro-scanlines pointer-events-none fixed inset-0 z-50" />
       {/* Ambient cave lighting gradient (token-driven, see .cave-ambient) */}

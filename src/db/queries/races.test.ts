@@ -12,7 +12,7 @@
  * exercised by the temporary smoke script against the real database.
  */
 
-import { raceParticipants, races, userStats } from '../schema';
+import { raceParticipants, races, userResources, userStats } from '../schema';
 import type { RaceResultsPayload } from '../../realtime/race-engine';
 
 type RecordedCall = {
@@ -78,6 +78,7 @@ function chainable(operation: RecordedCall['operation'], call: RecordedCall): Re
 
 const txStub = {
   insert: (...args: unknown[]) => chainable('insert', newCall('insert', args)),
+  update: (...args: unknown[]) => chainable('update', newCall('update', args)),
 };
 
 jest.mock('../index', () => ({
@@ -95,9 +96,11 @@ jest.mock('../index', () => ({
 
 import {
   countUserRacesPerDay,
+  getArchiveSummary,
   getRaceForReplay,
   InvalidRacePersistenceError,
   KEYSTROKES_PER_WORD,
+  listFinishedRacesArchive,
   listRecentUserRaces,
   listUserRaces,
   mapEngineResultsToPersistence,
@@ -131,6 +134,7 @@ function payloadFixture(): RaceResultsPayload {
   return {
     roomId: 12,
     roomPublicId: ROOM_PUBLIC_ID,
+    visibility: 'public',
     textBody: 'hello world',
     textLanguage: 'en',
     config: {
@@ -167,6 +171,7 @@ function payloadFixture(): RaceResultsPayload {
         progressChars: 120,
         rank: 1,
         bonusesReceived: 2,
+        goldEarned: 0,
         wpmSeries: [{ elapsedMs: 1_000, wpm: 80.12 }],
       },
       {
@@ -188,6 +193,7 @@ function payloadFixture(): RaceResultsPayload {
         progressChars: 100,
         rank: 2,
         bonusesReceived: 0,
+        goldEarned: 0,
         wpmSeries: [{ elapsedMs: 1_000, wpm: 70.0 }],
       },
     ],
@@ -202,6 +208,7 @@ describe('mapEngineResultsToPersistence', () => {
     expect(mapped.race).toEqual({
       roomId: 12,
       roomPublicId: ROOM_PUBLIC_ID,
+      visibility: 'public',
       textBody: 'hello world',
       textLanguage: 'en',
       config: payload.config,
@@ -245,6 +252,7 @@ describe('mapEngineResultsToPersistence', () => {
       finishedAtMs: 45_000,
       rank: 1,
       bonusesReceived: 2,
+      goldEarned: 0,
       wpmSeries: [{ elapsedMs: 1_000, wpm: 80.12 }],
     });
     expect(mapped.participants[1]).toMatchObject({
@@ -291,6 +299,7 @@ describe('persistRaceResult', () => {
     expect(raceInserts).toHaveLength(1);
     const raceValues = methodArgOf(raceInserts[0], 'values')?.[0] as Record<string, unknown>;
     expect(raceValues.roomPublicId).toBe(ROOM_PUBLIC_ID);
+    expect(raceValues.visibility).toBe('public');
     expect(raceValues.status).toBe('finished');
     expect(raceValues.durationMs).toBe(60_000);
     expect(raceValues.textBody).toBe('hello world');
@@ -345,6 +354,35 @@ describe('persistRaceResult', () => {
     await persistRaceResult(payload);
 
     expect(insertsOf(userStats)).toHaveLength(0);
+  });
+
+  test('credits mined-vein gold to user coins, skipping zero and non-user rows (DES-04)', async () => {
+    insertRow = { id: 99 };
+    const payload = payloadFixture();
+    // The user participant earned gold; the guest earned none.
+    payload.results[0] = { ...payload.results[0], goldEarned: 12 };
+
+    await persistRaceResult(payload);
+
+    const coinUpdates = calls.filter(
+      (call) => call.operation === 'update' && call.args[0]?.[0] === userResources,
+    );
+    expect(coinUpdates).toHaveLength(1);
+    expect(coinUpdates[0].methods).toEqual(['update', 'set', 'where']);
+    expect(coinUpdates[0].methods).toContain('set');
+  });
+
+  test('skips the coin credit for participants with no mined gold', async () => {
+    insertRow = { id: 99 };
+    const payload = payloadFixture();
+    // Both participants carry goldEarned 0 in the fixture.
+
+    await persistRaceResult(payload);
+
+    const coinUpdates = calls.filter(
+      (call) => call.operation === 'update' && call.args[0]?.[0] === userResources,
+    );
+    expect(coinUpdates).toHaveLength(0);
   });
 });
 
@@ -534,5 +572,141 @@ describe('getRaceForReplay (HIST-02)', () => {
   test('returns null for a non-UUID publicId without touching the database', async () => {
     await expect(getRaceForReplay('not-a-uuid')).resolves.toBeNull();
     expect(calls).toHaveLength(0);
+  });
+});
+
+// ------------------------------------------------------------------- archive
+
+function archiveRaceRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: 10,
+    publicId: '11111111-1111-4111-8111-111111111111',
+    visibility: 'public',
+    textLanguage: 'en',
+    config: {
+      textLanguage: 'en',
+      textComplexity: 'facile',
+      textType: 'random',
+      wordCount: 20,
+      timeLimitSeconds: null,
+      errorMode: 'accumulate',
+      options: { punctuation: false, numbers: false, capitals: false, accents: false },
+      bonusesEnabled: false,
+      bots: [],
+    },
+    finishedAt: new Date('2026-01-01T12:00:00.000Z'),
+    durationMs: 60_000,
+    snippet: 'hello world excerpt',
+    ...overrides,
+  };
+}
+
+function archiveParticipantRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    raceId: 10,
+    userId: 7,
+    displayName: 'ada',
+    wpm: '100.25',
+    accuracy: '97.40',
+    errors: 3,
+    status: 'finished',
+    finishedAtMs: 45_000,
+    rank: 1,
+    ...overrides,
+  };
+}
+
+describe('listFinishedRacesArchive (previous races ledger)', () => {
+  test('maps champion, viewer result and standings from the listed races', async () => {
+    selectQueue = [
+      [{ value: 1 }],
+      [archiveRaceRow({ id: 10, visibility: 'private' })],
+      [
+        archiveParticipantRow({ raceId: 10, userId: 7, displayName: 'ada', wpm: '100.25', rank: 1 }),
+        archiveParticipantRow({
+          raceId: 10,
+          userId: 8,
+          displayName: 'bob',
+          wpm: '88.50',
+          accuracy: '95.00',
+          rank: 2,
+        }),
+      ],
+    ];
+
+    const page = await listFinishedRacesArchive({ viewerUserId: 7 });
+
+    expect(page.totalCount).toBe(1);
+    expect(page.page).toBe(1);
+    expect(page.entries).toHaveLength(1);
+
+    const entry = page.entries[0];
+    expect(entry.publicId).toBe('11111111-1111-4111-8111-111111111111');
+    expect(entry.visibility).toBe('private');
+    expect(entry.textType).toBe('random');
+    expect(entry.wordCount).toBe(20);
+    expect(entry.participantCount).toBe(2);
+    expect(entry.champion).toEqual({ displayName: 'ada', wpm: 100.25, accuracy: 97.4 });
+    expect(entry.viewer).toMatchObject({ rank: 1, wpm: 100.25, accuracy: 97.4, status: 'finished' });
+    expect(entry.standings).toHaveLength(2);
+    expect(entry.standings[0]).toMatchObject({ rank: 1, displayName: 'ada', isViewer: true });
+    expect(entry.standings[1]).toMatchObject({ rank: 2, displayName: 'bob', isViewer: false });
+    expect(entry.textSnippet).toBe('hello world excerpt');
+  });
+
+  test('guests get a null viewer result and no viewer highlight', async () => {
+    selectQueue = [
+      [{ value: 1 }],
+      [archiveRaceRow({ id: 10 })],
+      [
+        archiveParticipantRow({ raceId: 10, userId: 7, displayName: 'ada', rank: 1 }),
+        archiveParticipantRow({ raceId: 10, userId: 8, displayName: 'bob', rank: 2 }),
+      ],
+    ];
+
+    const page = await listFinishedRacesArchive({ viewerUserId: null });
+
+    expect(page.entries).toHaveLength(1);
+    const entry = page.entries[0];
+    expect(entry.viewer).toBeNull();
+    expect(entry.standings.every((standing) => standing.isViewer === false)).toBe(true);
+    expect(entry.champion?.displayName).toBe('ada');
+  });
+
+  test('returns an empty page when there are no races', async () => {
+    selectQueue = [[{ value: 0 }], []];
+
+    const page = await listFinishedRacesArchive({ viewerUserId: null });
+
+    expect(page.totalCount).toBe(0);
+    expect(page.entries).toEqual([]);
+    expect(page.totalPages).toBe(0);
+  });
+});
+
+describe('getArchiveSummary', () => {
+  test('computes races count, podium rate and average WPM', async () => {
+    selectQueue = [
+      [
+        { wpm: '100.00', rank: 1 },
+        { wpm: '90.00', rank: 2 },
+        { wpm: '80.00', rank: 5 },
+        { wpm: '70.00', rank: 7 },
+      ],
+    ];
+
+    const summary = await getArchiveSummary(7);
+
+    expect(summary.racesCount).toBe(4);
+    expect(summary.podiumRate).toBe(50); // 2 of 4 on the podium
+    expect(summary.avgWpm).toBe(85); // (100 + 90 + 80 + 70) / 4
+  });
+
+  test('returns zeros for a user with no races', async () => {
+    selectQueue = [[]];
+
+    const summary = await getArchiveSummary(7);
+
+    expect(summary).toEqual({ racesCount: 0, podiumRate: 0, avgWpm: 0 });
   });
 });

@@ -5,6 +5,10 @@ pour l'icone de l'application j'ai modifier dans paint une frame de l'animation 
 en ajoutant une bulle de penser et un gars qui ecrit du feu dedans car le nain pense a l'ecriture 
 et aussi car je trouve ca un peu farfelu.
 
+j'ai aussi utiliser stich ai pour me creer des layouts (elle est meilleur en ui et aussi tu peux modifier le stock ben plus vite pour iterer sur dequois qui te plais) et ensuite utiliser mon agent pour remplacer la grande partie des du html tout-nu en composants reutilisable dans codebase.
+e.g. pour le auth la version stich finale resemblais a ca: (je l'ai encore modifier appres pour lui enlever du texte, et aussi la navbar bizzare)
+![alt text](image.png)
+
 ## Palette
 
 Direction « Dwarf Fortress » : pierre, grotte, torches, or des filons et lave. La

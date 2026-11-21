@@ -13,6 +13,7 @@ import {
 import {
   raceProgressMessageSchema,
   serverMessageSchema,
+  type HostInfo,
   type ServerMessage,
 } from './protocol';
 
@@ -382,6 +383,8 @@ export type UseRoomSocketResult = RaceSocketState & {
   quitRace: () => void;
   /** Sends cumulative progress counters (validated before sending). */
   sendRaceProgress: (progress: RaceProgress) => void;
+  /** Optimistically applies a host change locally (SALLE-08 instant feedback). */
+  updateRoomHost: (host: HostInfo) => void;
 };
 
 export function useRoomSocket(): UseRoomSocketResult {
@@ -564,6 +567,19 @@ export function useRoomSocket(): UseRoomSocketResult {
     [send],
   );
 
+  const updateRoomHost = useCallback((host: HostInfo) => {
+    setState((previous) => {
+      if (!previous.snapshot) {
+        return previous;
+      }
+      return applyServerMessage(previous, {
+        type: 'hostChanged',
+        roomPublicId: previous.snapshot.room.publicId,
+        host,
+      });
+    });
+  }, []);
+
   useEffect(() => {
     return () => {
       stoppedRef.current = true;
@@ -572,5 +588,5 @@ export function useRoomSocket(): UseRoomSocketResult {
     };
   }, [clearReconnectTimer, closeSocket]);
 
-  return { ...state, join, leave, sendPing, startRace, quitRace, sendRaceProgress };
+  return { ...state, join, leave, sendPing, startRace, quitRace, sendRaceProgress, updateRoomHost };
 }

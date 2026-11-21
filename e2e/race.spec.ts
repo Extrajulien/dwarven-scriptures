@@ -21,9 +21,9 @@ test('join by code, race to the finish and reach the replay from history', async
   await expect(racerPage.locator('[data-testid="results-podium-place"]').first()).toBeVisible();
   await expect(racerPage.locator('[data-testid="results-table"]')).toBeVisible();
   await expect(racerPage.locator('[data-testid="results-table"]')).toContainText('demo2');
-  // The non-host racer keeps the "stay" control (COURSE-11).
+  // The non-host racer sees "Leave the room" alongside "Return to room" (COURSE-11).
   await expect(
-    racerPage.locator('[data-testid="results-controls"]').getByRole('button', { name: 'Stay' }),
+    racerPage.locator('[data-testid="results-controls"]').getByRole('button', { name: 'Leave the room' }),
   ).toBeVisible();
 
   // The host closes the room from the results screen (COURSE-11), freeing the

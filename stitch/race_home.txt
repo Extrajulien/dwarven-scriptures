@@ -1,0 +1,545 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Race Cavern - Dwarven Scriptures</title>
+<!-- Google Fonts: JetBrains Mono & Space Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<!-- Tailwind CSS CDN with forms and container queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            stone: {
+              950: '#0e0e0e',
+              900: '#131313',
+              850: '#181717',
+              800: '#1c1b1b',
+              750: '#201f1f',
+              700: '#2a2a2a',
+              600: '#383636',
+            },
+            dwarf: {
+              gold: '#eec14b',
+              'gold-hover': '#f7cb59',
+              'gold-dim': '#b89436',
+              amber: '#ffb77b',
+              surface: '#e5e2e1',
+              variant: '#d1c5af',
+              outline: '#9a907c',
+              'outline-dim': '#4e4635',
+              green: '#a4d393',
+              red: '#ffb4ab',
+            }
+          },
+          fontFamily: {
+            mono: ['"JetBrains Mono"', 'monospace'],
+            space: ['"Space Mono"', 'monospace'],
+          },
+          boxShadow: {
+            'gold-glow': '0 0 22px rgba(238, 193, 75, 0.35)',
+            'gold-glow-lg': '0 0 32px rgba(238, 193, 75, 0.45)',
+            'inner-carve': 'inset 0 1px 2px rgba(0, 0, 0, 0.8), inset 0 -1px 1px rgba(255, 255, 255, 0.05)',
+          }
+        }
+      }
+    }
+  </script>
+<!-- Custom CSS: Base styling and terminal aesthetic adjustments -->
+<style data-purpose="base-styling">
+    body {
+      background-color: #131313;
+      color: #e5e2e1;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -0.01em;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Custom scrollbar for Dwarven stone atmosphere */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #131313;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2a2a2a;
+      border: 1px solid #4e4635;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #eec14b;
+    }
+  </style>
+<!-- Custom CSS: Beveled buttons and chiseling -->
+<style data-purpose="carved-elements">
+    .chiseled-gold-btn {
+      background: linear-gradient(180deg, #dfb445 0%, #aa8323 100%);
+      box-shadow: 0 0 16px rgba(238, 193, 75, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -2px 0 rgba(0, 0, 0, 0.45);
+      text-shadow: 0 1px 1px rgba(0,0,0,0.6);
+      transition: all 0.15s ease-in-out;
+    }
+    .chiseled-gold-btn:hover {
+      background: linear-gradient(180deg, #eed065 0%, #ba912a 100%);
+      box-shadow: 0 0 24px rgba(238, 193, 75, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -2px 0 rgba(0, 0, 0, 0.45);
+      transform: translateY(-1px);
+    }
+    .chiseled-gold-btn:active {
+      transform: translateY(1px);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+    }
+
+    .stone-panel {
+      background-color: #1c1b1b;
+      border: 1px solid #2a2a2a;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    }
+  </style>
+</head>
+<body class="selection:bg-dwarf-gold selection:text-black">
+<!-- BEGIN: SiteHeader -->
+<header class="border-b border-stone-700 bg-stone-950/80 backdrop-blur sticky top-0 z-50" data-purpose="site-header">
+
+</header>
+<!-- END: SiteHeader -->
+<!-- BEGIN: MainContent -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+<!-- BEGIN: BannerHeaderSection -->
+<section class="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-stone-700/60 pb-5 gap-3" data-purpose="banner-header">
+<div>
+<h1 class="text-2xl sm:text-3xl font-extrabold tracking-wider text-dwarf-gold flex items-center gap-2 uppercase">
+<span class="">RACE CAVERN</span>
+</h1>
+<p class="text-xs uppercase tracking-widest text-dwarf-outline mt-1 font-mono">
+          Join or forge a typing expedition
+        </p>
+</div>
+<!-- Quick Status Badges -->
+<div class="flex items-center gap-2 text-xs font-mono">
+<div class="text-dwarf-gold border border-dwarf-gold/30 bg-dwarf-gold/5 px-2.5 py-1 flex items-center gap-1.5 rounded-sm">
+<span class="material-symbols-outlined text-sm">bolt</span>
+<span class="">EXPEDITIONS ACTIVE</span>
+</div>
+<div class="text-dwarf-variant border border-stone-700 bg-stone-850 px-2.5 py-1 flex items-center gap-1 rounded-sm">
+<span class="material-symbols-outlined text-sm text-dwarf-amber">speed</span>
+<span class="">62.4 AVG WPM</span>
+</div>
+</div>
+</section>
+<!-- END: BannerHeaderSection -->
+<!-- BEGIN: ActionCardsGrid -->
+<!-- Replicating the 3 action cards from image https://lh3.googleusercontent.com/aida-public/AB6AXuA-h3HLX2qz2pVMgO5cFm8q8KcVu9Rm_HZ7n51hwX-7w-rpwI5ou4vfqgd-nhVYl5FYk4bosWWfKbnQB6UGdRp_bitSjZs3xgsxc3mv1EycBsgG5R_GO5SZ4e74GbZK5PSUfJBRPJACe0Br_RNsTTeGSgfocacazux3Bjxyb2qdJ0BufsF9JYxCAXVorvwSak5-2aUJ0jMZLUfpimGMGpbFt4gBMwzLzCWBBLNoZAmcjQcO-jKmu1jQZA -->
+
+<!-- END: ActionCardsGrid -->
+<!-- BEGIN: PublicRacesSection -->
+<section class="space-y-4 pt-4" data-purpose="public-races-explorer" id="public-expeditions-list">
+<!-- Section Title & Filters Bar -->
+<div class="stone-panel p-5 rounded-xs border border-stone-700 space-y-4">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-800 pb-4">
+<div>
+<div class="flex items-center gap-2">
+<span class="text-dwarf-gold font-black text-sm tracking-wider uppercase">[ PUBLIC RACE CAVERNS ]</span>
+<span class="text-xs text-dwarf-outline-dim">//</span>
+<span class="text-xs text-dwarf-amber uppercase tracking-wider font-mono">WAITING FOR MINERS</span>
+</div>
+<p class="text-xs text-stone-400 font-mono mt-1">
+              Live chambers awaiting excavation teams. Click to join an ongoing countdown.
+            </p>
+</div>
+<!-- Controls: Refresh & Sorting -->
+<div class="flex items-center gap-3">
+<button class="px-3 py-1.5 bg-stone-850 hover:bg-stone-750 border border-stone-700 hover:border-dwarf-gold/60 text-xs font-mono text-dwarf-variant rounded-sm flex items-center gap-1.5 transition-colors cursor-pointer" id="refresh-expeditions-btn">
+<span class="material-symbols-outlined text-sm text-dwarf-gold">refresh</span>
+<span class="">REFRESH</span>
+</button>
+<div class="text-[11px] font-mono text-stone-400 flex items-center gap-1 border border-stone-700 px-2.5 py-1.5 bg-stone-900 rounded-sm">
+<span class="text-dwarf-outline">SORT:</span>
+<span class="text-dwarf-surface">EXPEDITION SIZE</span>
+</div>
+</div>
+</div>
+<!-- Filter Bar: Search + Tag Filters -->
+<div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 text-xs font-mono">
+<!-- Search input -->
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-stone-500 text-sm">search</span>
+<input class="w-full pl-9 pr-3 py-2 bg-stone-900 border border-stone-700 text-xs text-dwarf-surface placeholder:text-stone-600 focus:border-dwarf-gold focus:ring-0 rounded-sm uppercase tracking-wider font-mono" placeholder="FILTER BY OWNER OR ROOM CODE..." type="text">
+</div>
+<!-- Filter Pills -->
+<div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+<button class="px-2.5 py-1.5 bg-dwarf-gold text-stone-950 font-bold border border-dwarf-gold rounded-xs">[ ALL REGIONS ]</button>
+<button class="px-2.5 py-1.5 bg-stone-850 text-dwarf-variant border border-stone-700 hover:border-stone-500 rounded-xs">[ ENG ]</button>
+
+<button class="px-2.5 py-1.5 bg-stone-850 text-dwarf-variant border border-stone-700 hover:border-stone-500 rounded-xs">[ FR ]</button>
+<button class="px-2.5 py-1.5 bg-stone-850 text-dwarf-variant border border-stone-700 hover:border-stone-500 rounded-xs">[ NOVICES ]</button>
+<button class="px-2.5 py-1.5 bg-stone-850 text-dwarf-variant border border-stone-700 hover:border-stone-500 rounded-xs">[ VETERANS ]</button>
+</div>
+</div>
+</div>
+<!-- BEGIN: RaceChambersTable -->
+<div class="stone-panel rounded-xs border border-stone-700 overflow-x-auto" data-purpose="chambers-table-container">
+<table class="w-full text-left border-collapse text-xs font-mono">
+<!-- Table Header -->
+<thead>
+<tr class="border-b border-stone-700 bg-stone-850 text-stone-400 text-[11px] uppercase tracking-wider">
+<th class="py-3 px-4 font-semibold">Chamber / Code</th>
+<th class="py-3 px-4 font-semibold">Expedition Host</th>
+<th class="py-3 px-4 font-semibold">Scripture Mode</th>
+<th class="py-3 px-4 font-semibold">Miners (Slots)</th>
+<th class="py-3 px-4 font-semibold">Requirement</th>
+<th class="py-3 px-4 font-semibold">Status / Timer</th>
+<th class="py-3 px-4 font-semibold text-right">Excavate</th>
+</tr>
+</thead>
+<!-- Table Body: Active Public Race Rows -->
+<tbody class="divide-y divide-stone-800">
+<!-- ROW 1: Almost Full / High Excitement -->
+<tr class="hover:bg-stone-800/60 transition-colors group">
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="text-dwarf-amber text-sm font-bold">#8849</span>
+<span class="font-bold text-dwarf-surface group-hover:text-dwarf-gold transition-colors">ADAMANTINE-VEIN</span>
+<span class="text-[10px] bg-red-950/80 text-dwarf-red border border-dwarf-red/30 px-1.5 py-0.2 rounded-xs uppercase">Hot</span>
+</div>
+<div class="text-[10px] text-stone-500 font-mono tracking-widest mt-0.5">VAULT_HASH: 0x9AF2</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-xs bg-stone-700 flex items-center justify-center text-[10px] text-dwarf-gold font-bold border border-stone-600">
+                    OU
+                  </div>
+<div>
+<span class="text-dwarf-surface font-medium">Overseer Urist</span>
+<span class="block text-[10px] text-stone-400">LVL 48 Guildmaster</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="border border-stone-700 bg-stone-850 px-2 py-0.5 rounded text-[11px] text-dwarf-gold">
+                  ENG / RUNIC TALES
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="space-y-1">
+<div class="flex items-center justify-between text-[11px]">
+<span class="font-bold text-dwarf-amber">7 / 8 MINERS</span>
+<span class="text-[10px] text-dwarf-red font-semibold">1 SLOT LEFT!</span>
+</div>
+<!-- Dot Slots Indicator -->
+<div class="flex gap-1">
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-stone-700 border border-dashed border-stone-500 rounded-2xs"></span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="text-xs text-dwarf-variant font-mono">100+ WPM (MASTER)</span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-1.5 text-dwarf-red font-bold animate-pulse">
+<span class="material-symbols-outlined text-sm">alarm</span>
+<span class="">COUNTDOWN: 08s</span>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap text-right">
+<button class="chiseled-gold-btn px-4 py-1.5 rounded-xs text-stone-950 font-black tracking-wider text-xs uppercase cursor-pointer hover:shadow-gold-glow">
+                  JOIN →
+                </button>
+</td>
+</tr>
+<!-- ROW 2: Magma Forge -->
+<tr class="hover:bg-stone-800/60 transition-colors group">
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="text-stone-400 text-sm font-bold">#9102</span>
+<span class="font-bold text-dwarf-surface group-hover:text-dwarf-gold transition-colors">MAGMA-FORGE</span>
+</div>
+<div class="text-[10px] text-stone-500 font-mono tracking-widest mt-0.5">VAULT_HASH: 0x48CC</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-xs bg-stone-700 flex items-center justify-center text-[10px] text-dwarf-variant font-bold border border-stone-600">
+                    DC
+                  </div>
+<div>
+<span class="text-dwarf-surface font-medium">Darin Coppervein</span>
+<span class="block text-[10px] text-stone-400">LVL 24 Prospector</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="border border-stone-700 bg-stone-850 px-2 py-0.5 rounded text-[11px] text-dwarf-surface">
+                  LATIN LITURGY
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="space-y-1">
+<div class="flex items-center justify-between text-[11px]">
+<span class="font-bold text-stone-300">4 / 6 MINERS</span>
+</div>
+<div class="flex gap-1">
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-stone-700 rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-stone-700 rounded-2xs"></span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="text-xs text-stone-400 font-mono">60-90 WPM</span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-1.5 text-dwarf-amber font-medium">
+<span class="material-symbols-outlined text-sm">timelapse</span>
+<span class="">STARTING IN 24s</span>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap text-right">
+<button class="bg-stone-800 hover:bg-stone-700 border border-stone-600 hover:border-dwarf-gold text-dwarf-surface hover:text-dwarf-gold px-3.5 py-1.5 rounded-xs font-bold tracking-wider text-xs uppercase cursor-pointer transition-colors">
+                  JOIN →
+                </button>
+</td>
+</tr>
+<!-- ROW 3: Code / Syntax race -->
+<tr class="hover:bg-stone-800/60 transition-colors group">
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="text-stone-400 text-sm font-bold">#4411</span>
+<span class="font-bold text-dwarf-surface group-hover:text-dwarf-gold transition-colors">BASALT-CHASM</span>
+<span class="text-[10px] bg-stone-850 text-dwarf-green border border-dwarf-green/30 px-1.5 py-0.2 rounded-xs uppercase">Syntax</span>
+</div>
+<div class="text-[10px] text-stone-500 font-mono tracking-widest mt-0.5">VAULT_HASH: 0xEE12</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-xs bg-stone-700 flex items-center justify-center text-[10px] text-dwarf-variant font-bold border border-stone-600">
+                    TS
+                  </div>
+<div>
+<span class="text-dwarf-surface font-medium">Thrum Stonebreaker</span>
+<span class="block text-[10px] text-stone-400">LVL 31 Runecrafter</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="border border-stone-700 bg-stone-850 px-2 py-0.5 rounded text-[11px] text-dwarf-green">
+                  PYTHON / CODE
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="space-y-1">
+<div class="flex items-center justify-between text-[11px]">
+<span class="font-bold text-stone-300">3 / 5 MINERS</span>
+</div>
+<div class="flex gap-1">
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-stone-700 rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-stone-700 rounded-2xs"></span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="text-xs text-dwarf-green font-mono">ALL WELCOME</span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-1.5 text-stone-400">
+<span class="material-symbols-outlined text-sm">group</span>
+<span class="">WAITING FOR 2</span>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap text-right">
+<button class="bg-stone-800 hover:bg-stone-700 border border-stone-600 hover:border-dwarf-gold text-dwarf-surface hover:text-dwarf-gold px-3.5 py-1.5 rounded-xs font-bold tracking-wider text-xs uppercase cursor-pointer transition-colors">
+                  JOIN →
+                </button>
+</td>
+</tr>
+<!-- ROW 4: Runic Archives -->
+<tr class="hover:bg-stone-800/60 transition-colors group">
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="text-stone-400 text-sm font-bold">#7723</span>
+<span class="font-bold text-dwarf-surface group-hover:text-dwarf-gold transition-colors">RUNIC-ARCHIVES</span>
+</div>
+<div class="text-[10px] text-stone-500 font-mono tracking-widest mt-0.5">VAULT_HASH: 0x33A0</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-xs bg-stone-700 flex items-center justify-center text-[10px] text-dwarf-variant font-bold border border-stone-600">
+                    KA
+                  </div>
+<div>
+<span class="text-dwarf-surface font-medium">Kogan AleLover</span>
+<span class="block text-[10px] text-stone-400">LVL 12 Apprentice</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="border border-stone-700 bg-stone-850 px-2 py-0.5 rounded text-[11px] text-dwarf-surface">
+                  ENGLISH BASALT
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="space-y-1">
+<div class="flex items-center justify-between text-[11px]">
+<span class="font-bold text-stone-300">2 / 4 MINERS</span>
+</div>
+<div class="flex gap-1">
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-stone-700 rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-stone-700 rounded-2xs"></span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="text-xs text-dwarf-green font-mono">ALL WELCOME (0-60)</span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-1.5 text-stone-400">
+<span class="material-symbols-outlined text-sm">schedule</span>
+<span class="">WAITING FOR 2</span>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap text-right">
+<button class="bg-stone-800 hover:bg-stone-700 border border-stone-600 hover:border-dwarf-gold text-dwarf-surface hover:text-dwarf-gold px-3.5 py-1.5 rounded-xs font-bold tracking-wider text-xs uppercase cursor-pointer transition-colors">
+                  JOIN →
+                </button>
+</td>
+</tr>
+<!-- ROW 5: Crystal Cavern -->
+<tr class="hover:bg-stone-800/60 transition-colors group">
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="text-stone-400 text-sm font-bold">#3309</span>
+<span class="font-bold text-dwarf-surface group-hover:text-dwarf-gold transition-colors">CRYSTAL-CAVERN</span>
+</div>
+<div class="text-[10px] text-stone-500 font-mono tracking-widest mt-0.5">VAULT_HASH: 0x77DD</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-xs bg-stone-700 flex items-center justify-center text-[10px] text-dwarf-variant font-bold border border-stone-600">
+                    HD
+                  </div>
+<div>
+<span class="text-dwarf-surface font-medium">Hulda Deepdelver</span>
+<span class="block text-[10px] text-stone-400">LVL 55 High King's Scribe</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="border border-stone-700 bg-stone-850 px-2 py-0.5 rounded text-[11px] text-dwarf-amber">
+                  FRENCH / TALE
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="space-y-1">
+<div class="flex items-center justify-between text-[11px]">
+<span class="font-bold text-stone-300">1 / 4 MINERS</span>
+</div>
+<div class="flex gap-1">
+<span class="w-3 h-1.5 bg-dwarf-gold rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-stone-700 rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-stone-700 rounded-2xs"></span>
+<span class="w-3 h-1.5 bg-stone-700 rounded-2xs"></span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="text-xs text-stone-400 font-mono">80+ WPM</span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<div class="flex items-center gap-1.5 text-stone-500">
+<span class="material-symbols-outlined text-sm">hourglass_empty</span>
+<span class="">WARMUP PHASE</span>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap text-right">
+<button class="bg-stone-800 hover:bg-stone-700 border border-stone-600 hover:border-dwarf-gold text-dwarf-surface hover:text-dwarf-gold px-3.5 py-1.5 rounded-xs font-bold tracking-wider text-xs uppercase cursor-pointer transition-colors">
+                  JOIN →
+                </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- END: RaceChambersTable -->
+<!-- BEGIN: TablePaginationFooter -->
+<div class="flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-stone-400 pt-2 px-1 gap-3" data-purpose="table-pagination">
+<div>
+<span class="">SHOWING </span>
+<span class="text-dwarf-gold font-bold">5 ACTIVE EXPEDITIONS</span>
+<span class=""> OF 24 LIVE CHAMBERS</span>
+</div>
+<div class="flex items-center space-x-1.5">
+<button class="px-2.5 py-1 bg-stone-850 hover:bg-stone-800 border border-stone-700 text-stone-400 hover:text-dwarf-surface rounded-xs cursor-pointer">[ PREV ]</button>
+<button class="px-2.5 py-1 bg-dwarf-gold text-stone-950 font-bold border border-dwarf-gold rounded-xs">[ 1 ]</button>
+<button class="px-2.5 py-1 bg-stone-850 hover:bg-stone-800 border border-stone-700 text-dwarf-variant hover:text-dwarf-surface rounded-xs cursor-pointer">[ 2 ]</button>
+<button class="px-2.5 py-1 bg-stone-850 hover:bg-stone-800 border border-stone-700 text-dwarf-variant hover:text-dwarf-surface rounded-xs cursor-pointer">[ 3 ]</button>
+<button class="px-2.5 py-1 bg-stone-850 hover:bg-stone-800 border border-stone-700 text-stone-400 hover:text-dwarf-surface rounded-xs cursor-pointer">[ NEXT ]</button>
+</div>
+</div>
+<!-- END: TablePaginationFooter -->
+</section>
+<!-- END: PublicRacesSection -->
+</main>
+<!-- END: MainContent -->
+<!-- BEGIN: SiteFooter -->
+
+<!-- END: SiteFooter -->
+<!-- Interactive script for quick visual feedback -->
+<script data-purpose="interaction-handlers">
+    document.addEventListener('DOMContentLoaded', () => {
+      // Auto-uppercase room code input
+      const roomInput = document.getElementById('room-code-input');
+      if (roomInput) {
+        roomInput.addEventListener('input', (e) => {
+          e.target.value = e.target.value.toUpperCase();
+        });
+      }
+
+      // Quick-join button feedback
+      const quickJoinBtn = document.getElementById('start-race-btn');
+      if (quickJoinBtn) {
+        quickJoinBtn.addEventListener('click', () => {
+          const originalText = quickJoinBtn.innerHTML;
+          quickJoinBtn.innerHTML = '<span class="material-symbols-outlined text-xl animate-spin">refresh</span><span>CONNECTING TO VAULT...</span>';
+          setTimeout(() => {
+            quickJoinBtn.innerHTML = originalText;
+            alert('Entering fullest chamber: CHAMBER #8849 [ADAMANTINE-VEIN]!');
+          }, 800);
+        });
+      }
+
+      // Refresh button simulation
+      const refreshBtn = document.getElementById('refresh-expeditions-btn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+          const icon = refreshBtn.querySelector('.material-symbols-outlined');
+          if (icon) icon.classList.add('animate-spin');
+          setTimeout(() => {
+            if (icon) icon.classList.remove('animate-spin');
+          }, 600);
+        });
+      }
+    });
+  </script>
+
+
+</body></html>

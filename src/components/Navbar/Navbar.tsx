@@ -1,8 +1,11 @@
-import { GUILD, NAV_LINKS } from '../../data/homepageData';
+import { NAV_LINKS } from '../../data/homepageData';
+import { SITE } from '../../data/site';
+import Image from 'next/image';
 import type { Locale, Messages } from '../../i18n/messages';
-import LocaleSelector from './LocaleSelector';
-import ThemeSelector from './ThemeSelector';
+import SettingsMenu from './SettingsMenu';
+import MobileMenu from './MobileMenu';
 import PersonalAccount from './PersonalAccount';
+import ButtonSecondary from '../ButtonSecondary';
 
 export type NavUser = { username: string; pfpUrl?: string | null };
 
@@ -10,38 +13,41 @@ export default function Navbar({
   user = null,
   locale,
   messages,
+  sticky = true,
 }: {
   user?: NavUser | null;
   locale: Locale;
   messages: Messages;
+  /** Keep the bar pinned to the viewport top; `false` lets it scroll away. */
+  sticky?: boolean;
 }) {
+  const position = sticky
+    ? 'fixed top-0 left-0 right-0 z-50'
+    : 'relative z-50';
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
+    <header className={`${position} bg-surface-container-lowest shadow-[0_2px_12px_rgba(0,0,0,0.6)]`}>
       <div className="h-20 w-full px-margin-desktop flex items-center justify-between gap-gutter">
         <div className="flex items-center gap-space-md">
-          <img
-            alt={messages['chrome.guildEmblemAlt']}
-            className="h-8 w-auto object-contain"
-            src={GUILD.logoUrl}
-          />
-          <div className="flex flex-col">
-            <div className="flex items-center gap-space-xs">
-              <span className="font-headline-sm text-headline-sm uppercase text-primary">
-                {messages[GUILD.nameKey]}
+          {/* Brand "/" button: hidden below `sm`, where the hamburger consumes it. */}
+          <div className="hidden sm:block">
+            <ButtonSecondary href="/" aria-label={SITE.name}>
+              <Image
+                alt={messages['chrome.siteLogoAlt']}
+                className="rounded-sm"
+                src={SITE.logoUrl}
+                width={24}
+                height={24}
+                priority
+              />
+              <span className="font-display text-sm font-bold tracking-wider text-dwarf-gold">
+                {SITE.name}
               </span>
-              <span className="font-body-sm text-body-sm text-on-surface-variant select-none">
-                {GUILD.runes}
-              </span>
-            </div>
-            <div className="flex items-center gap-space-sm mt-space-xs">
-              <span className="font-label-sm text-label-sm uppercase bg-surface-container-high text-on-surface-variant px-space-xs py-0.5 rounded">
-                {messages[GUILD.tagKey]}
-              </span>
-              <span className="font-label-sm text-label-sm uppercase bg-secondary-container text-on-secondary-container px-space-xs py-0.5 rounded shadow-[0_0_8px_rgba(217,119,6,0.35)]">
-                {messages[GUILD.streakKey]}
-              </span>
-            </div>
+            </ButtonSecondary>
           </div>
+
+          {/* Hamburger: sits beside the brand button, hidden at xl (links inline). */}
+          <MobileMenu messages={messages} />
         </div>
 
         <nav className="hidden xl:flex items-center gap-space-sm">
@@ -57,10 +63,8 @@ export default function Navbar({
         </nav>
 
         <div className="flex items-center gap-space-md">
-          {/* I18N-02: visible on every breakpoint (desktop and mobile). */}
-          <LocaleSelector locale={locale} messages={messages} />
-          {/* DES-05: Light / Dark / System theme selector. */}
-          <ThemeSelector messages={messages} />
+          {/* Theme + locale collapse behind a single settings gear (DES-05 / I18N-02). */}
+          <SettingsMenu locale={locale} messages={messages} />
 
           <PersonalAccount user={user} messages={messages} />
         </div>
